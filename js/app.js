@@ -594,7 +594,24 @@
             <div class="card"><h3>Biggest expenses — ${monthLabel(currentMonth)}</h3>
                 ${biggest.length ? `<table class="table"><tbody>${biggest.map(t => `<tr><td>${esc(t.description)}<br><span class="muted" style="font-size:11.5px">${esc(t.date)} · ${esc(t.category)}</span></td><td class="amount-neg" style="text-align:right">${fmt(t.amount)}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">No expenses this period.</p>`}</div>
         </div>
-        <div class="card"><h3>Monthly expense trend</h3>${Charts.bars(series.map(m => ({ label: m.label, value: m.expense })), { fmt: fmtShort })}</div>`;
+        <div class="grid grid-2">
+            <div class="card">
+                <h3>Daily spending — ${monthLabel(activeMonth())}</h3>
+                ${(() => {
+                    const dayTotals = {};
+                    Store.txForMonth(activeMonth()).forEach(t => {
+                        if (t.amount >= 0 || Categorize.isNeutral(t.category)) return;
+                        const d = Number((t.date || "").slice(8, 10));
+                        if (d) dayTotals[d] = (dayTotals[d] || 0) + (-t.amount);
+                    });
+                    const days = Object.entries(dayTotals);
+                    const busiest = days.sort((a, b) => b[1] - a[1])[0];
+                    return Charts.heatmap(activeMonth(), dayTotals, { fmt }) +
+                        (busiest ? `<p class="muted" style="font-size:12px;margin-top:8px">Biggest day: ${activeMonth()}-${String(busiest[0]).padStart(2, "0")} · ${fmt(busiest[1])}</p>` : "");
+                })()}
+            </div>
+            <div class="card"><h3>Monthly expense trend</h3>${Charts.bars(series.map(m => ({ label: m.label, value: m.expense })), { fmt: fmtShort })}</div>
+        </div>`;
     }
 
     /* ============================================================

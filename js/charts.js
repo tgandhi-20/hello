@@ -91,5 +91,27 @@
         </div>`;
     }
 
-    global.Charts = { donut, gauge, bars, line, resolveColor };
+    // Month calendar heatmap. monthStr "YYYY-MM", dayTotals {1: 42.5, ...}
+    function heatmap(monthStr, dayTotals, opts = {}) {
+        const [y, mo] = monthStr.split("-").map(Number);
+        const daysIn = new Date(y, mo, 0).getDate();
+        const firstDow = new Date(y, mo - 1, 1).getDay(); // 0=Sun
+        const max = Math.max(1, ...Object.values(dayTotals));
+        const fmt = opts.fmt || (v => v);
+        const head = ["S", "M", "T", "W", "T", "F", "S"].map(d => `<div class="hm-h">${d}</div>`).join("");
+        let cells = "";
+        for (let i = 0; i < firstDow; i++) cells += `<div class="hm-c hm-empty"></div>`;
+        for (let d = 1; d <= daysIn; d++) {
+            const v = dayTotals[d] || 0;
+            const alpha = v > 0 ? 0.15 + 0.85 * Math.min(1, v / max) : 0;
+            const style = v > 0 ? `background:rgba(76,141,255,${alpha.toFixed(2)});color:${alpha > 0.55 ? "#fff" : "var(--text)"}` : "";
+            cells += `<div class="hm-c" style="${style}" title="${monthStr}-${String(d).padStart(2, "0")}: ${v > 0 ? fmt(v) : "no spending"}">${d}</div>`;
+        }
+        return `<div class="heatmap"><div class="hm-grid">${head}${cells}</div>
+            <div class="hm-legend"><span class="muted">less</span>
+                ${[0.15, 0.4, 0.65, 1].map(a => `<span class="hm-swatch" style="background:rgba(76,141,255,${a})"></span>`).join("")}
+                <span class="muted">more</span></div></div>`;
+    }
+
+    global.Charts = { donut, gauge, bars, line, heatmap, resolveColor };
 })(window);

@@ -346,3 +346,11 @@ textarea.form-area { width: 100%; min-height: 120px; background: var(--bg); bord
 :root[data-theme="light"] .brand-logo,
 :root[data-theme="light"] .btn { color: #fff; }
 :root[data-theme="light"] .hero { background: linear-gradient(135deg, rgba(76,141,255,.10), rgba(124,92,255,.10)); }
+
+/* Calendar heatmap */
+.hm-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.hm-h { text-align: center; font-size: 10.5px; color: var(--text-dim); font-weight: 700; padding-bottom: 2px; }
+.hm-c { aspect-ratio: 1.35; display: grid; place-items: center; border-radius: 7px; font-size: 11.5px; background: var(--bg-3); color: var(--text-dim); cursor: default; }
+.hm-empty { background: transparent; }
+.hm-legend { display: flex; align-items: center; gap: 5px; justify-content: flex-end; margin-top: 10px; font-size: 11px; }
+.hm-swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
