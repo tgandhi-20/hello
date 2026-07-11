@@ -36,14 +36,14 @@
         </svg>`;
     }
 
-    // Ring gauge for a 0-100 score
-    function gauge(score, size = 170) {
-        const thickness = 16;
+    // Ring gauge for a 0-100 value. opts.color overrides the score-based color.
+    function gauge(score, size = 170, opts = {}) {
+        const thickness = opts.thickness || 16;
         const r = (size - thickness) / 2;
         const cx = size / 2, cy = size / 2;
         const circ = 2 * Math.PI * r;
         const len = (Math.max(0, Math.min(100, score)) / 100) * circ;
-        const color = score >= 75 ? "var(--green)" : score >= 50 ? "var(--amber)" : "var(--red)";
+        const color = opts.color || (score >= 75 ? "var(--green)" : score >= 50 ? "var(--amber)" : "var(--red)");
         return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" style="display:block">
             <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--bg-3)" stroke-width="${thickness}"></circle>
             <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${resolveColor(color)}" stroke-width="${thickness}"

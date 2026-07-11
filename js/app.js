@@ -481,15 +481,25 @@
         }).join("");
         const totalBudget = Object.values(Store.state.budgets).reduce((a, b) => a + b, 0);
         const totalSpent = cats.reduce((a, c) => a + (s.byCat[c] || 0), 0);
+        const usedPct = totalBudget > 0 ? Math.min(100, (totalSpent / totalBudget) * 100) : 0;
+        const ringColor = usedPct >= 100 ? "var(--red)" : usedPct > 80 ? "var(--amber)" : "var(--green)";
         return `
-        <div class="grid grid-3 mb-18">
+        <div class="grid grid-4 mb-18">
+            <div class="card" style="display:flex;align-items:center;gap:16px">
+                <div class="score-ring">${Charts.gauge(usedPct, 92, { color: ringColor, thickness: 11 })}
+                    <div class="score-num"><strong style="font-size:20px">${totalBudget>0?usedPct.toFixed(0)+"%":"—"}</strong></div></div>
+                <div><div class="stat-label">Budget used</div><div class="stat-sub">${monthLabel(currentMonth)}</div></div>
+            </div>
             <div class="card stat"><span class="stat-label">Total budgeted</span><span class="stat-value">${fmt(totalBudget)}</span></div>
             <div class="card stat"><span class="stat-label">Spent</span><span class="stat-value">${fmt(totalSpent)}</span></div>
             <div class="card stat"><span class="stat-label">Remaining</span><span class="stat-value ${totalBudget-totalSpent>=0?"up":"down"}">${fmtSigned(totalBudget-totalSpent)}</span></div>
         </div>
         <div class="card">
             <div class="card-title-row"><h3>Monthly budgets by bucket — ${monthLabel(currentMonth)}</h3>
-                <button class="btn btn-sm btn-ghost" id="autoBudget">Auto-suggest from spending</button></div>
+                <div class="row-actions">
+                    <button class="btn btn-sm btn-ghost" id="templateBudget">50/30/20 template</button>
+                    <button class="btn btn-sm btn-ghost" id="autoBudget">Auto-suggest from spending</button>
+                </div></div>
             <p class="muted" style="font-size:12px;margin-bottom:16px">Turn on <strong>rollover</strong> (envelope-style) to carry unused budget — or overspend — into the next month, like YNAB.</p>
             ${rows}
         </div>`;
@@ -830,6 +840,7 @@
         $$("[data-setbudget]").forEach(b => b.addEventListener("click", () => openSetBudget(b.dataset.setbudget)));
         $$("[data-rollover]").forEach(cb => cb.addEventListener("change", e => { Store.setRollover(cb.dataset.rollover, e.target.checked); renderActive(); }));
         bindClick("#autoBudget", autoSuggestBudgets);
+        bindClick("#templateBudget", applyTemplate503020);
 
         // goals
         bindClick("#addGoalBtn", () => openGoalModal()); bindClick("#addGoalBtn2", () => openGoalModal());
@@ -923,6 +934,37 @@
         let count = 0;
         cats.forEach(c => { const avg = sums[c] / months.length; if (avg > 5) { Store.setBudget(c, Math.ceil(avg / 10) * 10); count++; } });
         toast(`Set ${count} budgets from your ${months.length}-month average`, "success"); renderActive();
+    }
+    function applyTemplate503020() {
+        const income = Finance.estimatedMonthlyIncome();
+        if (!income) { toast("Set your monthly income in Settings first", "error"); return; }
+        const NEEDS = ["Housing", "Groceries", "Utilities", "Transport", "Health"];
+        const WANTS = ["Dining", "Shopping", "Entertainment"];
+        const needsPot = income * 0.5, wantsPot = income * 0.3;
+        // weight within each group by 3-month spending history, fallback to equal
+        const months = Store.availableMonths().slice(0, 3);
+        const hist = {};
+        months.forEach(m => Store.txForMonth(m).filter(t => t.amount < 0).forEach(t => hist[t.category] = (hist[t.category] || 0) + (-t.amount)));
+        const allocate = (cats, pot) => {
+            const total = cats.reduce((a, c) => a + (hist[c] || 0), 0);
+            cats.forEach(c => {
+                const share = total > 0 ? (hist[c] || 0) / total : 1 / cats.length;
+                const amt = Math.round((pot * share) / 10) * 10;
+                if (amt > 0) Store.setBudget(c, amt);
+            });
+        };
+        openModal(`<h3>Apply 50/30/20 template?</h3>
+            <p class="muted" style="font-size:13px;margin-bottom:14px">Based on your ${fmt(income)}/mo income:<br>
+            · <strong>50% needs</strong> (${fmtShort(needsPot)}) → housing, groceries, utilities, transport, health<br>
+            · <strong>30% wants</strong> (${fmtShort(wantsPot)}) → dining, shopping, entertainment<br>
+            · <strong>20% savings</strong> (${fmtShort(income*0.2)}) → kept unbudgeted for goals &amp; saving<br><br>
+            Amounts are split within each group using your recent spending pattern. This replaces existing budgets for those categories.</p>
+            <div class="modal-actions"><button class="btn btn-ghost" id="tCancel">Cancel</button><button class="btn" id="tApply">Apply template</button></div>`);
+        bindClick("#tCancel", closeModal);
+        bindClick("#tApply", () => {
+            allocate(NEEDS, needsPot); allocate(WANTS, wantsPot);
+            closeModal(); toast("50/30/20 budgets applied", "success"); renderActive();
+        });
     }
     function openGoalModal(id) {
         const g = id ? Store.state.goals.find(x => x.id === id) : null;
