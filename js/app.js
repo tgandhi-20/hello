@@ -533,23 +533,45 @@
                 <button class="btn btn-ghost btn-sm" id="roundupOff">Turn off</button>`
             : `<button class="btn" id="roundupOn">Enable round-ups</button>`}
         </div>`;
+        // auto-fund suggestion: put part of this month's surplus toward the most urgent goal
+        let suggest = "";
+        const sts = Finance.safeToSpend(activeMonth());
+        const openGoals = goals.filter(g => g.saved < g.target);
+        if (sts.safe > 50 && openGoals.length) {
+            const urgent = openGoals.slice().sort((a, b) => {
+                if (a.deadline && b.deadline) return a.deadline.localeCompare(b.deadline);
+                if (a.deadline) return -1; if (b.deadline) return 1;
+                return (a.saved / a.target) - (b.saved / b.target);
+            })[0];
+            const amount = Math.max(10, Math.floor(Math.min(sts.safe * 0.5, urgent.target - urgent.saved) / 10) * 10);
+            suggest = `<div class="suggest-strip">
+                <span style="font-size:20px">💡</span>
+                <p>You have about <strong>${fmt(sts.safe)}</strong> safe to spend this month. Put <strong>${fmt(amount)}</strong> toward <strong>${esc(urgent.name)}</strong>${urgent.deadline?` (due ${urgent.deadline})`:""}?</p>
+                <button class="btn btn-sm" id="fundSuggest" data-goal="${urgent.id}" data-amt="${amount}">Fund ${fmt(amount)}</button>
+            </div>`;
+        }
         return `
         <div class="section-head"><p class="muted">${goals.length} saving goal${goals.length===1?"":"s"}</p><button class="btn" id="addGoalBtn">+ New goal</button></div>
         ${jar}
+        ${suggest}
         ${goals.length === 0 ? `<div class="card"><div class="empty"><div class="big">◎</div><p>No saving goals yet. Create one to start tracking progress.</p><button class="btn" id="addGoalBtn2">Create a goal</button></div></div>` : `
         <div class="grid grid-2">${goals.map(g => {
             const pct = g.target > 0 ? Math.min(100, (g.saved / g.target) * 100) : 0;
             const remaining = Math.max(0, g.target - g.saved);
+            const done = g.target > 0 && g.saved >= g.target;
             let etaTxt = "";
-            if (g.deadline) { const days = Math.ceil((new Date(g.deadline) - new Date()) / 86400000);
+            if (g.deadline && !done) { const days = Math.ceil((new Date(g.deadline) - new Date()) / 86400000);
                 etaTxt = days > 0 ? `${days} days left` : "Past deadline";
                 if (days > 0 && remaining > 0) { const perMonth = remaining / Math.max(1, days / 30); etaTxt += ` · ${fmtShort(perMonth)}/mo needed`; } }
-            return `<div class="card">
-                <div class="card-title-row"><h3>${esc(g.name)}</h3><span class="muted" style="font-size:12.5px">${etaTxt}</span></div>
+            const nextMs = [25, 50, 75, 100].find(msv => pct < msv);
+            const msTxt = done ? "" : (nextMs ? ` · next milestone ${nextMs}% (${fmt(g.target * nextMs / 100 - g.saved)} away)` : "");
+            return `<div class="card ${done ? "goal-done" : ""}">
+                <div class="card-title-row"><h3>${esc(g.name)}</h3>${done ? `<span class="goal-done-badge">🎉 Complete</span>` : `<span class="muted" style="font-size:12.5px">${etaTxt}</span>`}</div>
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="font-size:22px;font-weight:700">${fmt(g.saved)}</span><span class="muted">of ${fmt(g.target)}</span></div>
-                <div class="progress"><span style="width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--accent-2))"></span></div>
+                <div class="progress"><span style="width:${pct}%;background:${done ? "var(--green)" : "linear-gradient(90deg,var(--accent),var(--accent-2))"}"></span>
+                    ${[25, 50, 75].map(msv => `<i class="tick" style="left:${msv}%"></i>`).join("")}</div>
                 <div style="display:flex;justify-content:space-between;margin-top:8px">
-                    <span class="muted" style="font-size:12.5px">${pct.toFixed(0)}% · ${fmt(remaining)} to go</span>
+                    <span class="muted" style="font-size:12.5px">${pct.toFixed(0)}%${done ? " · funded!" : ` · ${fmt(remaining)} to go${msTxt}`}</span>
                     <div class="row-actions">
                         <button class="link-btn" data-contribute="${g.id}">+ Add funds</button>
                         <button class="link-btn" data-editgoal="${g.id}">Edit</button>
@@ -904,9 +926,14 @@
             const acc = Finance.roundupAccrued();
             const g = Store.state.goals.find(x => x.id === st.roundupGoalId);
             if (!g || acc.total <= 0) return;
-            Store.updateGoal(g.id, { saved: g.saved + acc.total });
+            contributeToGoal(g.id, acc.total, `Swept ${fmt(acc.total)} into ${g.name}`);
             Store.updateSettings({ roundupLastSweep: new Date().toISOString().slice(0, 10) });
-            toast(`Swept ${fmt(acc.total)} into ${g.name}`, "success"); renderActive();
+            renderActive();
+        });
+        const fs = $("#fundSuggest");
+        if (fs) fs.addEventListener("click", () => {
+            contributeToGoal(fs.dataset.goal, Number(fs.dataset.amt), `Added ${fmt(Number(fs.dataset.amt))} from this month's surplus`);
+            renderActive();
         });
 
         // settings
@@ -1079,6 +1106,16 @@
             if (g) Store.updateGoal(g.id, data); else Store.addGoal(data);
             closeModal(); toast(g ? "Goal updated" : "Goal created", "success"); renderActive(); });
     }
+    // Add funds to a goal, celebrating when it crosses 100%.
+    function contributeToGoal(id, amount, successMsg) {
+        const g = Store.state.goals.find(x => x.id === id);
+        if (!g) return;
+        const wasDone = g.target > 0 && g.saved >= g.target;
+        Store.updateGoal(g.id, { saved: Math.max(0, g.saved + amount) });
+        const nowDone = g.target > 0 && g.saved + 0.001 >= g.target;
+        if (!wasDone && nowDone) toast(`🎉 ${g.name} is fully funded — congratulations!`, "success");
+        else if (successMsg) toast(successMsg, "success");
+    }
     function openContribute(id) {
         const g = Store.state.goals.find(x => x.id === id);
         openModal(`<h3>Add funds to ${esc(g.name)}</h3><p class="muted" style="margin-bottom:14px">Currently ${fmt(g.saved)} of ${fmt(g.target)}.</p>
@@ -1086,7 +1123,7 @@
             <div class="modal-actions"><button class="btn btn-ghost" id="cCancel">Cancel</button><button class="btn" id="cSave">Add funds</button></div>`);
         bindClick("#cCancel", closeModal);
         bindClick("#cSave", () => { const add = Number($("#cAmt").value); if (isNaN(add) || add === 0) return toast("Enter an amount", "error");
-            Store.updateGoal(g.id, { saved: Math.max(0, g.saved + add) }); closeModal(); toast("Funds added", "success"); renderActive(); });
+            contributeToGoal(g.id, add, "Funds added"); closeModal(); renderActive(); });
     }
     function openAccountModal(id) {
         const a = id ? Store.state.accounts.find(x => x.id === id) : null;
