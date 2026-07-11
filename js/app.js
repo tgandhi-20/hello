@@ -1040,7 +1040,9 @@
 
     /* ---------- demo data ---------- */
     function loadDemo() {
+        const keepSettings = JSON.parse(JSON.stringify(Store.state.settings));
         Store.reset();
+        Store.updateSettings(keepSettings); // loading sample data must not wipe user preferences
         const today = new Date();
         const catByDesc = d => Categorize.categorize(d, -1);
         const merchants = {
@@ -1097,7 +1099,34 @@
     }
     $("#loadDemo").addEventListener("click", loadDemo);
 
+    /* ---------- onboarding ---------- */
+    function maybeOnboard() {
+        const fresh = Store.state.transactions.length === 0 && Store.state.accounts.length === 0;
+        let seen = false;
+        try { seen = !!localStorage.getItem("fintrack.onboarded"); } catch (e) {}
+        if (!fresh || seen) return;
+        const currencies = ["$", "€", "£", "¥", "₹", "A$", "C$", "R$"];
+        openModal(`
+            <div style="text-align:center;margin-bottom:18px">
+                <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;font-size:26px;color:#fff;margin:0 auto 12px">₿</div>
+                <h3 style="margin-bottom:4px">Welcome to Fintrack</h3>
+                <p class="muted" style="font-size:13px">Private, on-device budgeting. Two quick questions and you're set.</p>
+            </div>
+            <div class="form-grid">
+                <div class="form-row"><label>Currency</label><select id="obCur">${currencies.map(c=>`<option ${c===CUR()?"selected":""}>${c}</option>`).join("")}</select></div>
+                <div class="form-row"><label>Monthly income (optional)</label><input id="obIncome" type="number" min="0" placeholder="e.g. 4200"></div>
+            </div>
+            <button class="btn" id="obStart" style="width:100%;margin-bottom:8px">Get started — import a statement</button>
+            <button class="btn btn-ghost" id="obDemo" style="width:100%">Explore with sample data</button>
+            <p class="muted" style="font-size:11.5px;text-align:center;margin-top:12px">Nothing leaves your device. You can change everything later in Settings.</p>`);
+        const done = () => { try { localStorage.setItem("fintrack.onboarded", "1"); } catch (e) {} };
+        const saveAnswers = () => Store.updateSettings({ currency: $("#obCur").value, monthlyIncome: Number($("#obIncome").value) || 0 });
+        bindClick("#obStart", () => { saveAnswers(); done(); closeModal(); toast("You're set — import your first statement", "success"); goTo("upload"); });
+        bindClick("#obDemo", () => { saveAnswers(); done(); closeModal(); loadDemo(); });
+    }
+
     /* ---------- boot ---------- */
     refreshMonthOptions();
     renderActive();
+    maybeOnboard();
 })();
