@@ -62,6 +62,20 @@ python3 -m http.server 8000
 Click **Load sample data** in the sidebar to explore with realistic demo data,
 or **Import** to bring in your own CSV.
 
+## Testing
+
+An end-to-end regression suite drives the real app in headless Chromium —
+every view plus the key flows (import, dedupe, categorization, bill
+auto-match, budgets, round-ups, tags, themes, exports, service worker):
+
+```bash
+npm i -g playwright   # once (or use an existing install)
+NODE_PATH=$(npm root -g) node tests/run.js
+```
+
+The suite starts its own static server, needs no other dependencies, and
+exits non-zero on any failure or page error.
+
 ## Publishing to the app stores
 
 Fintrack is a standards-compliant PWA (`manifest.json`, service worker,
