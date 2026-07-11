@@ -16,6 +16,7 @@
         bills: [],        // {id, name, amount, dueDay, category, autopay, paidMonths:[]}
         subscriptions: [],// {id, name, amount, cycle:'monthly'|'yearly', category, active, nextDue}
         customCategories: [], // {name, color, kw:[]}
+        members: [],          // {id, name} household members
         netWorthSnapshots: [],// {date, value}
         settings: {
             currency: "$",
@@ -80,6 +81,7 @@
             category: tx.category || "Other",
             type: (Number(tx.amount) || 0) >= 0 ? "income" : "expense",
             accountId: tx.accountId || null,
+            member: tx.member || null,
             note: tx.note || "",
             tags: tx.tags || []
         };
@@ -135,14 +137,16 @@
     function addAccount(a) {
         const acc = { id: uid("acc"), name: a.name, type: a.type || "Checking",
             balance: Number(a.balance) || 0, kind: a.kind || "asset",
-            apr: Number(a.apr) || 0, minPayment: Number(a.minPayment) || 0 };
+            apr: Number(a.apr) || 0, minPayment: Number(a.minPayment) || 0,
+            currency: a.currency || "",            // "" = base currency
+            rate: Number(a.rate) || 1 };           // 1 unit = rate × base
         state.accounts.push(acc); save(); return acc;
     }
     function updateAccount(id, patch) {
         const a = state.accounts.find(x => x.id === id);
         if (!a) return;
         Object.assign(a, patch);
-        ["balance", "apr", "minPayment"].forEach(k => { if (patch[k] !== undefined) a[k] = Number(patch[k]) || 0; });
+        ["balance", "apr", "minPayment", "rate"].forEach(k => { if (patch[k] !== undefined) a[k] = Number(patch[k]) || (k === "rate" ? 1 : 0); });
         save();
     }
     function deleteAccount(id) { state.accounts = state.accounts.filter(a => a.id !== id); save(); }
@@ -198,6 +202,43 @@
         save();
     }
 
+    /* ---------- Household members ---------- */
+    function addMember(name) {
+        name = String(name || "").trim();
+        if (!name) return null;
+        if (state.members.some(m => m.name.toLowerCase() === name.toLowerCase())) return null;
+        const m = { id: uid("mem"), name };
+        state.members.push(m); save(); return m;
+    }
+    function deleteMember(id) {
+        state.members = state.members.filter(m => m.id !== id);
+        // unassign from transactions
+        state.transactions.forEach(t => { if (t.member === id) t.member = null; });
+        save();
+    }
+
+    /* ---------- Split a transaction into parts ---------- */
+    // parts = [{category, amount (positive)}]; amounts must sum to |original|.
+    function splitTransaction(id, parts) {
+        const t = state.transactions.find(x => x.id === id);
+        if (!t || t.amount >= 0 || parts.length < 2) return false;
+        const total = parts.reduce((a, p) => a + Number(p.amount), 0);
+        if (Math.abs(total - Math.abs(t.amount)) > 0.01) return false;
+        const sign = -1;
+        parts.forEach(p => {
+            state.transactions.push({
+                id: uid("tx"), date: t.date, description: t.description,
+                amount: Math.round(Number(p.amount) * 100) / 100 * sign,
+                category: p.category, type: "expense",
+                accountId: t.accountId, member: t.member || null,
+                note: t.note || "", tags: Array.from(new Set([...(t.tags || []), "split"]))
+            });
+        });
+        state.transactions = state.transactions.filter(x => x.id !== id);
+        save();
+        return true;
+    }
+
     /* ---------- Net worth snapshots ---------- */
     function snapshotNetWorth(value) {
         const date = new Date().toISOString().slice(0, 10);
@@ -234,6 +275,7 @@
         addBill, updateBill, deleteBill, toggleBillPaid,
         addSubscription, updateSubscription, deleteSubscription,
         addCategory, deleteCategory,
+        addMember, deleteMember, splitTransaction,
         snapshotNetWorth, updateSettings,
         txForMonth, availableMonths
     };

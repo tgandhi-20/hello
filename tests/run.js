@@ -253,6 +253,97 @@ function startServer() {
     check("service worker registers", await page.evaluate(async () =>
         "serviceWorker" in navigator && !!(await navigator.serviceWorker.getRegistration())));
 
+    /* ---------- split transactions ---------- */
+    await visit("transactions");
+    await page.click("#addTxBtn");
+    await page.waitForTimeout(200);
+    await page.fill("#mDesc", "Superstore Big Run");
+    await page.fill("#mAmt", "-100");
+    await page.click("#mSave");
+    await page.waitForTimeout(300);
+    await page.fill("#txSearch", "Superstore");
+    await page.waitForTimeout(500);
+    await page.click("[data-splittx]");
+    await page.waitForTimeout(250);
+    await page.fill('[data-samt="0"]', "60");
+    await page.fill('[data-samt="1"]', "40");
+    await page.waitForTimeout(150);
+    check("split enables at exact sum", !(await page.isDisabled("#spSave")));
+    await page.click("#spSave");
+    await page.waitForTimeout(400);
+    const parts = (await state()).transactions.filter(t => t.description === "Superstore Big Run");
+    check("split produced 2 parts summing to total", parts.length === 2 &&
+        Math.abs(parts.reduce((a, t) => a + t.amount, 0) + 100) < 0.005);
+    check("split parts tagged", parts.every(t => (t.tags || []).includes("split")));
+    await page.fill("#txSearch", "");
+    await page.waitForTimeout(300);
+
+    /* ---------- multi-currency accounts ---------- */
+    await visit("networth");
+    const nwBefore = await page.evaluate(() => Finance.netWorth().total);
+    await page.click("#addAcctBtn");
+    await page.waitForTimeout(200);
+    await page.fill("#aName", "EU Savings");
+    await page.selectOption("#aType", "Savings");
+    await page.fill("#aBal", "1000");
+    await page.selectOption("#aCur", "€");
+    await page.fill("#aRate", "1.1");
+    await page.click("#aSave");
+    await page.waitForTimeout(300);
+    const nwAfter = await page.evaluate(() => Finance.netWorth().total);
+    check("foreign account converts at rate (1000×1.1)", Math.abs(nwAfter - nwBefore - 1100) < 0.01);
+    check("account row shows native + converted", /€1,000\.00/.test(await page.textContent("#view-networth")));
+
+    /* ---------- household members ---------- */
+    await visit("settings");
+    await page.fill("#memberName", "Priya");
+    await page.click("#addMemberBtn");
+    await page.waitForTimeout(300);
+    check("member added", (await state()).members.some(m => m.name === "Priya"));
+    await visit("transactions");
+    await page.click("#addTxBtn");
+    await page.waitForTimeout(200);
+    await page.fill("#mDesc", "Priya Groceries");
+    await page.fill("#mAmt", "-45");
+    const memberId = (await state()).members[0].id;
+    await page.selectOption("#mMember", memberId);
+    await page.click("#mSave");
+    await page.waitForTimeout(300);
+    check("transaction assigned to member",
+        (await state()).transactions.find(t => t.description === "Priya Groceries").member === memberId);
+    const rep2 = await visit("reports");
+    check("reports shows spending by member", rep2.includes("Spending by member") && rep2.includes("Priya"));
+
+    /* ---------- mobile viewport ---------- */
+    const mob = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    mob.on("pageerror", e => errors.push("mobile pageerror: " + e.message));
+    await mob.goto(APP);
+    await mob.waitForTimeout(500);
+    if (await mob.isVisible("#obDemo")) { await mob.click("#obDemo"); await mob.waitForTimeout(600); }
+    check("mobile: bottom nav visible", await mob.isVisible("#bottomNav"));
+    check("mobile: sidebar hidden", !(await mob.isVisible("#sidebar .brand-name")));
+    check("mobile: FAB visible", await mob.isVisible("#fabAdd"));
+    const noHScroll = await mob.evaluate(() =>
+        document.documentElement.scrollWidth <= window.innerWidth + 1);
+    check("mobile: no horizontal page scroll", noHScroll);
+    await mob.click('.bnav-item[data-view="budgets"]');
+    await mob.waitForTimeout(300);
+    check("mobile: bottom-nav navigation works", (await mob.textContent("#viewTitle")).includes("Budgets"));
+    await mob.click("#moreNavBtn");
+    await mob.waitForTimeout(300);
+    check("mobile: more sheet opens", await mob.isVisible("#moreSheet"));
+    await mob.click('.sheet-item[data-view="settings"]');
+    await mob.waitForTimeout(300);
+    check("mobile: sheet navigates and closes",
+        (await mob.textContent("#viewTitle")).includes("Settings") && (await mob.getAttribute("#sheetBackdrop", "hidden")) !== null);
+    await mob.click('.bnav-item[data-view="dashboard"]');
+    await mob.waitForTimeout(250);
+    await mob.click("#fabAdd");
+    await mob.waitForTimeout(250);
+    check("mobile: FAB opens add-transaction", await mob.isVisible("#mSave"));
+    await mob.keyboard.press("Escape");
+    await mob.close();
+
     /* ---------- summary ---------- */
     console.log("---");
     console.log(`RESULT: ${pass} passed, ${fail} failed`);

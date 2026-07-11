@@ -14,20 +14,23 @@
     }
 
     // Donut chart. data = [{label, value, color}]
+    // A 2px surface gap separates adjacent segments (CVD mitigation).
     function donut(data, size = 180, thickness = 26) {
         const total = data.reduce((s, d) => s + d.value, 0) || 1;
         const r = (size - thickness) / 2;
         const cx = size / 2, cy = size / 2;
         const circ = 2 * Math.PI * r;
+        const visible = data.filter(d => d.value > 0);
+        const gap = visible.length > 1 ? 2 : 0;
         let offset = 0;
-        const segs = data.filter(d => d.value > 0).map(d => {
+        const segs = visible.map(d => {
             const frac = d.value / total;
-            const len = frac * circ;
+            const len = Math.max(0.5, frac * circ - gap);
             const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
                 stroke="${resolveColor(d.color)}" stroke-width="${thickness}"
-                stroke-dasharray="${len} ${circ - len}" stroke-dashoffset="${-offset}"
-                transform="rotate(-90 ${cx} ${cy})"></circle>`;
-            offset += len;
+                stroke-dasharray="${len} ${circ - len}" stroke-dashoffset="${-(offset + gap / 2)}"
+                transform="rotate(-90 ${cx} ${cy})"><title>${d.label}: ${d.value}</title></circle>`;
+            offset += frac * circ;
             return seg;
         }).join("");
         return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" style="display:block">
@@ -104,12 +107,12 @@
         for (let d = 1; d <= daysIn; d++) {
             const v = dayTotals[d] || 0;
             const alpha = v > 0 ? 0.15 + 0.85 * Math.min(1, v / max) : 0;
-            const style = v > 0 ? `background:rgba(76,141,255,${alpha.toFixed(2)});color:${alpha > 0.55 ? "#fff" : "var(--text)"}` : "";
+            const style = v > 0 ? `background:rgba(var(--heat-rgb),${alpha.toFixed(2)});color:${alpha > 0.55 ? "#fff" : "var(--text)"}` : "";
             cells += `<div class="hm-c" style="${style}" title="${monthStr}-${String(d).padStart(2, "0")}: ${v > 0 ? fmt(v) : "no spending"}">${d}</div>`;
         }
         return `<div class="heatmap"><div class="hm-grid">${head}${cells}</div>
             <div class="hm-legend"><span class="muted">less</span>
-                ${[0.15, 0.4, 0.65, 1].map(a => `<span class="hm-swatch" style="background:rgba(76,141,255,${a})"></span>`).join("")}
+                ${[0.15, 0.4, 0.65, 1].map(a => `<span class="hm-swatch" style="background:rgba(var(--heat-rgb),${a})"></span>`).join("")}
                 <span class="muted">more</span></div></div>`;
     }
 

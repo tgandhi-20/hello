@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Fintrack — Personal Finance & Budgeting</title>
     <meta name="description" content="Import bank statements, budget by category, track net worth, subscriptions, bills and saving goals — all private, on your device.">
-    <meta name="theme-color" content="#0e1117">
+    <meta name="theme-color" content="#0d0d0d">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Fintrack">
@@ -29,7 +29,17 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="brand">
-                <span class="brand-logo">₿</span>
+                <svg class="brand-logo" viewBox="0 0 512 512" aria-hidden="true">
+                    <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stop-color="#2a78d6"/><stop offset="1" stop-color="#4a3aa7"/>
+                    </linearGradient></defs>
+                    <rect width="512" height="512" rx="112" fill="url(#lg)"/>
+                    <polyline points="112,352 200,286 268,318 400,168" fill="none" stroke="#fff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+                    <circle cx="400" cy="168" r="22" fill="#fff"/>
+                    <rect x="120" y="372" width="40" height="40" rx="10" fill="#fff" opacity="0.55"/>
+                    <rect x="236" y="352" width="40" height="60" rx="10" fill="#fff" opacity="0.55"/>
+                    <rect x="352" y="300" width="40" height="112" rx="10" fill="#fff" opacity="0.7"/>
+                </svg>
                 <span class="brand-name">Fintrack</span>
             </div>
             <nav class="nav">
@@ -86,6 +96,34 @@
                 <section class="view" id="view-settings"></section>
             </div>
         </main>
+    </div>
+
+    <!-- Mobile bottom navigation -->
+    <nav class="bottom-nav" id="bottomNav" aria-label="Primary">
+        <button class="bnav-item active" data-view="dashboard"><span class="bico">◧</span>Home</button>
+        <button class="bnav-item" data-view="transactions"><span class="bico">≡</span>Activity</button>
+        <button class="bnav-item" data-view="budgets"><span class="bico">◑</span>Budgets</button>
+        <button class="bnav-item" data-view="goals"><span class="bico">◎</span>Goals</button>
+        <button class="bnav-item" id="moreNavBtn"><span class="bico">⋯</span>More</button>
+    </nav>
+    <button class="fab" id="fabAdd" aria-label="Add transaction">+</button>
+
+    <!-- More sheet (mobile) -->
+    <div class="sheet-backdrop" id="sheetBackdrop" hidden>
+        <div class="sheet" id="moreSheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-grid">
+                <button class="sheet-item" data-view="networth"><span class="bico">◈</span>Net Worth</button>
+                <button class="sheet-item" data-view="reports"><span class="bico">▤</span>Reports</button>
+                <button class="sheet-item" data-view="upload"><span class="bico">↥</span>Import</button>
+                <button class="sheet-item" data-view="bills"><span class="bico">🗓</span>Bills</button>
+                <button class="sheet-item" data-view="subscriptions"><span class="bico">🔁</span>Subs</button>
+                <button class="sheet-item" data-view="habits"><span class="bico">∿</span>Habits</button>
+                <button class="sheet-item" data-view="health"><span class="bico">♥</span>Health</button>
+                <button class="sheet-item" data-view="advice"><span class="bico">✦</span>Advice</button>
+                <button class="sheet-item" data-view="settings"><span class="bico">⚙</span>Settings</button>
+            </div>
+        </div>
     </div>
 
     <div class="modal-backdrop" id="modalBackdrop" hidden>

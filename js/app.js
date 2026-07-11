@@ -41,7 +41,11 @@
     }
     function closeModal() { $("#modalBackdrop").hidden = true; }
     $("#modalBackdrop").addEventListener("click", e => { if (e.target.id === "modalBackdrop") closeModal(); });
-    document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#modalBackdrop").hidden) closeModal(); });
+    document.addEventListener("keydown", e => {
+        if (e.key !== "Escape") return;
+        if (!$("#modalBackdrop").hidden) closeModal();
+        else if (!$("#sheetBackdrop").hidden) closeSheet();
+    });
 
     /* ---------- analytics ---------- */
     function summarize(txs) {
@@ -158,12 +162,12 @@
         </div>
         <div class="card">
             <div class="card-title-row"><h3>Recent transactions</h3><button class="link-btn" data-goto="transactions">View all →</button></div>
-            ${recent.length ? `<table class="table">
+            ${recent.length ? `<div class="table-wrap"><table class="table">
                 <thead><tr><th>Date</th><th>Description</th><th>Category</th><th style="text-align:right">Amount</th></tr></thead>
                 <tbody>${recent.map(t=>`<tr>
                     <td class="muted">${esc(t.date)}</td><td>${esc(t.description)}</td><td>${catChip(t.category)}</td>
                     <td style="text-align:right" class="${t.amount<0?"amount-neg":"amount-pos"}">${fmtSigned(t.amount)}</td>
-                </tr>`).join("")}</tbody></table>` : `<p class="muted">No transactions this period.</p>`}
+                </tr>`).join("")}</tbody></table></div>` : `<p class="muted">No transactions this period.</p>`}
         </div>`;
     }
 
@@ -179,8 +183,10 @@
 
         const acctRow = a => `<div class="acct-row">
             <div class="acct-ico">${ACCT_ICON[a.type] || "◈"}</div>
-            <div><div class="acct-name">${esc(a.name)}</div><div class="acct-type">${esc(a.type)}${a.apr?` · ${a.apr}% APR`:""}</div></div>
-            <div class="acct-bal ${a.kind==="liability"?"down":""}">${a.kind==="liability"?"-":""}${fmt(a.balance)}</div>
+            <div><div class="acct-name">${esc(a.name)}</div><div class="acct-type">${esc(a.type)}${a.apr?` · ${a.apr}% APR`:""}${a.currency?` · ${esc(a.currency)} @ ${a.rate}`:""}</div></div>
+            <div class="acct-bal ${a.kind==="liability"?"down":""}">${a.kind==="liability"?"-":""}${a.currency
+                ? `${esc(a.currency)}${Math.abs(a.balance).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}<span class="muted" style="font-size:11px;font-weight:500"> ≈ ${fmt(a.balance*(a.rate||1))}</span>`
+                : fmt(a.balance)}</div>
             <div class="row-actions" style="margin-left:12px">
                 <button class="link-btn" data-editacct="${a.id}">Edit</button>
                 <button class="link-btn danger" data-delacct="${a.id}">×</button>
@@ -266,10 +272,34 @@
             </div>
             <div class="card">
                 <h3>Category trend</h3>
-                <table class="table"><thead><tr><th>Category</th>${series.slice(-4).map(m=>`<th style="text-align:right">${m.label}</th>`).join("")}</tr></thead><tbody>
+                <div class="table-wrap"><table class="table"><thead><tr><th>Category</th>${series.slice(-4).map(m=>`<th style="text-align:right">${m.label}</th>`).join("")}</tr></thead><tbody>
                     ${topCats.map(cat=>`<tr><td>${catChip(cat)}</td>${series.slice(-4).map(m=>{const v=catByMonth(m.month)[cat]||0;return `<td style="text-align:right" class="${v?"":"muted"}">${v?fmtShort(v):"—"}</td>`}).join("")}</tr>`).join("")}
-                </tbody></table>
+                </tbody></table></div>
             </div>
+        </div>
+        ${renderMemberSpend()}`;
+    }
+    function renderMemberSpend() {
+        const members = Store.state.members;
+        if (!members.length) return "";
+        const txs = Store.txForMonth(currentMonth).filter(t => t.amount < 0 && !Categorize.isNeutral(t.category));
+        const byMember = {};
+        let unassigned = 0;
+        txs.forEach(t => {
+            if (t.member) byMember[t.member] = (byMember[t.member] || 0) + (-t.amount);
+            else unassigned += -t.amount;
+        });
+        const total = txs.reduce((a, t) => a + (-t.amount), 0) || 1;
+        const rows = members.map(m => ({ name: m.name, v: byMember[m.id] || 0 }))
+            .concat(unassigned > 0 ? [{ name: "Unassigned", v: unassigned }] : [])
+            .sort((a, b) => b.v - a.v);
+        return `<div class="card mt-18">
+            <h3>Spending by member — ${monthLabel(currentMonth)}</h3>
+            ${rows.map(r => `<div class="bar-row">
+                <div class="bar-head"><span>${r.name === "Unassigned" ? `<span class="muted">${esc(r.name)}</span>` : `<span class="member-chip">${esc(r.name.slice(0,2).toUpperCase())}</span> ${esc(r.name)}`}</span>
+                    <span class="muted">${fmt(r.v)} · ${Math.round((r.v/total)*100)}%</span></div>
+                <div class="progress"><span style="width:${(r.v/total)*100}%;background:var(--accent)"></span></div>
+            </div>`).join("")}
         </div>`;
     }
     function incomeExpenseBars(series) {
@@ -307,16 +337,16 @@
         </div>
         <div class="card">
             ${txs.length === 0 ? `<div class="empty"><div class="big">≡</div><p>No transactions match.</p></div>` : `
-            <table class="table">
+            <div class="table-wrap"><table class="table">
                 <thead><tr><th>Date</th><th>Description</th><th>Category</th><th style="text-align:right">Amount</th><th></th></tr></thead>
                 <tbody>${txs.map(t => `<tr data-id="${t.id}">
                     <td class="muted">${esc(t.date)}</td>
-                    <td>${esc(t.description)}${(t.tags&&t.tags.length)?` ${t.tags.map(tag=>`<span class="tag-chip" data-tagclick="${esc(tag)}">#${esc(tag)}</span>`).join(" ")}`:""}${t.note?`<br><span class="muted" style="font-size:11.5px">📝 ${esc(t.note)}</span>`:""}</td>
+                    <td>${esc(t.description)}${t.member?(m=>m?` <span class="member-chip" title="${esc(m.name)}">${esc(m.name.slice(0,2).toUpperCase())}</span>`:"")(Store.state.members.find(x=>x.id===t.member)):""}${(t.tags&&t.tags.length)?` ${t.tags.map(tag=>`<span class="tag-chip" data-tagclick="${esc(tag)}">#${esc(tag)}</span>`).join(" ")}`:""}${t.note?`<br><span class="muted" style="font-size:11.5px">📝 ${esc(t.note)}</span>`:""}</td>
                     <td><select class="cat-select" data-recat="${t.id}">${Categorize.names().map(n => `<option ${n===t.category?"selected":""}>${n}</option>`).join("")}</select></td>
                     <td style="text-align:right" class="${t.amount<0?"amount-neg":"amount-pos"}">${fmtSigned(t.amount)}</td>
-                    <td style="text-align:right;white-space:nowrap"><button class="link-btn" data-edittx="${t.id}">Edit</button> <button class="link-btn danger" data-deltx="${t.id}">Delete</button></td>
+                    <td style="text-align:right;white-space:nowrap">${t.amount<0?`<button class="link-btn" data-splittx="${t.id}">Split</button> `:""}<button class="link-btn" data-edittx="${t.id}">Edit</button> <button class="link-btn danger" data-deltx="${t.id}">Delete</button></td>
                 </tr>`).join("")}</tbody>
-            </table>`}
+            </table></div>`}
         </div>`;
     }
 
@@ -382,7 +412,7 @@
             <button class="btn" id="addBillBtn">+ Add bill</button>
         </div>
         <div class="card">
-        ${bills.length ? `<table class="table">
+        ${bills.length ? `<div class="table-wrap"><table class="table">
             <thead><tr><th>Bill</th><th>Category</th><th>Due</th><th style="text-align:right">Amount</th><th></th></tr></thead>
             <tbody>${bills.map(b => `<tr>
                 <td>${esc(b.name)}${b.autopay?` <span class="muted" style="font-size:11px">· autopay</span>`:""}</td>
@@ -394,7 +424,7 @@
                     <button class="link-btn" data-editbill="${b.id}">Edit</button>
                     <button class="link-btn danger" data-delbill="${b.id}">×</button>
                 </td>
-            </tr>`).join("")}</tbody></table>`
+            </tr>`).join("")}</tbody></table></div>`
         : `<div class="empty"><div class="big">🗓</div><p>No bills yet. Add recurring bills to get due-date reminders and never miss a payment.</p><button class="btn" id="addBillBtn2">Add a bill</button></div>`}
         </div>`;
     }
@@ -430,7 +460,7 @@
         </div>
         <div class="section-head"><p class="muted">Track and cancel recurring subscriptions</p><button class="btn" id="addSubBtn">+ Add subscription</button></div>
         <div class="card mb-18">
-        ${subs.length ? `<table class="table">
+        ${subs.length ? `<div class="table-wrap"><table class="table">
             <thead><tr><th>Service</th><th>Category</th><th>Cycle</th><th style="text-align:right">Cost</th><th style="text-align:right">Monthly</th><th></th></tr></thead>
             <tbody>${subs.map(s => `<tr style="${s.active?"":"opacity:.55"}">
                 <td>${esc(s.name)}</td><td>${catChip(s.category)}</td>
@@ -441,7 +471,7 @@
                     <button class="link-btn" data-togglesub="${s.id}">${s.active?"Cancel":"Reactivate"}</button>
                     <button class="link-btn danger" data-delsub="${s.id}">×</button>
                 </td>
-            </tr>`).join("")}</tbody></table>`
+            </tr>`).join("")}</tbody></table></div>`
         : `<div class="empty"><div class="big">🔁</div><p>No subscriptions tracked. Add them to see your total recurring spend and find things to cancel.</p><button class="btn" id="addSubBtn2">Add a subscription</button></div>`}
         </div>
         ${suggestions.length ? `<div class="card"><h3>Detected recurring charges</h3>
@@ -780,6 +810,19 @@
                     <div id="customCatList">${custom.length?custom.map(c=>`<div class="acct-row"><span class="dot" style="width:12px;height:12px;border-radius:3px;background:${c.color}"></span><div><div class="acct-name">${esc(c.name)}</div><div class="acct-type">${c.kw.length?esc(c.kw.join(", ")):"no keywords"}</div></div><button class="link-btn danger" data-delcat="${esc(c.name)}" style="margin-left:auto">Remove</button></div>`).join(""):`<p class="muted" style="font-size:12.5px">No custom categories yet.</p>`}</div>
                     <button class="btn btn-ghost btn-sm mt-18" id="addCatBtn">+ Add category</button>
                 </div>
+                <div class="card mt-18">
+                    <h3>Household</h3>
+                    <p class="muted" style="font-size:12.5px;margin-bottom:12px">Add the people you share finances with, then assign transactions to see who spends what.</p>
+                    <div>${Store.state.members.length ? Store.state.members.map(m => `<div class="acct-row">
+                        <span class="member-chip">${esc(m.name.slice(0,2).toUpperCase())}</span>
+                        <div class="acct-name">${esc(m.name)}</div>
+                        <button class="link-btn danger" data-delmember="${m.id}" style="margin-left:auto">Remove</button>
+                    </div>`).join("") : `<p class="muted" style="font-size:12.5px">No members yet — it's just you.</p>`}</div>
+                    <div class="row-actions mt-18">
+                        <input class="search-input" id="memberName" placeholder="Name, e.g. Priya" style="flex:1">
+                        <button class="btn btn-ghost btn-sm" id="addMemberBtn">+ Add member</button>
+                    </div>
+                </div>
             </div>
             <div>
                 <div class="card mb-18">
@@ -836,22 +879,36 @@
         el.classList.add("active");
         wireViewEvents();
     }
+    const MORE_VIEWS = ["networth", "reports", "upload", "bills", "subscriptions", "habits", "health", "advice", "settings"];
     function goTo(view) {
         activeView = view;
-        $$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.view === view));
-        $("#sidebar").classList.remove("open");
+        $$(".nav-item, .bnav-item[data-view], .sheet-item").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+        // "More" tab lights up when any sheet view is active
+        const moreBtn = $("#moreNavBtn");
+        if (moreBtn) moreBtn.classList.toggle("active", MORE_VIEWS.includes(view));
+        closeSheet();
+        window.scrollTo({ top: 0 });
         renderActive();
     }
 
     /* ---------- global nav ---------- */
-    $$(".nav-item").forEach(btn => btn.addEventListener("click", () => goTo(btn.dataset.view)));
-    $("#menuToggle").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
+    $$(".nav-item[data-view], .bnav-item[data-view], .sheet-item[data-view]").forEach(btn =>
+        btn.addEventListener("click", () => goTo(btn.dataset.view)));
+    const menuToggle = $("#menuToggle");
+    if (menuToggle) menuToggle.addEventListener("click", () => $("#sidebar").classList.toggle("open"));
+
+    /* ---------- mobile: more sheet + FAB ---------- */
+    function openSheet() { $("#sheetBackdrop").hidden = false; }
+    function closeSheet() { const s = $("#sheetBackdrop"); if (s) s.hidden = true; }
+    $("#moreNavBtn").addEventListener("click", openSheet);
+    $("#sheetBackdrop").addEventListener("click", e => { if (e.target.id === "sheetBackdrop") closeSheet(); });
+    $("#fabAdd").addEventListener("click", () => openAddTx());
     $("#themeToggle").addEventListener("click", () => {
         const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
         document.documentElement.setAttribute("data-theme", next);
         try { localStorage.setItem("fintrack.theme", next); } catch (e) {}
         const meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", next === "light" ? "#f4f6f9" : "#0e1117");
+        if (meta) meta.setAttribute("content", next === "light" ? "#f9f9f7" : "#0d0d0d");
         renderActive(); // re-render so inline-SVG charts pick up themed colors
     });
     const monthInput = $("#monthFilter");
@@ -866,6 +923,7 @@
         bindClick("#exportCsvBtn", exportCSV);
         $$("[data-recat]").forEach(sel => sel.addEventListener("change", e => { Store.updateTransaction(sel.dataset.recat, { category: e.target.value }); toast("Category updated", "success"); }));
         $$("[data-edittx]").forEach(b => b.addEventListener("click", () => openEditTx(b.dataset.edittx)));
+        $$("[data-splittx]").forEach(b => b.addEventListener("click", () => openSplitTx(b.dataset.splittx)));
         $$("[data-deltx]").forEach(b => b.addEventListener("click", () => { Store.deleteTransaction(b.dataset.deltx); toast("Transaction deleted"); renderActive(); }));
         const ts = $("#txSearch"); if (ts) ts.addEventListener("input", debounce(e => { txSearch = e.target.value; const pos = e.target.selectionStart; renderActive(); const n = $("#txSearch"); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 250));
         const tcf = $("#txCatFilter"); if (tcf) tcf.addEventListener("change", e => { txCatFilter = e.target.value; renderActive(); });
@@ -946,6 +1004,15 @@
         const imf = $("#importFile"); if (imf) imf.addEventListener("change", () => { if (imf.files[0]) importData(imf.files[0]); });
         bindClick("#installBtn", triggerInstall);
         bindClick("#resetData", confirmReset);
+        bindClick("#addMemberBtn", () => {
+            const name = ($("#memberName") || {}).value || "";
+            if (!name.trim()) return toast("Enter a name", "error");
+            if (Store.addMember(name)) { toast("Member added", "success"); renderActive(); }
+            else toast("That name already exists", "error");
+        });
+        $$("[data-delmember]").forEach(b => b.addEventListener("click", () => {
+            Store.deleteMember(b.dataset.delmember); toast("Member removed"); renderActive();
+        }));
     }
     function bindClick(sel, fn) { const el = $(sel); if (el) el.addEventListener("click", fn); }
     function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
@@ -1015,8 +1082,13 @@
             <div class="form-grid">
                 <div class="form-row"><label>Note (optional)</label><input id="mNote" value="${t?esc(t.note||""):""}" placeholder="Add a note"></div>
                 <div class="form-row"><label>Tags (comma-separated)</label><input id="mTags" value="${t&&t.tags?esc(t.tags.join(", ")):""}" placeholder="vacation, work"></div>
-            </div>`;
+            </div>
+            ${Store.state.members.length ? `<div class="form-row"><label>Who spent it?</label><select id="mMember">
+                <option value="">Unassigned</option>
+                ${Store.state.members.map(m => `<option value="${m.id}" ${t&&t.member===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}
+            </select></div>` : ""}`;
     }
+    function readMember() { const el = $("#mMember"); return el ? (el.value || null) : null; }
     function parseTags(raw) {
         return Array.from(new Set(String(raw || "").split(",").map(s => s.trim().replace(/^#/, "")).filter(Boolean)));
     }
@@ -1026,7 +1098,7 @@
         bindClick("#mCancel", closeModal);
         bindClick("#mSave", () => { const amt = Number($("#mAmt").value);
             if (!$("#mDesc").value.trim() || isNaN(amt) || amt === 0) return toast("Enter a description and non-zero amount", "error");
-            Store.addTransaction({ date: $("#mDate").value, description: $("#mDesc").value, amount: amt, category: $("#mCat").value, note: $("#mNote").value, tags: parseTags($("#mTags").value) });
+            Store.addTransaction({ date: $("#mDate").value, description: $("#mDesc").value, amount: amt, category: $("#mCat").value, note: $("#mNote").value, tags: parseTags($("#mTags").value), member: readMember() });
             Store.save(); refreshMonthOptions();
             const hits = autoMatchBills([($("#mDate").value || "").slice(0, 7)]);
             closeModal(); toast("Transaction added", "success");
@@ -1039,9 +1111,75 @@
         bindClick("#mCancel", closeModal);
         bindClick("#mSave", () => { const amt = Number($("#mAmt").value);
             if (!$("#mDesc").value.trim() || isNaN(amt) || amt === 0) return toast("Enter a description and non-zero amount", "error");
-            Store.updateTransaction(id, { date: $("#mDate").value, description: $("#mDesc").value, amount: amt, category: $("#mCat").value, note: $("#mNote").value, tags: parseTags($("#mTags").value) });
+            Store.updateTransaction(id, { date: $("#mDate").value, description: $("#mDesc").value, amount: amt, category: $("#mCat").value, note: $("#mNote").value, tags: parseTags($("#mTags").value), member: readMember() });
             refreshMonthOptions(); closeModal(); toast("Transaction updated", "success"); renderActive(); });
     }
+    function openSplitTx(id) {
+        const t = Store.state.transactions.find(x => x.id === id);
+        if (!t || t.amount >= 0) return;
+        const total = Math.abs(t.amount);
+        const catOpts = sel => Categorize.names().filter(n => n !== "Income")
+            .map(n => `<option ${n === sel ? "selected" : ""}>${n}</option>`).join("");
+        let rows = [
+            { category: t.category, amount: (total / 2).toFixed(2) },
+            { category: "Other", amount: (total - total / 2).toFixed(2) }
+        ];
+        function body() {
+            return `<h3>Split transaction</h3>
+                <p class="muted" style="font-size:13px;margin-bottom:14px">${esc(t.description)} · ${esc(t.date)} · total <strong>${fmt(t.amount)}</strong></p>
+                <div id="splitRows">${rows.map((r, i) => `
+                    <div class="split-row">
+                        <select data-scat="${i}">${catOpts(r.category)}</select>
+                        <input data-samt="${i}" type="number" step="0.01" min="0" value="${r.amount}">
+                        <button class="link-btn danger" data-sdel="${i}" ${rows.length <= 2 ? "disabled style='opacity:.3'" : ""}>×</button>
+                    </div>`).join("")}
+                </div>
+                <button class="link-btn" id="splitAdd">+ Add part</button>
+                <div class="split-remainder" id="splitRemainder"></div>
+                <div class="modal-actions"><button class="btn btn-ghost" id="spCancel">Cancel</button><button class="btn" id="spSave">Split</button></div>`;
+        }
+        function readRows() {
+            rows = rows.map((r, i) => ({
+                category: $(`[data-scat="${i}"]`) ? $(`[data-scat="${i}"]`).value : r.category,
+                amount: $(`[data-samt="${i}"]`) ? $(`[data-samt="${i}"]`).value : r.amount
+            }));
+        }
+        function remainder() {
+            const sum = rows.reduce((a, r) => a + (Number(r.amount) || 0), 0);
+            return Math.round((total - sum) * 100) / 100;
+        }
+        function refresh() {
+            openModal(body());
+            wire();
+            update();
+        }
+        function update() {
+            const rem = remainder();
+            const el = $("#splitRemainder");
+            el.textContent = rem === 0 ? "✓ Parts add up exactly" : (rem > 0 ? `${fmt(rem)} left to assign` : `${fmt(-rem)} over the total`);
+            el.style.color = rem === 0 ? "var(--green)" : "var(--red)";
+            $("#spSave").disabled = rem !== 0;
+        }
+        function wire() {
+            $$("[data-samt]").forEach(inp => inp.addEventListener("input", () => { readRows(); update(); }));
+            $$("[data-scat]").forEach(sel => sel.addEventListener("change", readRows));
+            $$("[data-sdel]").forEach(b => b.addEventListener("click", () => {
+                if (rows.length <= 2) return;
+                readRows(); rows.splice(Number(b.dataset.sdel), 1); refresh();
+            }));
+            bindClick("#splitAdd", () => { readRows(); rows.push({ category: "Other", amount: Math.max(0, remainder()).toFixed(2) }); refresh(); });
+            bindClick("#spCancel", closeModal);
+            bindClick("#spSave", () => {
+                readRows();
+                if (remainder() !== 0) return;
+                if (Store.splitTransaction(id, rows.map(r => ({ category: r.category, amount: Number(r.amount) })))) {
+                    closeModal(); toast(`Split into ${rows.length} parts`, "success"); renderActive();
+                } else toast("Could not split — check the amounts", "error");
+            });
+        }
+        refresh();
+    }
+
     function openSetBudget(cat) {
         const cur = Store.state.budgets[cat] || "";
         openModal(`<h3>Budget for ${esc(cat)}</h3><div class="form-row"><label>Monthly limit (${CUR()})</label><input id="bAmt" type="number" step="1" value="${cur}" placeholder="e.g. 400"></div>
@@ -1128,17 +1266,22 @@
     function openAccountModal(id) {
         const a = id ? Store.state.accounts.find(x => x.id === id) : null;
         const types = ["Checking", "Savings", "Cash", "Investment", "Credit Card", "Loan", "Other"];
+        const curs = ["", "$", "€", "£", "¥", "₹", "A$", "C$", "R$", "CHF", "kr"];
         openModal(`<h3>${a ? "Edit" : "Add"} account</h3>
             <div class="form-row"><label>Account name</label><input id="aName" value="${a?esc(a.name):""}" placeholder="e.g. Chase Checking"></div>
             <div class="form-grid"><div class="form-row"><label>Type</label><select id="aType">${types.map(t=>`<option ${a&&a.type===t?"selected":""}>${t}</option>`).join("")}</select></div>
                 <div class="form-row"><label>Balance</label><input id="aBal" type="number" step="0.01" value="${a?a.balance:""}" placeholder="0.00"></div></div>
+            <div class="form-grid"><div class="form-row"><label>Currency</label><select id="aCur">${curs.map(c=>`<option value="${c}" ${a&&a.currency===c?"selected":""}>${c===""?`Base (${esc(CUR())})`:c}</option>`).join("")}</select></div>
+                <div class="form-row"><label>Rate → base (1 unit = ? ${esc(CUR())})</label><input id="aRate" type="number" step="0.0001" value="${a&&a.rate!==1?a.rate:""}" placeholder="1"></div></div>
             <div class="form-grid"><div class="form-row"><label>APR % (debt only)</label><input id="aApr" type="number" step="0.1" value="${a?a.apr:""}" placeholder="0"></div>
                 <div class="form-row"><label>Min. payment (debt)</label><input id="aMin" type="number" step="1" value="${a?a.minPayment:""}" placeholder="0"></div></div>
             <div class="modal-actions"><button class="btn btn-ghost" id="aCancel">Cancel</button><button class="btn" id="aSave">${a?"Save":"Add"}</button></div>`);
         bindClick("#aCancel", closeModal);
         bindClick("#aSave", () => { const name = $("#aName").value.trim(); if (!name) return toast("Enter an account name", "error");
             const type = $("#aType").value; const kind = (type === "Credit Card" || type === "Loan") ? "liability" : "asset";
-            const data = { name, type, kind, balance: Number($("#aBal").value) || 0, apr: Number($("#aApr").value) || 0, minPayment: Number($("#aMin").value) || 0 };
+            const currency = $("#aCur").value;
+            const rate = currency ? (Number($("#aRate").value) || 1) : 1;
+            const data = { name, type, kind, balance: Number($("#aBal").value) || 0, apr: Number($("#aApr").value) || 0, minPayment: Number($("#aMin").value) || 0, currency, rate };
             if (a) Store.updateAccount(a.id, data); else Store.addAccount(data);
             closeModal(); toast(a ? "Account updated" : "Account added", "success"); renderActive(); });
     }

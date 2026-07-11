@@ -18,12 +18,14 @@
     function currentMonthKey() { return new Date().toISOString().slice(0, 7); }
 
     /* ---------- Net worth ---------- */
+    // Foreign-currency balances convert to base via the account's rate.
     function netWorth() {
         const accts = Store.state.accounts;
         let assets = 0, liabilities = 0;
         accts.forEach(a => {
-            if (a.kind === "liability") liabilities += Math.abs(a.balance);
-            else assets += a.balance;
+            const base = a.balance * (a.rate || 1);
+            if (a.kind === "liability") liabilities += Math.abs(base);
+            else assets += base;
         });
         return { assets, liabilities, total: assets - liabilities };
     }
@@ -116,7 +118,7 @@
     function cashFlowForecast(months = 6) {
         const cashAccounts = Store.state.accounts
             .filter(a => a.kind === "asset" && /check|cash|saving/i.test(a.type));
-        let startCash = cashAccounts.reduce((a, x) => a + x.balance, 0);
+        let startCash = cashAccounts.reduce((a, x) => a + x.balance * (x.rate || 1), 0);
         if (startCash === 0) startCash = 0;
         const income = estimatedMonthlyIncome();
         const bills = monthlyBills();

@@ -30,6 +30,12 @@ Fintrack combines the flagship features of the top budgeting apps
   whole unit; sweep the spare change into a goal with one tap.
 - **Transaction tags** — Tag spending (#vacation), filter by tag, and search
   across descriptions, notes and tags.
+- **Split transactions** — Divide one purchase across multiple categories,
+  with live remainder validation.
+- **Multi-currency accounts** — Hold accounts in other currencies with a
+  rate to your base currency; net worth and forecasts convert automatically.
+- **Household mode** — Add the people you share finances with, assign
+  transactions, and see spending by member in Reports.
 - **Net worth tracking** — Add checking, savings, investment, credit-card and
   loan accounts; see assets − liabilities, a net-worth trend chart, and a
   **debt-payoff plan** (months to debt-free + total interest) for each debt.
@@ -59,7 +65,11 @@ Fintrack combines the flagship features of the top budgeting apps
 - **Backup & restore** — Export/import all your data as a JSON file, or
   export your transactions to CSV.
 - **Light & dark themes** — System-aware, with a one-tap toggle; remembered
-  across sessions.
+  across sessions. Category and chart colors come from a CVD-validated
+  categorical palette with mode-specific steps for each theme.
+- **Mobile-first responsive UI** — App-style bottom tab bar, "More" sheet,
+  floating quick-add button, bottom-sheet modals, safe-area support, and
+  horizontally scrollable tables on small screens.
 - **Smart imports** — Transfers between your own accounts are treated as
   neutral (not spending), and re-importing a statement skips duplicates.
 - **Installable PWA** — Add to your home screen; works offline.
