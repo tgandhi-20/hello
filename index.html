@@ -100,7 +100,24 @@
     <script src="js/app.js"></script>
     <script>
       if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-        window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("sw.js").then(function (reg) {
+            reg.addEventListener("updatefound", function () {
+              var w = reg.installing;
+              if (!w) return;
+              w.addEventListener("statechange", function () {
+                // an updated worker installed while an old one controls the page
+                if (w.state === "installed" && navigator.serviceWorker.controller) {
+                  var host = document.getElementById("toastHost");
+                  var el = document.createElement("div");
+                  el.className = "toast success";
+                  el.innerHTML = 'A new version of Fintrack is ready. <button class="link-btn" onclick="location.reload()">Refresh</button>';
+                  host.appendChild(el);
+                }
+              });
+            });
+          }).catch(function () {});
+        });
       }
     </script>
 </body>

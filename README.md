@@ -14,11 +14,22 @@ your device. All data is stored in `localStorage`, and the app works offline.
 Fintrack combines the flagship features of the top budgeting apps
 (YNAB, Monarch, Rocket Money, PocketGuard, Copilot):
 
+- **Guided onboarding** — First-run wizard: pick a currency, set income, and
+  start from a statement import or sample data.
 - **Import bank statements** — Upload a CSV export (or paste it) with automatic
   detection of date/description/amount (or Debit/Credit) columns.
 - **Automatic categorization** — Every transaction is matched to a spending
   bucket; re-assign any category in one click. Define your own **custom
   categories** with keywords.
+- **Smart insights** — Anomaly cards on the dashboard: category spending
+  spikes vs. your 3-month norm, unusually large transactions, and possible
+  duplicate charges.
+- **Bill auto-matching** — Imported transactions automatically mark matching
+  bills as paid for the month.
+- **Round-up auto-save** — Every purchase is virtually rounded up to the next
+  whole unit; sweep the spare change into a goal with one tap.
+- **Transaction tags** — Tag spending (#vacation), filter by tag, and search
+  across descriptions, notes and tags.
 - **Net worth tracking** — Add checking, savings, investment, credit-card and
   loan accounts; see assets − liabilities, a net-worth trend chart, and a
   **debt-payoff plan** (months to debt-free + total interest) for each debt.
@@ -26,17 +37,21 @@ Fintrack combines the flagship features of the top budgeting apps
   is safe to spend this month and whether you're on pace or overspending.
 - **Budgets with rollover** *(YNAB-style envelopes)* — Monthly limit per bucket
   with progress bars, over-budget warnings, optional month-to-month rollover,
-  and one-click **auto-suggest** from your spending history.
+  one-click **auto-suggest** from your spending history, a one-tap
+  **50/30/20 template**, and an overall usage ring.
 - **Bills & reminders** — Track recurring bills with due dates, get upcoming /
   overdue badges, and mark them paid each month.
 - **Subscriptions manager** *(Rocket Money-style)* — Track recurring
   subscriptions, see monthly & annual cost, cancel to tally savings, and get
   auto-detected recurring charges to review.
-- **Saving goals** — Targets, deadlines, required-per-month math, add funds.
+- **Saving goals** — Targets, deadlines, required-per-month math, milestone
+  markers, completion celebrations, and auto-fund suggestions from this
+  month's surplus.
 - **Reports & insights** — Income vs. expenses, **cash-flow forecast**,
   this-month-vs-last comparison, and a category trend matrix.
 - **Spending habits** — Recurring charges, biggest expenses, daily average,
-  top category, month-over-month trend.
+  top category, month-over-month trend, and a **daily spending calendar
+  heatmap**.
 - **Financial health check** — A 0–100 score from savings rate, budget
   adherence, spending trend, goal progress and net worth/debt.
 - **Advice & wellbeing** — Personalized, data-driven financial advice plus

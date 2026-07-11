@@ -1,5 +1,5 @@
 /* Fintrack service worker — offline-first caching of the app shell */
-const CACHE = "fintrack-v1";
+const CACHE = "fintrack-v2";
 const ASSETS = [
     "./",
     "./index.html",
@@ -10,7 +10,9 @@ const ASSETS = [
     "./js/charts.js",
     "./js/app.js",
     "./manifest.json",
-    "./icons/icon.svg"
+    "./icons/icon.svg",
+    "./icons/icon-192.png",
+    "./icons/icon-512.png"
 ];
 
 self.addEventListener("install", e => {

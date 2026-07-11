@@ -366,3 +366,12 @@ textarea.form-area { width: 100%; min-height: 120px; background: var(--bg); bord
 .goal-done-badge { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 20px; background: rgba(63,185,80,.16); color: var(--green); }
 .suggest-strip { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border: 1px dashed var(--accent); border-radius: var(--radius); margin-bottom: 18px; background: rgba(76,141,255,.06); flex-wrap: wrap; }
 .suggest-strip p { flex: 1; font-size: 13px; min-width: 220px; }
+
+/* Final polish: numbers, iOS safe areas */
+.stat-value, .acct-bal, .amount-neg, .amount-pos, .big-num { font-variant-numeric: tabular-nums; }
+@supports (padding: env(safe-area-inset-top)) {
+    .sidebar { padding-top: calc(20px + env(safe-area-inset-top)); padding-left: calc(14px + env(safe-area-inset-left)); }
+    .topbar { padding-top: calc(20px + env(safe-area-inset-top)); }
+    .views { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+    .toast-host { bottom: calc(20px + env(safe-area-inset-bottom)); }
+}
