@@ -16,8 +16,14 @@
         { name: "Health",        color: "var(--cat-health)",        kw: ["pharmacy","cvs","walgreens","doctor","dental","clinic","hospital","gym","fitness","medical","health","insurance","therapy","wellness"] },
         { name: "Income",        color: "var(--cat-income)",        kw: ["salary","payroll","deposit","paycheck","refund","interest","dividend","transfer in","reimbursement"] },
         { name: "Savings",       color: "var(--cat-savings)",       kw: ["savings","investment","vanguard","fidelity","401k","roth","brokerage","transfer to savings"] },
+        { name: "Transfer",      color: "var(--cat-other)",         kw: ["transfer","xfer","zelle","venmo","move to","internal transfer"] },
         { name: "Other",         color: "var(--cat-other)",         kw: [] }
     ];
+
+    // Categories that represent money moving between your own accounts /
+    // being saved — not real income or spending. Excluded from expense &
+    // income totals so they don't distort savings rate or spending charts.
+    const NEUTRAL = new Set(["Savings", "Transfer"]);
 
     // Merge built-in categories with any user-defined ones from the store.
     function allCategories() {
@@ -177,6 +183,8 @@
 
     global.Categorize = {
         CATEGORIES,
+        NEUTRAL,
+        isNeutral: name => NEUTRAL.has(name),
         allCategories,
         categoryColor,
         categorize,

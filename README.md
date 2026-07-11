@@ -41,7 +41,12 @@ Fintrack combines the flagship features of the top budgeting apps
   adherence, spending trend, goal progress and net worth/debt.
 - **Advice & wellbeing** — Personalized, data-driven financial advice plus
   general wellbeing tips.
-- **Backup & restore** — Export/import all your data as a JSON file.
+- **Backup & restore** — Export/import all your data as a JSON file, or
+  export your transactions to CSV.
+- **Light & dark themes** — System-aware, with a one-tap toggle; remembered
+  across sessions.
+- **Smart imports** — Transfers between your own accounts are treated as
+  neutral (not spending), and re-importing a statement skips duplicates.
 - **Installable PWA** — Add to your home screen; works offline.
 
 ## Running it

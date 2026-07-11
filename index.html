@@ -13,6 +13,16 @@
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="css/styles.css">
+    <script>
+      // Apply saved/system theme before paint to avoid a flash
+      (function () {
+        try {
+          var saved = localStorage.getItem("fintrack.theme");
+          var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {}
+      })();
+    </script>
 </head>
 <body>
     <div class="app">
@@ -56,6 +66,7 @@
                         <span>Month</span>
                         <input type="month" id="monthFilter">
                     </label>
+                    <button class="theme-toggle" id="themeToggle" aria-label="Toggle light or dark theme" title="Toggle theme">◐</button>
                 </div>
             </header>
 

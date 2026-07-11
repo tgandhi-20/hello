@@ -33,20 +33,28 @@
         host.appendChild(el);
         setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el.remove(), 300); }, 3000);
     }
-    function openModal(html) { $("#modal").innerHTML = html; $("#modalBackdrop").hidden = false; }
+    function openModal(html) {
+        $("#modal").innerHTML = html;
+        $("#modalBackdrop").hidden = false;
+        const first = $("#modal input, #modal select, #modal textarea");
+        if (first) setTimeout(() => first.focus(), 30);
+    }
     function closeModal() { $("#modalBackdrop").hidden = true; }
     $("#modalBackdrop").addEventListener("click", e => { if (e.target.id === "modalBackdrop") closeModal(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#modalBackdrop").hidden) closeModal(); });
 
     /* ---------- analytics ---------- */
     function summarize(txs) {
-        let income = 0, expense = 0;
+        let income = 0, expense = 0, saved = 0;
         const byCat = {};
         txs.forEach(t => {
+            const neutral = Categorize.isNeutral(t.category);
+            if (neutral) { saved += Math.abs(t.amount) * (t.amount < 0 ? 1 : -1); return; } // net moved into savings
             if (t.amount >= 0) income += t.amount;
             else { expense += -t.amount; byCat[t.category] = (byCat[t.category] || 0) + (-t.amount); }
         });
-        const net = income - expense;
-        return { income, expense, net, savingsRate: income > 0 ? (net / income) * 100 : 0, byCat };
+        const net = income - expense; // money kept (not spent); includes anything transferred to savings
+        return { income, expense, net, saved, savingsRate: income > 0 ? (net / income) * 100 : 0, byCat };
     }
     function catBreakdown(byCat) {
         return Object.entries(byCat)
@@ -110,7 +118,7 @@
                 <div class="card stat"><span class="stat-label">Net worth</span><span class="stat-value ${nw.total>=0?"":"down"}">${fmtShort(nw.total)}</span><span class="stat-sub">${fmtShort(nw.assets)} assets · ${fmtShort(nw.liabilities)} debt</span></div>
                 <div class="card stat"><span class="stat-label">Income</span><span class="stat-value up">${fmtShort(s.income)}</span><span class="stat-sub">${monthLabel(currentMonth)}</span></div>
                 <div class="card stat"><span class="stat-label">Expenses</span><span class="stat-value down">${fmtShort(s.expense)}</span><span class="stat-sub">${txs.filter(t=>t.amount<0).length} transactions</span></div>
-                <div class="card stat"><span class="stat-label">Net</span><span class="stat-value ${s.net>=0?"up":"down"}">${fmtShortSigned(s.net)}</span><span class="stat-sub">${s.savingsRate.toFixed(0)}% savings rate</span></div>
+                <div class="card stat"><span class="stat-label">Net</span><span class="stat-value ${s.net>=0?"up":"down"}">${fmtShortSigned(s.net)}</span><span class="stat-sub">${s.savingsRate.toFixed(0)}% savings rate${s.saved>0?` · ${fmtShort(s.saved)} to savings`:""}</span></div>
             </div>
         </div>
         <div class="grid grid-2 mb-18">
@@ -266,7 +274,10 @@
         return `
         <div class="section-head">
             <p class="muted">${txs.length} transactions · ${monthLabel(currentMonth)}</p>
-            <button class="btn" id="addTxBtn">+ Add transaction</button>
+            <div class="row-actions">
+                <button class="btn btn-ghost" id="exportCsvBtn">Export CSV</button>
+                <button class="btn" id="addTxBtn">+ Add transaction</button>
+            </div>
         </div>
         <div class="filter-bar">
             <input class="search-input" id="txSearch" placeholder="Search description or note…" value="${esc(txSearch)}">
@@ -425,7 +436,7 @@
     function renderBudgets() {
         const txs = Store.txForMonth(currentMonth);
         const s = summarize(txs);
-        const cats = Categorize.names().filter(n => n !== "Income" && n !== "Savings");
+        const cats = Categorize.names().filter(n => n !== "Income" && !Categorize.isNeutral(n));
         const rows = cats.map(cat => {
             const spent = s.byCat[cat] || 0;
             const roll = Finance.budgetWithRollover(cat, currentMonth || Finance.currentMonthKey());
@@ -683,9 +694,10 @@
                 <div class="card mb-18">
                     <h3>Backup &amp; restore</h3>
                     <p class="muted" style="font-size:12.5px;margin-bottom:14px">Your data lives only in this browser. Export a backup file to keep it safe or move to another device.</p>
-                    <div class="row-actions">
+                    <div class="row-actions" style="flex-wrap:wrap">
                         <button class="btn" id="exportData">Export backup (.json)</button>
                         <button class="btn btn-ghost" id="importData">Import backup</button>
+                        <button class="btn btn-ghost" id="exportCsvBtn2">Export CSV</button>
                         <input type="file" id="importFile" accept="application/json,.json" hidden>
                     </div>
                 </div>
@@ -743,6 +755,14 @@
     /* ---------- global nav ---------- */
     $$(".nav-item").forEach(btn => btn.addEventListener("click", () => goTo(btn.dataset.view)));
     $("#menuToggle").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
+    $("#themeToggle").addEventListener("click", () => {
+        const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", next);
+        try { localStorage.setItem("fintrack.theme", next); } catch (e) {}
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", next === "light" ? "#f4f6f9" : "#0e1117");
+        renderActive(); // re-render so inline-SVG charts pick up themed colors
+    });
     const monthInput = $("#monthFilter");
     monthInput.addEventListener("change", () => { currentMonth = monthInput.value || null; renderActive(); });
 
@@ -752,6 +772,7 @@
 
         // transactions
         bindClick("#addTxBtn", openAddTx);
+        bindClick("#exportCsvBtn", exportCSV);
         $$("[data-recat]").forEach(sel => sel.addEventListener("change", e => { Store.updateTransaction(sel.dataset.recat, { category: e.target.value }); toast("Category updated", "success"); }));
         $$("[data-edittx]").forEach(b => b.addEventListener("click", () => openEditTx(b.dataset.edittx)));
         $$("[data-deltx]").forEach(b => b.addEventListener("click", () => { Store.deleteTransaction(b.dataset.deltx); toast("Transaction deleted"); renderActive(); }));
@@ -803,6 +824,7 @@
         bindClick("#addCatBtn", openCategoryModal);
         $$("[data-delcat]").forEach(b => b.addEventListener("click", () => { Store.deleteCategory(b.dataset.delcat); toast("Category removed"); renderActive(); }));
         bindClick("#exportData", exportData);
+        bindClick("#exportCsvBtn2", exportCSV);
         bindClick("#importData", () => $("#importFile").click());
         const imf = $("#importFile"); if (imf) imf.addEventListener("change", () => { if (imf.files[0]) importData(imf.files[0]); });
         bindClick("#installBtn", triggerInstall);
@@ -813,13 +835,27 @@
 
     /* ---------- statement ingestion ---------- */
     function handleFile(file) { const r = new FileReader(); r.onload = e => ingestStatement(e.target.result); r.onerror = () => toast("Could not read file", "error"); r.readAsText(file); }
+    function txKey(t) { return `${t.date}|${(t.description || "").trim().toLowerCase()}|${Number(t.amount).toFixed(2)}`; }
     function ingestStatement(text) {
         const res = Categorize.parseStatement(text);
         if (res.error) return toast(res.error, "error");
         if (!res.transactions.length) return toast("No transactions found — check the file format.", "error");
-        Store.addTransactions(res.transactions);
+        // de-duplicate against what's already stored (safe re-imports)
+        const existing = new Set(Store.state.transactions.map(txKey));
+        const fresh = [], seen = new Set();
+        let dupes = 0;
+        res.transactions.forEach(t => {
+            const k = txKey(t);
+            if (existing.has(k) || seen.has(k)) { dupes++; return; }
+            seen.add(k); fresh.push(t);
+        });
+        if (!fresh.length) { toast(`All ${dupes} transactions were already imported`, ""); return goTo("transactions"); }
+        Store.addTransactions(fresh);
         refreshMonthOptions();
-        toast(`Imported ${res.transactions.length} transactions${res.skipped ? ` (${res.skipped} skipped)` : ""}`, "success");
+        const parts = [`Imported ${fresh.length} transactions`];
+        if (dupes) parts.push(`${dupes} duplicate${dupes === 1 ? "" : "s"} skipped`);
+        if (res.skipped) parts.push(`${res.skipped} unparseable`);
+        toast(parts.join(" · "), "success");
         goTo("transactions");
     }
 
@@ -862,7 +898,7 @@
     function autoSuggestBudgets() {
         const months = Store.availableMonths().slice(0, 3);
         if (!months.length) return toast("No spending history to base budgets on", "error");
-        const cats = Categorize.names().filter(n => n !== "Income" && n !== "Savings");
+        const cats = Categorize.names().filter(n => n !== "Income" && !Categorize.isNeutral(n));
         const sums = {};
         cats.forEach(c => sums[c] = 0);
         months.forEach(m => Store.txForMonth(m).filter(t => t.amount < 0).forEach(t => { if (sums[t.category] !== undefined) sums[t.category] += -t.amount; }));
@@ -963,6 +999,19 @@
         a.href = url; a.download = `fintrack-backup-${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
         toast("Backup exported", "success");
+    }
+    function exportCSV() {
+        const rows = Store.state.transactions.slice().sort((a, b) => a.date.localeCompare(b.date));
+        if (!rows.length) return toast("No transactions to export", "error");
+        const q = v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+        const lines = [["Date", "Description", "Category", "Amount", "Note"].join(",")]
+            .concat(rows.map(t => [t.date, q(t.description), t.category, t.amount.toFixed(2), q(t.note || "")].join(",")));
+        const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `fintrack-transactions-${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        toast(`Exported ${rows.length} transactions to CSV`, "success");
     }
     function importData(file) {
         const r = new FileReader();

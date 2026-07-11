@@ -12,6 +12,9 @@
     --amber: #d29922;
     --radius: 14px;
     --shadow: 0 8px 30px rgba(0,0,0,0.35);
+    --topbar-bg: rgba(14,17,23,0.85);
+    --ghost-hover: #252d38;
+    color-scheme: dark;
     --cat-groceries: #3fb950;
     --cat-dining: #f0883e;
     --cat-transport: #58a6ff;
@@ -78,14 +81,14 @@ body {
 .topbar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 20px 30px; border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; background: rgba(14,17,23,0.85); backdrop-filter: blur(8px); z-index: 5;
+    position: sticky; top: 0; background: var(--topbar-bg); backdrop-filter: blur(8px); z-index: 5;
 }
 .topbar h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; flex: 1; }
 .menu-toggle { display: none; background: var(--bg-3); border: 1px solid var(--border); color: var(--text); width: 38px; height: 38px; border-radius: 9px; font-size: 18px; cursor: pointer; margin-right: 12px; }
 .month-picker { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-dim); }
 .month-picker input {
     background: var(--bg-2); border: 1px solid var(--border); color: var(--text);
-    padding: 7px 10px; border-radius: 8px; font-size: 13px; color-scheme: dark;
+    padding: 7px 10px; border-radius: 8px; font-size: 13px;
 }
 .views { padding: 26px 30px 60px; }
 .view { display: none; }
@@ -120,7 +123,7 @@ body {
 }
 .btn:hover { filter: brightness(1.08); }
 .btn-ghost { background: var(--bg-3); color: var(--text); }
-.btn-ghost:hover { background: #252d38; }
+.btn-ghost:hover { background: var(--ghost-hover); }
 .btn-ghost.danger { color: var(--red); }
 .btn-sm { padding: 7px 11px; font-size: 12.5px; }
 .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
@@ -162,7 +165,7 @@ body {
 .form-row label { font-size: 13px; color: var(--text-dim); font-weight: 500; }
 .form-row input, .form-row select {
     background: var(--bg); border: 1px solid var(--border); color: var(--text);
-    padding: 10px 12px; border-radius: 9px; font-size: 14px; color-scheme: dark;
+    padding: 10px 12px; border-radius: 9px; font-size: 14px;
 }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 
@@ -298,7 +301,7 @@ body {
 .switch input:checked + .track { background: var(--accent); }
 .switch input:checked + .track::after { transform: translateX(16px); background: #fff; }
 
-.search-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 9px; font-size: 13.5px; color-scheme: dark; min-width: 200px; }
+.search-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 9px; font-size: 13.5px; min-width: 200px; }
 .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
 
 /* due date badges */
@@ -308,4 +311,38 @@ body {
 .due.paid { background: rgba(63,185,80,.15); color: var(--green); }
 .due.later { background: var(--bg-3); color: var(--text-dim); }
 
-textarea.form-area { width: 100%; min-height: 120px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 9px; padding: 12px; font-family: monospace; font-size: 12.5px; color-scheme: dark; }
+textarea.form-area { width: 100%; min-height: 120px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 9px; padding: 12px; font-family: monospace; font-size: 12.5px; }
+
+/* Theme toggle button */
+.theme-toggle { background: var(--bg-3); border: 1px solid var(--border); color: var(--text); width: 38px; height: 38px; border-radius: 9px; font-size: 16px; cursor: pointer; display: grid; place-items: center; }
+.theme-toggle:hover { background: var(--ghost-hover); }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+
+/* ============================================================
+   Light theme
+   ============================================================ */
+:root[data-theme="light"] {
+    --bg: #f4f6f9;
+    --bg-2: #ffffff;
+    --bg-3: #eaeef3;
+    --border: #dbe1e8;
+    --text: #1c2128;
+    --text-dim: #5b6673;
+    --shadow: 0 8px 30px rgba(80,100,130,0.18);
+    --topbar-bg: rgba(244,246,249,0.85);
+    --ghost-hover: #dfe4ea;
+    color-scheme: light;
+    --cat-groceries: #2da44e;
+    --cat-dining: #d9730d;
+    --cat-transport: #2f7ce0;
+    --cat-housing: #8250df;
+    --cat-utilities: #1f9aa8;
+    --cat-shopping: #bf3989;
+    --cat-entertainment: #d6438a;
+    --cat-health: #cf222e;
+    --cat-savings: #8250df;
+    --cat-other: #6b7684;
+}
+:root[data-theme="light"] .brand-logo,
+:root[data-theme="light"] .btn { color: #fff; }
+:root[data-theme="light"] .hero { background: linear-gradient(135deg, rgba(76,141,255,.10), rgba(124,92,255,.10)); }
