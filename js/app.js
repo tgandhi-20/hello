@@ -865,6 +865,31 @@
     /* ---------- statement ingestion ---------- */
     function handleFile(file) { const r = new FileReader(); r.onload = e => ingestStatement(e.target.result); r.onerror = () => toast("Could not read file", "error"); r.readAsText(file); }
     function txKey(t) { return `${t.date}|${(t.description || "").trim().toLowerCase()}|${Number(t.amount).toFixed(2)}`; }
+
+    // Auto-mark bills paid when a matching expense exists in that month:
+    // amount within max($1, 2.5%) and a significant word of the bill name
+    // appearing in the transaction description (or vice versa).
+    function autoMatchBills(months) {
+        const bills = Store.state.bills;
+        if (!bills.length || !months.length) return 0;
+        const words = s => String(s).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 3);
+        let matched = 0;
+        months.forEach(m => {
+            const txs = Store.txForMonth(m).filter(t => t.amount < 0);
+            bills.forEach(b => {
+                if (b.paidMonths.includes(m)) return;
+                const tol = Math.max(1, b.amount * 0.025);
+                const bw = words(b.name);
+                const hit = txs.find(t => {
+                    if (Math.abs(-t.amount - b.amount) > tol) return false;
+                    const tw = words(t.description);
+                    return bw.some(w => tw.includes(w)) || tw.some(w => bw.includes(w));
+                });
+                if (hit) { Store.toggleBillPaid(b.id, m); matched++; }
+            });
+        });
+        return matched;
+    }
     function ingestStatement(text) {
         const res = Categorize.parseStatement(text);
         if (res.error) return toast(res.error, "error");
@@ -881,10 +906,12 @@
         if (!fresh.length) { toast(`All ${dupes} transactions were already imported`, ""); return goTo("transactions"); }
         Store.addTransactions(fresh);
         refreshMonthOptions();
+        const billHits = autoMatchBills(Array.from(new Set(fresh.map(t => (t.date || "").slice(0, 7)).filter(Boolean))));
         const parts = [`Imported ${fresh.length} transactions`];
         if (dupes) parts.push(`${dupes} duplicate${dupes === 1 ? "" : "s"} skipped`);
         if (res.skipped) parts.push(`${res.skipped} unparseable`);
         toast(parts.join(" · "), "success");
+        if (billHits) toast(`${billHits} bill${billHits === 1 ? "" : "s"} auto-marked as paid`, "success");
         goTo("transactions");
     }
 
@@ -906,7 +933,11 @@
         bindClick("#mSave", () => { const amt = Number($("#mAmt").value);
             if (!$("#mDesc").value.trim() || isNaN(amt) || amt === 0) return toast("Enter a description and non-zero amount", "error");
             Store.addTransaction({ date: $("#mDate").value, description: $("#mDesc").value, amount: amt, category: $("#mCat").value, note: $("#mNote").value });
-            Store.save(); refreshMonthOptions(); closeModal(); toast("Transaction added", "success"); renderActive(); });
+            Store.save(); refreshMonthOptions();
+            const hits = autoMatchBills([($("#mDate").value || "").slice(0, 7)]);
+            closeModal(); toast("Transaction added", "success");
+            if (hits) toast(`${hits} bill${hits === 1 ? "" : "s"} auto-marked as paid`, "success");
+            renderActive(); });
     }
     function openEditTx(id) {
         const t = Store.state.transactions.find(x => x.id === id); if (!t) return;
