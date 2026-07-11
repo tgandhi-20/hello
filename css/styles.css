@@ -354,3 +354,7 @@ textarea.form-area { width: 100%; min-height: 120px; background: var(--bg); bord
 .hm-empty { background: transparent; }
 .hm-legend { display: flex; align-items: center; gap: 5px; justify-content: flex-end; margin-top: 10px; font-size: 11px; }
 .hm-swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+
+/* Tag chips */
+.tag-chip { display: inline-block; padding: 1px 8px; border-radius: 14px; font-size: 11px; font-weight: 600; background: rgba(76,141,255,.14); color: var(--accent); cursor: pointer; }
+.tag-chip:hover { background: rgba(76,141,255,.25); }

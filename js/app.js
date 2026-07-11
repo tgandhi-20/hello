@@ -9,7 +9,7 @@
     const CUR = () => Store.state.settings.currency || "$";
 
     let currentMonth = null;            // "YYYY-MM" or null = all time
-    let txSearch = "", txCatFilter = "";// transactions view filters
+    let txSearch = "", txCatFilter = "", txTagFilter = ""; // transactions view filters
 
     /* ---------- utils ---------- */
     const fmt = n => CUR() + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -286,9 +286,12 @@
        ============================================================ */
     function renderTransactions() {
         let txs = Store.txForMonth(currentMonth).slice().sort((a, b) => b.date.localeCompare(a.date));
-        if (txSearch) { const q = txSearch.toLowerCase(); txs = txs.filter(t => t.description.toLowerCase().includes(q) || (t.note||"").toLowerCase().includes(q)); }
+        if (txSearch) { const q = txSearch.toLowerCase(); txs = txs.filter(t => t.description.toLowerCase().includes(q) || (t.note||"").toLowerCase().includes(q) || (t.tags||[]).some(tag => tag.toLowerCase().includes(q))); }
         if (txCatFilter) txs = txs.filter(t => t.category === txCatFilter);
+        if (txTagFilter) txs = txs.filter(t => (t.tags || []).includes(txTagFilter));
+        const allTags = Array.from(new Set(Store.state.transactions.flatMap(t => t.tags || []))).sort();
         const catOptions = `<option value="">All categories</option>` + Categorize.names().map(n => `<option ${n===txCatFilter?"selected":""}>${n}</option>`).join("");
+        const tagOptions = `<option value="">All tags</option>` + allTags.map(t => `<option ${t===txTagFilter?"selected":""}>${esc(t)}</option>`).join("");
         return `
         <div class="section-head">
             <p class="muted">${txs.length} transactions · ${monthLabel(currentMonth)}</p>
@@ -298,8 +301,9 @@
             </div>
         </div>
         <div class="filter-bar">
-            <input class="search-input" id="txSearch" placeholder="Search description or note…" value="${esc(txSearch)}">
+            <input class="search-input" id="txSearch" placeholder="Search description, note or tag…" value="${esc(txSearch)}">
             <select class="cat-select" id="txCatFilter" style="padding:9px 12px">${catOptions}</select>
+            ${allTags.length ? `<select class="cat-select" id="txTagFilter" style="padding:9px 12px">${tagOptions}</select>` : ""}
         </div>
         <div class="card">
             ${txs.length === 0 ? `<div class="empty"><div class="big">≡</div><p>No transactions match.</p></div>` : `
@@ -307,7 +311,7 @@
                 <thead><tr><th>Date</th><th>Description</th><th>Category</th><th style="text-align:right">Amount</th><th></th></tr></thead>
                 <tbody>${txs.map(t => `<tr data-id="${t.id}">
                     <td class="muted">${esc(t.date)}</td>
-                    <td>${esc(t.description)}${t.note?`<br><span class="muted" style="font-size:11.5px">📝 ${esc(t.note)}</span>`:""}</td>
+                    <td>${esc(t.description)}${(t.tags&&t.tags.length)?` ${t.tags.map(tag=>`<span class="tag-chip" data-tagclick="${esc(tag)}">#${esc(tag)}</span>`).join(" ")}`:""}${t.note?`<br><span class="muted" style="font-size:11.5px">📝 ${esc(t.note)}</span>`:""}</td>
                     <td><select class="cat-select" data-recat="${t.id}">${Categorize.names().map(n => `<option ${n===t.category?"selected":""}>${n}</option>`).join("")}</select></td>
                     <td style="text-align:right" class="${t.amount<0?"amount-neg":"amount-pos"}">${fmtSigned(t.amount)}</td>
                     <td style="text-align:right;white-space:nowrap"><button class="link-btn" data-edittx="${t.id}">Edit</button> <button class="link-btn danger" data-deltx="${t.id}">Delete</button></td>
@@ -843,6 +847,8 @@
         $$("[data-deltx]").forEach(b => b.addEventListener("click", () => { Store.deleteTransaction(b.dataset.deltx); toast("Transaction deleted"); renderActive(); }));
         const ts = $("#txSearch"); if (ts) ts.addEventListener("input", debounce(e => { txSearch = e.target.value; const pos = e.target.selectionStart; renderActive(); const n = $("#txSearch"); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 250));
         const tcf = $("#txCatFilter"); if (tcf) tcf.addEventListener("change", e => { txCatFilter = e.target.value; renderActive(); });
+        const ttf = $("#txTagFilter"); if (ttf) ttf.addEventListener("change", e => { txTagFilter = e.target.value; renderActive(); });
+        $$("[data-tagclick]").forEach(el => el.addEventListener("click", () => { txTagFilter = el.dataset.tagclick; renderActive(); }));
 
         // upload
         const dz = $("#dropzone"), fi = $("#fileInput");
@@ -979,7 +985,13 @@
                 <div class="form-row"><label>Amount (negative = expense)</label><input id="mAmt" type="number" step="0.01" value="${t?t.amount:""}" placeholder="-25.00"></div>
                 <div class="form-row"><label>Category</label><select id="mCat">${opts}</select></div>
             </div>
-            <div class="form-row"><label>Note (optional)</label><input id="mNote" value="${t?esc(t.note||""):""}" placeholder="Add a note"></div>`;
+            <div class="form-grid">
+                <div class="form-row"><label>Note (optional)</label><input id="mNote" value="${t?esc(t.note||""):""}" placeholder="Add a note"></div>
+                <div class="form-row"><label>Tags (comma-separated)</label><input id="mTags" value="${t&&t.tags?esc(t.tags.join(", ")):""}" placeholder="vacation, work"></div>
+            </div>`;
+    }
+    function parseTags(raw) {
+        return Array.from(new Set(String(raw || "").split(",").map(s => s.trim().replace(/^#/, "")).filter(Boolean)));
     }
     function openAddTx() {
         openModal(`<h3>Add transaction</h3>${txForm(null)}<div class="modal-actions"><button class="btn btn-ghost" id="mCancel">Cancel</button><button class="btn" id="mSave">Add</button></div>`);
@@ -987,7 +999,7 @@
         bindClick("#mCancel", closeModal);
         bindClick("#mSave", () => { const amt = Number($("#mAmt").value);
             if (!$("#mDesc").value.trim() || isNaN(amt) || amt === 0) return toast("Enter a description and non-zero amount", "error");
-            Store.addTransaction({ date: $("#mDate").value, description: $("#mDesc").value, amount: amt, category: $("#mCat").value, note: $("#mNote").value });
+            Store.addTransaction({ date: $("#mDate").value, description: $("#mDesc").value, amount: amt, category: $("#mCat").value, note: $("#mNote").value, tags: parseTags($("#mTags").value) });
             Store.save(); refreshMonthOptions();
             const hits = autoMatchBills([($("#mDate").value || "").slice(0, 7)]);
             closeModal(); toast("Transaction added", "success");
@@ -1000,7 +1012,7 @@
         bindClick("#mCancel", closeModal);
         bindClick("#mSave", () => { const amt = Number($("#mAmt").value);
             if (!$("#mDesc").value.trim() || isNaN(amt) || amt === 0) return toast("Enter a description and non-zero amount", "error");
-            Store.updateTransaction(id, { date: $("#mDate").value, description: $("#mDesc").value, amount: amt, category: $("#mCat").value, note: $("#mNote").value });
+            Store.updateTransaction(id, { date: $("#mDate").value, description: $("#mDesc").value, amount: amt, category: $("#mCat").value, note: $("#mNote").value, tags: parseTags($("#mTags").value) });
             refreshMonthOptions(); closeModal(); toast("Transaction updated", "success"); renderActive(); });
     }
     function openSetBudget(cat) {
