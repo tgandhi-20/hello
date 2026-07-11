@@ -510,8 +510,28 @@
        ============================================================ */
     function renderGoals() {
         const goals = Store.state.goals;
+        const st = Store.state.settings;
+        const acc = Finance.roundupAccrued();
+        const targetGoal = goals.find(g => g.id === st.roundupGoalId);
+        const goalOpts = goals.map(g => `<option value="${g.id}" ${g.id===st.roundupGoalId?"selected":""}>${esc(g.name)}</option>`).join("");
+        const jar = `
+        <div class="card mb-18" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+            <div style="font-size:30px">🪙</div>
+            <div style="flex:1;min-width:220px">
+                <h3 style="margin-bottom:2px">Round-up jar</h3>
+                <p class="muted" style="font-size:12.5px">${st.roundupEnabled
+                    ? `${fmt(acc.total)} of spare change from ${acc.count} purchases${acc.since ? ` since ${acc.since}` : ""} — each expense rounded up to the next whole ${esc(CUR())}.`
+                    : `Round every expense up to the next whole ${esc(CUR())} and sweep the spare change into a goal.`}</p>
+            </div>
+            ${st.roundupEnabled ? `
+                ${goals.length ? `<select class="cat-select" id="roundupGoal" style="padding:8px 10px">${goalOpts}</select>` : `<span class="muted" style="font-size:12.5px">Create a goal to sweep into</span>`}
+                <button class="btn" id="sweepRoundup" ${(!targetGoal || acc.total <= 0) ? "disabled style='opacity:.5'" : ""}>Sweep ${fmt(acc.total)}</button>
+                <button class="btn btn-ghost btn-sm" id="roundupOff">Turn off</button>`
+            : `<button class="btn" id="roundupOn">Enable round-ups</button>`}
+        </div>`;
         return `
         <div class="section-head"><p class="muted">${goals.length} saving goal${goals.length===1?"":"s"}</p><button class="btn" id="addGoalBtn">+ New goal</button></div>
+        ${jar}
         ${goals.length === 0 ? `<div class="card"><div class="empty"><div class="big">◎</div><p>No saving goals yet. Create one to start tracking progress.</p><button class="btn" id="addGoalBtn2">Create a goal</button></div></div>` : `
         <div class="grid grid-2">${goals.map(g => {
             const pct = g.target > 0 ? Math.min(100, (g.saved / g.target) * 100) : 0;
@@ -847,6 +867,24 @@
         $$("[data-editgoal]").forEach(b => b.addEventListener("click", () => openGoalModal(b.dataset.editgoal)));
         $$("[data-delgoal]").forEach(b => b.addEventListener("click", () => { Store.deleteGoal(b.dataset.delgoal); toast("Goal deleted"); renderActive(); }));
         $$("[data-contribute]").forEach(b => b.addEventListener("click", () => openContribute(b.dataset.contribute)));
+        bindClick("#roundupOn", () => {
+            const goals = Store.state.goals;
+            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+            Store.updateSettings({ roundupEnabled: true, roundupGoalId: Store.state.settings.roundupGoalId || (goals[0] && goals[0].id) || null,
+                roundupLastSweep: Store.state.settings.roundupLastSweep || yesterday });
+            toast("Round-ups enabled — spare change accrues from today", "success"); renderActive();
+        });
+        bindClick("#roundupOff", () => { Store.updateSettings({ roundupEnabled: false }); renderActive(); });
+        const rg = $("#roundupGoal"); if (rg) rg.addEventListener("change", e => { Store.updateSettings({ roundupGoalId: e.target.value }); renderActive(); });
+        bindClick("#sweepRoundup", () => {
+            const st = Store.state.settings;
+            const acc = Finance.roundupAccrued();
+            const g = Store.state.goals.find(x => x.id === st.roundupGoalId);
+            if (!g || acc.total <= 0) return;
+            Store.updateGoal(g.id, { saved: g.saved + acc.total });
+            Store.updateSettings({ roundupLastSweep: new Date().toISOString().slice(0, 10) });
+            toast(`Swept ${fmt(acc.total)} into ${g.name}`, "success"); renderActive();
+        });
 
         // settings
         bindClick("#saveSettings", () => { Store.updateSettings({ currency: $("#setCurrency").value, monthlyIncome: Number($("#setIncome").value) || 0 }); toast("Preferences saved", "success"); renderActive(); });

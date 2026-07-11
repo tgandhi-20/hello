@@ -158,6 +158,24 @@
         return Math.max(0, n * monthlyPayment - Math.abs(balance));
     }
 
+    /* ---------- Round-up auto-save ---------- */
+    // Virtual "spare change": for every expense since the last sweep, the
+    // difference to the next whole unit accrues toward a chosen goal.
+    function roundupAccrued() {
+        const since = Store.state.settings.roundupLastSweep || "0000-00-00";
+        const today = new Date().toISOString().slice(0, 10);
+        const isNeutral = c => global.Categorize && global.Categorize.isNeutral(c);
+        let total = 0, count = 0;
+        Store.state.transactions.forEach(t => {
+            if (t.amount >= 0 || isNeutral(t.category)) return;
+            if (!t.date || t.date <= since || t.date > today) return;
+            const a = -t.amount;
+            const up = Math.ceil(a) - a;
+            if (up > 0.004) { total += up; count++; }
+        });
+        return { total: Math.round(total * 100) / 100, count, since: since === "0000-00-00" ? null : since };
+    }
+
     /* ---------- Insights & anomaly detection ---------- */
     // Compares the given month against the previous 3 months and surfaces
     // spikes, drops, unusually large transactions and possible duplicates.
@@ -255,7 +273,7 @@
     }
 
     global.Finance = {
-        insights,
+        insights, roundupAccrued,
         netWorth, monthlyBills, monthlySubscriptions, annualSubscriptions,
         estimatedMonthlyIncome, safeToSpend, spendPace, budgetWithRollover,
         cashFlowForecast, payoffMonths, totalInterest,
