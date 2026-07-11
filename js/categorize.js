@@ -19,21 +19,31 @@
         { name: "Other",         color: "var(--cat-other)",         kw: [] }
     ];
 
-    const CAT_MAP = {};
-    CATEGORIES.forEach(c => CAT_MAP[c.name] = c);
+    // Merge built-in categories with any user-defined ones from the store.
+    function allCategories() {
+        const custom = (global.Store && global.Store.state.customCategories) || [];
+        // custom first so user keywords win, but keep Other last
+        const builtins = CATEGORIES.filter(c => c.name !== "Other");
+        const other = CATEGORIES.find(c => c.name === "Other");
+        const names = new Set(custom.map(c => c.name.toLowerCase()));
+        const merged = custom.concat(builtins.filter(c => !names.has(c.name.toLowerCase())));
+        merged.push(other);
+        return merged;
+    }
 
     function categoryColor(name) {
-        return (CAT_MAP[name] || CAT_MAP["Other"]).color;
+        const all = allCategories();
+        const found = all.find(c => c.name === name);
+        return (found || all[all.length - 1]).color;
     }
 
     // Guess a category from a transaction description + amount
     function categorize(description, amount) {
         const d = (description || "").toLowerCase();
-        // income if positive amount and matches income keywords, else keyword match
-        for (const cat of CATEGORIES) {
+        for (const cat of allCategories()) {
             if (cat.name === "Other") continue;
-            for (const k of cat.kw) {
-                if (d.includes(k)) return cat.name;
+            for (const k of (cat.kw || [])) {
+                if (k && d.includes(k)) return cat.name;
             }
         }
         // positive amounts with no match are likely income
@@ -167,11 +177,12 @@
 
     global.Categorize = {
         CATEGORIES,
+        allCategories,
         categoryColor,
         categorize,
         parseStatement,
         parseAmount,
         normalizeDate,
-        names: () => CATEGORIES.map(c => c.name)
+        names: () => allCategories().map(c => c.name)
     };
 })(window);
