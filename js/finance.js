@@ -158,7 +158,104 @@
         return Math.max(0, n * monthlyPayment - Math.abs(balance));
     }
 
+    /* ---------- Insights & anomaly detection ---------- */
+    // Compares the given month against the previous 3 months and surfaces
+    // spikes, drops, unusually large transactions and possible duplicates.
+    function insights(monthStr) {
+        const m = monthStr || currentMonthKey();
+        const out = [];
+        const isNeutral = c => global.Categorize && global.Categorize.isNeutral(c);
+        const curTx = Store.txForMonth(m).filter(t => t.amount < 0 && !isNeutral(t.category));
+
+        // per-category totals for current month
+        const cur = {};
+        curTx.forEach(t => cur[t.category] = (cur[t.category] || 0) + (-t.amount));
+
+        // average per-category over previous 3 months (only months with data)
+        const prevMonths = [];
+        let pm = m;
+        for (let i = 0; i < 3; i++) { pm = prevMonth(pm); prevMonths.push(pm); }
+        const prevTotals = {}, prevCount = {}, prevTxCount = {};
+        prevMonths.forEach(p => {
+            const txs = Store.txForMonth(p).filter(t => t.amount < 0 && !isNeutral(t.category));
+            if (!txs.length) return;
+            const seen = new Set();
+            txs.forEach(t => {
+                prevTotals[t.category] = (prevTotals[t.category] || 0) + (-t.amount);
+                prevTxCount[t.category] = (prevTxCount[t.category] || 0) + 1;
+                seen.add(t.category);
+            });
+            seen.forEach(c => prevCount[c] = (prevCount[c] || 0) + 1);
+        });
+
+        // day-of-month scaling so a mid-month check compares like-for-like
+        const now = new Date();
+        const isCurrent = m === currentMonthKey();
+        const frac = isCurrent ? Math.max(0.15, now.getDate() / daysInMonth(m)) : 1;
+
+        Object.keys(cur).forEach(cat => {
+            if (!prevCount[cat]) return;
+            // lumpy categories (~1 tx/month, e.g. rent) can't be pro-rated —
+            // compare against the full-month average instead
+            const txPerMonth = prevTxCount[cat] / prevCount[cat];
+            const catFrac = txPerMonth <= 2 ? 1 : frac;
+            const avg = (prevTotals[cat] / prevCount[cat]) * catFrac;
+            if (avg < 25) return; // too small to be meaningful
+            const ratio = cur[cat] / avg;
+            if (ratio >= 1.5) out.push({ kind: "spike", severity: "warn", cat,
+                title: `${cat} is running ${Math.round((ratio - 1) * 100)}% above your usual`,
+                detail: `Spent so far vs your 3-month average for this point in the month.`,
+                value: cur[cat] });
+            else if (ratio <= 0.55) out.push({ kind: "drop", severity: "good", cat,
+                title: `${cat} is ${Math.round((1 - ratio) * 100)}% below your usual`,
+                detail: `Nice — keep it up and this month comes in well under trend.`,
+                value: cur[cat] });
+        });
+
+        // unusually large single transactions (vs median expense)
+        const amounts = curTx.map(t => -t.amount).sort((a, b) => a - b);
+        if (amounts.length >= 5) {
+            const median = amounts[Math.floor(amounts.length / 2)];
+            curTx.filter(t => (-t.amount) >= Math.max(100, median * 4))
+                .sort((a, b) => a.amount - b.amount).slice(0, 2)
+                .forEach(t => out.push({ kind: "large", severity: "info", cat: t.category,
+                    title: `Large expense: ${t.description}`,
+                    detail: `${t.date} · well above your typical transaction.`,
+                    value: -t.amount }));
+        }
+
+        // possible duplicate charges: same description+amount within 2 days
+        const byKey = {};
+        curTx.forEach(t => {
+            const k = t.description.trim().toLowerCase() + "|" + t.amount.toFixed(2);
+            (byKey[k] = byKey[k] || []).push(t);
+        });
+        Object.values(byKey).forEach(list => {
+            if (list.length < 2) return;
+            list.sort((a, b) => a.date.localeCompare(b.date));
+            for (let i = 1; i < list.length; i++) {
+                const gap = (new Date(list[i].date) - new Date(list[i - 1].date)) / 86400000;
+                if (gap <= 2 && gap >= 0) {
+                    out.push({ kind: "duplicate", severity: "bad", cat: list[i].category,
+                        title: `Possible duplicate charge: ${list[i].description}`,
+                        detail: `Charged twice within ${gap === 0 ? "the same day" : Math.round(gap) + " day(s)"} (${list[i - 1].date} and ${list[i].date}).`,
+                        value: -list[i].amount });
+                    break;
+                }
+            }
+        });
+
+        const rank = { bad: 0, warn: 1, info: 2, good: 3 };
+        out.sort((a, b) => rank[a.severity] - rank[b.severity]);
+        // guarantee each detected kind is represented, then fill by severity
+        const picked = [], seenKind = new Set();
+        out.forEach(i => { if (!seenKind.has(i.kind)) { picked.push(i); seenKind.add(i.kind); } });
+        out.forEach(i => { if (picked.length < 5 && !picked.includes(i)) picked.push(i); });
+        return picked.sort((a, b) => rank[a.severity] - rank[b.severity]).slice(0, 5);
+    }
+
     global.Finance = {
+        insights,
         netWorth, monthlyBills, monthlySubscriptions, annualSubscriptions,
         estimatedMonthlyIncome, safeToSpend, spendPace, budgetWithRollover,
         cashFlowForecast, payoffMonths, totalInterest,

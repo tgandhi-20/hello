@@ -101,6 +101,23 @@
         const markerPct = pace.dim > 0 ? (pace.dayOfMonth / pace.dim) * 100 : 0;
 
         const recent = txs.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+        const ins = Finance.insights(activeMonth());
+        const insIcon = { spike: "↑", drop: "↓", large: "◆", duplicate: "⧉" };
+        const insColor = { bad: "var(--red)", warn: "var(--amber)", info: "var(--accent)", good: "var(--green)" };
+        const insBg = { bad: "rgba(248,81,73,.14)", warn: "rgba(210,153,34,.14)", info: "rgba(76,141,255,.14)", good: "rgba(63,185,80,.14)" };
+        const insightsCard = ins.length ? `
+        <div class="card mb-18">
+            <h3>Insights · ${monthLabel(activeMonth())}</h3>
+            <div class="metric-list">
+                ${ins.map(i => `<div class="metric">
+                    <div class="m-ico" style="background:${insBg[i.severity]};color:${insColor[i.severity]}">${insIcon[i.kind] || "✦"}</div>
+                    <div class="m-body" style="flex:1">
+                        <div style="display:flex;justify-content:space-between;gap:10px"><h4>${esc(i.title)}</h4><span style="font-weight:700;white-space:nowrap">${fmt(i.value)}</span></div>
+                        <p>${esc(i.detail)}</p>
+                    </div>
+                </div>`).join("")}
+            </div>
+        </div>` : "";
 
         return `
         <div class="grid grid-2 mb-18">
@@ -121,6 +138,7 @@
                 <div class="card stat"><span class="stat-label">Net</span><span class="stat-value ${s.net>=0?"up":"down"}">${fmtShortSigned(s.net)}</span><span class="stat-sub">${s.savingsRate.toFixed(0)}% savings rate${s.saved>0?` · ${fmtShort(s.saved)} to savings`:""}</span></div>
             </div>
         </div>
+        ${insightsCard}
         <div class="grid grid-2 mb-18">
             <div class="card">
                 <h3>Spending by category</h3>
