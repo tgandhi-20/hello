@@ -14,14 +14,18 @@
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="css/styles.css">
+    <meta name="referrer" content="no-referrer">
     <script>
-      // Apply saved/system theme before paint to avoid a flash
+      // Refuse to run framed — prevents clickjacking of financial data
+      if (window.top !== window.self) { try { window.top.location = window.self.location; } catch (e) { document.documentElement.style.display = "none"; } }
+      // Apply saved theme before paint (clean-white light is the default)
       (function () {
         try {
           var saved = localStorage.getItem("fintrack.theme");
-          var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
-          document.documentElement.setAttribute("data-theme", theme);
-        } catch (e) {}
+          document.documentElement.setAttribute("data-theme", saved === "dark" ? "dark" : "light");
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
       })();
     </script>
 </head>

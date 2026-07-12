@@ -79,6 +79,8 @@
     }
 
     const ACCT_ICON = { Checking: "🏦", Savings: "💰", "Credit Card": "💳", Investment: "📈", Loan: "🏛", Cash: "💵", Other: "◈" };
+    const CAT_ICON = { Housing: "🏠", Groceries: "🛒", Utilities: "💡", Transport: "🚗", Shopping: "🛍️", Health: "🩺", Entertainment: "🎬", Dining: "🍽️", Income: "💵", Savings: "🏦", Transfer: "🔁", Other: "📦" };
+    const catIcon = name => CAT_ICON[name] || "🏷️";
 
     /* ============================================================
        DASHBOARD
@@ -87,6 +89,7 @@
        users can toggle and reorder them; the layout persists. */
     const DASH_WIDGETS = [
         { id: "overview", label: "Safe to spend & key numbers" },
+        { id: "savings", label: "Potential savings" },
         { id: "insights", label: "Insights & alerts" },
         { id: "spending", label: "Spending by category" },
         { id: "billssubs", label: "Bills & subscriptions" },
@@ -126,6 +129,34 @@
                 <div class="card stat"><span class="stat-label">Income</span><span class="stat-value up">${fmtShort(s.income)}</span><span class="stat-sub">${monthLabel(currentMonth)}</span></div>
                 <div class="card stat"><span class="stat-label">Expenses</span><span class="stat-value down">${fmtShort(s.expense)}</span><span class="stat-sub">${txs.filter(t=>t.amount<0).length} transactions</span></div>
                 <div class="card stat"><span class="stat-label">Net</span><span class="stat-value ${s.net>=0?"up":"down"}">${fmtShortSigned(s.net)}</span><span class="stat-sub">${s.savingsRate.toFixed(0)}% savings rate${s.saved>0?` · ${fmtShort(s.saved)} to savings`:""}</span></div>
+            </div>
+        </div>`;
+    }
+    function widgetSavings() {
+        const sl = Finance.savingsLevers(activeMonth());
+        if (!sl.levers.length) return "";
+        const max = Math.max(...sl.levers.map(l => l.monthly), 1);
+        const projection = [];
+        for (let i = 0; i <= 12; i += 2) {
+            const d = new Date(); d.setMonth(d.getMonth() + i);
+            projection.push({ label: i === 0 ? "now" : d.toLocaleString(undefined, { month: "short" }), value: Math.round(sl.monthlyTotal * i) });
+        }
+        return `
+        <div class="card mb-18">
+            <div class="card-title-row"><h3>💸 Potential savings</h3>
+                <span class="badge good">up to ${fmtShort(sl.monthlyTotal)}/mo · ${fmtShort(sl.yearlyTotal)}/yr</span></div>
+            <div class="grid grid-2" style="gap:20px;align-items:start">
+                <div>
+                    ${sl.levers.map(l => `<div class="bar-row">
+                        <div class="bar-head"><span>${esc(l.label)}</span><span class="muted">${fmt(l.monthly)}/mo</span></div>
+                        <div class="progress"><span style="width:${(l.monthly / max) * 100}%;background:var(--green)"></span></div>
+                        <p class="muted" style="font-size:11.5px;margin-top:4px">${esc(l.detail)}</p>
+                    </div>`).join("")}
+                </div>
+                <div>
+                    <p class="muted" style="font-size:12px;margin-bottom:6px">If you act on all of it — cumulative savings over 12 months</p>
+                    ${Charts.line(projection, { fmt: fmtShort, color: "var(--green)" })}
+                </div>
             </div>
         </div>`;
     }
@@ -210,6 +241,7 @@
         widgetPrefs().forEach(w => {
             if (!w.on) return;
             if (w.id === "overview") pieces.push(widgetOverview(ctx));
+            else if (w.id === "savings") pieces.push(widgetSavings());
             else if (w.id === "insights") pieces.push(widgetInsights());
             else if (w.id === "spending" || w.id === "billssubs") {
                 // spending + bills/subs pair into one row when both enabled and adjacent
@@ -586,7 +618,9 @@
             const rollOn = !!Store.state.budgetRollover[cat];
             return `<div class="bar-row">
                 <div class="bar-head">
-                    <span>${catChip(cat)}${rollOn && roll.carry ? `<span class="muted" style="font-size:11px"> · ${roll.carry>=0?"+":""}${fmtShort(roll.carry)} rollover</span>`:""}</span>
+                    <span style="display:inline-flex;align-items:center;gap:8px">
+                        <button class="cat-logo" data-catgo="${esc(cat)}" title="See ${esc(cat)} transactions" aria-label="See ${esc(cat)} transactions" style="--logo-ring:${Categorize.categoryColor(cat)}">${catIcon(cat)}</button>
+                        ${catChip(cat)}${rollOn && roll.carry ? `<span class="muted" style="font-size:11px"> · ${roll.carry>=0?"+":""}${fmtShort(roll.carry)} rollover</span>`:""}</span>
                     <span class="muted">${fmt(spent)}${hasBudget?` / <span style="color:${over?'var(--red)':'var(--text)'}">${fmt(limit)}</span>`:` <button class="link-btn" data-setbudget="${cat}">set budget</button>`}</span>
                 </div>
                 ${hasBudget?`<div class="progress"><span style="width:${pct}%;background:${color}"></span></div>
@@ -925,6 +959,18 @@
             </div>
             <div>
                 <div class="card mb-18">
+                    <h3>Privacy &amp; security</h3>
+                    <p class="muted" style="font-size:12.5px;margin-bottom:12px">All data stays on this device — the app makes no network requests with your finances, enforced by a strict content-security policy. Add a PIN so nobody who picks up your phone can open Fintrack.</p>
+                    ${Store.state.settings.pinHash
+                        ? `<div class="row-actions">
+                            <span class="badge good">🔒 App lock on</span>
+                            <button class="btn btn-ghost btn-sm" id="changePin">Change PIN</button>
+                            <button class="btn btn-ghost btn-sm" id="lockNow">Lock now</button>
+                            <button class="btn btn-ghost btn-sm danger" id="disablePin">Turn off</button>
+                        </div>`
+                        : `<button class="btn" id="setPin">🔒 Set app lock PIN</button>`}
+                </div>
+                <div class="card mb-18">
                     <h3>Backup &amp; restore</h3>
                     <p class="muted" style="font-size:12.5px;margin-bottom:14px">Your data lives only in this browser. Export a backup file to keep it safe or move to another device.</p>
                     <div class="row-actions" style="flex-wrap:wrap">
@@ -1065,6 +1111,10 @@
         bindClick("#autoBudget", autoSuggestBudgets);
         bindClick("#templateBudget", applyTemplate503020);
         bindClick("#assignHelp", applyTemplate503020);
+        $$("[data-catgo]").forEach(b => b.addEventListener("click", () => {
+            txCatFilter = b.dataset.catgo; txSearch = ""; txTagFilter = "";
+            goTo("transactions");
+        }));
 
         // goals
         bindClick("#addGoalBtn", () => openGoalModal()); bindClick("#addGoalBtn2", () => openGoalModal());
@@ -1105,6 +1155,10 @@
         const imf = $("#importFile"); if (imf) imf.addEventListener("change", () => { if (imf.files[0]) importData(imf.files[0]); });
         bindClick("#installBtn", triggerInstall);
         bindClick("#resetData", confirmReset);
+        bindClick("#setPin", () => openSetPin(false));
+        bindClick("#changePin", () => openSetPin(true));
+        bindClick("#disablePin", openDisablePin);
+        bindClick("#lockNow", showLockScreen);
         bindClick("#addMemberBtn", () => {
             const name = ($("#memberName") || {}).value || "";
             if (!name.trim()) return toast("Enter a name", "error");
@@ -1538,6 +1592,93 @@
     }
     $("#loadDemo").addEventListener("click", loadDemo);
 
+    /* ---------- app lock (PIN) ---------- */
+    async function sha256Hex(str) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    function randomSalt() {
+        const a = new Uint8Array(16); crypto.getRandomValues(a);
+        return Array.from(a).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    function showLockScreen() {
+        if ($("#lockScreen")) return;
+        const el = document.createElement("div");
+        el.id = "lockScreen";
+        el.className = "lock-screen";
+        el.innerHTML = `
+            <div class="lock-box">
+                <svg class="brand-logo" viewBox="0 0 512 512" aria-hidden="true" style="width:52px;height:52px;margin:0 auto 14px">
+                    <defs><linearGradient id="lkg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a78d6"/><stop offset="1" stop-color="#4a3aa7"/></linearGradient></defs>
+                    <rect width="512" height="512" rx="112" fill="url(#lkg)"/>
+                    <polyline points="112,352 200,286 268,318 400,168" fill="none" stroke="#fff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="400" cy="168" r="22" fill="#fff"/>
+                </svg>
+                <h3 style="margin-bottom:4px">Fintrack is locked</h3>
+                <p class="muted" style="font-size:13px;margin-bottom:16px">Enter your PIN to unlock</p>
+                <input id="lockPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="••••" aria-label="PIN">
+                <p id="lockErr" class="lock-err" hidden>Wrong PIN — try again</p>
+                <button class="btn" id="lockUnlock" style="width:100%;margin-top:12px">Unlock</button>
+                <button class="link-btn danger" id="lockForgot" style="margin-top:14px">Forgot PIN? Erase all data</button>
+            </div>`;
+        document.body.appendChild(el);
+        const tryUnlock = async () => {
+            const pin = $("#lockPin").value;
+            const st = Store.state.settings;
+            const hash = await sha256Hex(st.pinSalt + pin);
+            if (hash === st.pinHash) { el.remove(); }
+            else { $("#lockErr").hidden = false; $("#lockPin").value = ""; $("#lockPin").focus(); }
+        };
+        $("#lockUnlock").addEventListener("click", tryUnlock);
+        $("#lockPin").addEventListener("keydown", e => { if (e.key === "Enter") tryUnlock(); });
+        $("#lockForgot").addEventListener("click", () => {
+            if (confirm("This permanently erases ALL Fintrack data in this browser so nobody can read it without the PIN. Continue?")) {
+                Store.reset();
+                try { localStorage.removeItem("fintrack.onboarded"); } catch (e) {}
+                location.reload();
+            }
+        });
+        setTimeout(() => $("#lockPin").focus(), 50);
+    }
+    function openSetPin(change) {
+        openModal(`<h3>${change ? "Change" : "Set"} app lock PIN</h3>
+            <p class="muted" style="font-size:12.5px;margin-bottom:14px">Fintrack will require this PIN every time it opens. The PIN is stored only as a salted SHA-256 hash — it never leaves this device.</p>
+            ${change ? `<div class="form-row"><label>Current PIN</label><input id="pinOld" type="password" inputmode="numeric" maxlength="8"></div>` : ""}
+            <div class="form-grid">
+                <div class="form-row"><label>New PIN (4–8 digits)</label><input id="pinNew" type="password" inputmode="numeric" maxlength="8"></div>
+                <div class="form-row"><label>Confirm PIN</label><input id="pinNew2" type="password" inputmode="numeric" maxlength="8"></div>
+            </div>
+            <div class="modal-actions"><button class="btn btn-ghost" id="pinCancel">Cancel</button><button class="btn" id="pinSave">Save PIN</button></div>`);
+        bindClick("#pinCancel", closeModal);
+        bindClick("#pinSave", async () => {
+            const st = Store.state.settings;
+            if (change) {
+                const oldHash = await sha256Hex(st.pinSalt + ($("#pinOld").value || ""));
+                if (oldHash !== st.pinHash) return toast("Current PIN is wrong", "error");
+            }
+            const p1 = $("#pinNew").value, p2 = $("#pinNew2").value;
+            if (!/^\d{4,8}$/.test(p1)) return toast("PIN must be 4–8 digits", "error");
+            if (p1 !== p2) return toast("PINs don't match", "error");
+            const salt = randomSalt();
+            const hash = await sha256Hex(salt + p1);
+            Store.updateSettings({ pinSalt: salt, pinHash: hash });
+            closeModal(); toast("App lock enabled", "success"); renderActive();
+        });
+    }
+    function openDisablePin() {
+        openModal(`<h3>Turn off app lock</h3>
+            <div class="form-row"><label>Current PIN</label><input id="pinOff" type="password" inputmode="numeric" maxlength="8"></div>
+            <div class="modal-actions"><button class="btn btn-ghost" id="pinOffCancel">Cancel</button><button class="btn" id="pinOffSave">Turn off</button></div>`);
+        bindClick("#pinOffCancel", closeModal);
+        bindClick("#pinOffSave", async () => {
+            const st = Store.state.settings;
+            const hash = await sha256Hex(st.pinSalt + ($("#pinOff").value || ""));
+            if (hash !== st.pinHash) return toast("Wrong PIN", "error");
+            Store.updateSettings({ pinHash: null, pinSalt: null });
+            closeModal(); toast("App lock disabled", "success"); renderActive();
+        });
+    }
+
     /* ---------- onboarding ---------- */
     function maybeOnboard() {
         const fresh = Store.state.transactions.length === 0 && Store.state.accounts.length === 0;
@@ -1567,5 +1708,6 @@
     /* ---------- boot ---------- */
     refreshMonthOptions();
     renderActive();
-    maybeOnboard();
+    if (Store.state.settings.pinHash && window.crypto && crypto.subtle) showLockScreen();
+    else maybeOnboard();
 })();

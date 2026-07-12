@@ -178,6 +178,52 @@
         return { total: Math.round(total * 100) / 100, count, since: since === "0000-00-00" ? null : since };
     }
 
+    /* ---------- Potential savings levers ---------- */
+    // Concrete, computable ways the user could save money each month.
+    function savingsLevers(monthStr) {
+        const m = monthStr || currentMonthKey();
+        const isNeutral = c => global.Categorize && global.Categorize.isNeutral(c);
+        const levers = [];
+
+        // 1. Active subscriptions — the ceiling of what trimming could free up
+        const subsMo = monthlySubscriptions();
+        if (subsMo > 0) levers.push({ id: "subs", label: "Trim unused subscriptions",
+            detail: "Your active subscriptions — cancel the ones you don't use.", monthly: subsMo });
+
+        // 2. Over-budget categories this month
+        const budgets = Store.state.budgets;
+        let overage = 0;
+        Object.keys(budgets).forEach(cat => {
+            const spent = Store.txForMonth(m).filter(t => t.amount < 0 && t.category === cat)
+                .reduce((a, t) => a + (-t.amount), 0);
+            if (spent > budgets[cat]) overage += spent - budgets[cat];
+        });
+        if (overage > 1) levers.push({ id: "budgets", label: "Stick to your budgets",
+            detail: "What this month's over-budget categories are costing you.", monthly: overage });
+
+        // 3. Discretionary spend above your own 3-month norm
+        const DISC = ["Dining", "Shopping", "Entertainment"];
+        let discNow = 0, discAvg = 0, months = 0;
+        let pm = m;
+        for (let i = 0; i < 3; i++) {
+            pm = prevMonth(pm);
+            const v = Store.txForMonth(pm).filter(t => t.amount < 0 && DISC.includes(t.category))
+                .reduce((a, t) => a + (-t.amount), 0);
+            if (v > 0) { discAvg += v; months++; }
+        }
+        discNow = Store.txForMonth(m).filter(t => t.amount < 0 && DISC.includes(t.category))
+            .reduce((a, t) => a + (-t.amount), 0);
+        if (months) {
+            discAvg /= months;
+            if (discNow > discAvg * 1.05 && discNow - discAvg > 5)
+                levers.push({ id: "disc", label: "Return to your usual fun-spend",
+                    detail: "Dining, shopping & entertainment above your 3-month norm.", monthly: discNow - discAvg });
+        }
+
+        const total = levers.reduce((a, l) => a + l.monthly, 0);
+        return { levers, monthlyTotal: total, yearlyTotal: total * 12 };
+    }
+
     /* ---------- Insights & anomaly detection ---------- */
     // Compares the given month against the previous 3 months and surfaces
     // spikes, drops, unusually large transactions and possible duplicates.
@@ -275,7 +321,7 @@
     }
 
     global.Finance = {
-        insights, roundupAccrued,
+        insights, roundupAccrued, savingsLevers,
         netWorth, monthlyBills, monthlySubscriptions, annualSubscriptions,
         estimatedMonthlyIncome, safeToSpend, spendPace, budgetWithRollover,
         cashFlowForecast, payoffMonths, totalInterest,

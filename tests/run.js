@@ -437,6 +437,71 @@ not-a-date,Mystery,-5
     await page.waitForTimeout(500);
     check("rapid navigation survives without errors", errors.length === 0);
 
+    /* ---------- potential savings, interactive logos, light default, app lock ---------- */
+    // clean-white default: fresh profile (no saved theme) must open light
+    const freshCtx = await browser.newPage({ viewport: { width: 1280, height: 900 }, colorScheme: "dark" });
+    await freshCtx.goto(APP);
+    await freshCtx.waitForTimeout(400);
+    check("fresh profile defaults to clean-white light theme", (await freshCtx.getAttribute("html", "data-theme")) === "light");
+    await freshCtx.close();
+
+    // potential savings widget (demo data has active subs => lever exists)
+    await visit("dashboard");
+    const dashSav = await page.textContent("#view-dashboard");
+    check("potential savings widget renders", dashSav.includes("Potential savings"));
+    check("savings shows monthly and yearly totals", /up to .*\/mo .* \/?yr|\/yr/.test(dashSav));
+    check("savings lists subscription lever", dashSav.includes("Trim unused subscriptions"));
+
+    // interactive category logos in budget buckets
+    await visit("budgets");
+    check("budget buckets show interactive logos", (await page.$$(".cat-logo")).length >= 5);
+    await page.click('.cat-logo[data-catgo="Groceries"]');
+    await page.waitForTimeout(350);
+    check("logo click opens filtered transactions",
+        (await page.textContent("#viewTitle")).includes("Transactions") &&
+        (await page.inputValue("#txCatFilter")) === "Groceries");
+    await page.selectOption("#txCatFilter", "");
+    await page.waitForTimeout(250);
+
+    // app lock: set PIN, lock now, wrong PIN rejected, right PIN unlocks, disable
+    await visit("settings");
+    await page.click("#setPin");
+    await page.waitForTimeout(250);
+    await page.fill("#pinNew", "4242");
+    await page.fill("#pinNew2", "4242");
+    await page.click("#pinSave");
+    await page.waitForTimeout(400);
+    check("PIN stored as salted hash (not plaintext)", await page.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem("fintrack.v1")).settings;
+        return !!s.pinHash && /^[0-9a-f]{64}$/.test(s.pinHash) && !JSON.stringify(s).includes("4242");
+    }));
+    await page.click("#lockNow");
+    await page.waitForTimeout(300);
+    check("lock screen covers app", await page.isVisible("#lockScreen"));
+    await page.fill("#lockPin", "9999");
+    await page.click("#lockUnlock");
+    await page.waitForTimeout(300);
+    check("wrong PIN rejected", await page.isVisible("#lockErr") && await page.isVisible("#lockScreen"));
+    await page.fill("#lockPin", "4242");
+    await page.click("#lockUnlock");
+    await page.waitForTimeout(300);
+    check("correct PIN unlocks", !(await page.$("#lockScreen")));
+    // locked on reload too
+    await page.reload();
+    await page.waitForTimeout(500);
+    check("app locked on reload", await page.isVisible("#lockScreen"));
+    await page.fill("#lockPin", "4242");
+    await page.click("#lockUnlock");
+    await page.waitForTimeout(300);
+    // disable pin
+    await visit("settings");
+    await page.click("#disablePin");
+    await page.waitForTimeout(250);
+    await page.fill("#pinOff", "4242");
+    await page.click("#pinOffSave");
+    await page.waitForTimeout(300);
+    check("app lock disables with correct PIN", !(await state()).settings.pinHash);
+
     /* ---------- mobile viewport ---------- */
     const mob = await browser.newPage({ viewport: { width: 390, height: 844 } });
     mob.on("pageerror", e => errors.push("mobile pageerror: " + e.message));

@@ -47,11 +47,13 @@
 }
 
 :root[data-theme="light"] {
-    --bg: #f9f9f7;
-    --bg-2: #fcfcfb;
-    --bg-3: #f0efec;
-    --border: rgba(11,11,11,0.10);
-    --grid: #e1e0d9;
+    /* extremely clean white — generous whitespace, hairline borders,
+       whisper-soft elevation (Apple/Google-style light chrome) */
+    --bg: #fbfbfd;
+    --bg-2: #ffffff;
+    --bg-3: #f2f3f5;
+    --border: rgba(11,11,11,0.08);
+    --grid: #e8e8ec;
     --text: #0b0b0b;
     --text-dim: #52514e;
     --text-muted: #898781;
@@ -63,9 +65,10 @@
     --red: #d03b3b;
     --amber: #c98500;
 
-    --shadow: 0 8px 30px rgba(80,90,110,0.16);
-    --topbar-bg: rgba(249,249,247,0.85);
-    --ghost-hover: #e7e6e1;
+    --shadow: 0 8px 30px rgba(60,70,90,0.12);
+    --card-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.05);
+    --topbar-bg: rgba(251,251,253,0.85);
+    --ghost-hover: #e9eaee;
     color-scheme: light;
 
     /* categorical slots — light steps (validated vs #fcfcfb) */
@@ -168,6 +171,7 @@ body {
     background: var(--bg-2); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 20px;
     min-width: 0;
+    box-shadow: var(--card-shadow, none);
 }
 .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
 .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -486,3 +490,35 @@ textarea.form-area { width: 100%; min-height: 120px; background: var(--bg); bord
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ---------------- Interactive category logos ---------------- */
+.cat-logo {
+    width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg-3); font-size: 16px; cursor: pointer; display: inline-grid; place-items: center;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    flex-shrink: 0; font-family: inherit;
+}
+.cat-logo:hover, .cat-logo:focus-visible {
+    transform: translateY(-2px) scale(1.12);
+    border-color: var(--logo-ring, var(--accent));
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--logo-ring, var(--accent)) 35%, transparent);
+    outline: none;
+}
+.cat-logo:active { transform: scale(0.96); }
+
+/* ---------------- App lock ---------------- */
+.lock-screen {
+    position: fixed; inset: 0; z-index: 400; background: var(--bg);
+    display: grid; place-items: center; padding: 20px;
+}
+.lock-box {
+    width: 100%; max-width: 320px; text-align: center;
+    background: var(--bg-2); border: 1px solid var(--border); border-radius: 18px;
+    padding: 30px 26px; box-shadow: var(--shadow);
+}
+.lock-box input {
+    width: 100%; text-align: center; font-size: 22px; letter-spacing: 8px;
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 12px; border-radius: 12px; font-family: inherit;
+}
+.lock-err { color: var(--red); font-size: 12.5px; margin-top: 8px; }
