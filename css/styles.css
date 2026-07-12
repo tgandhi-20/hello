@@ -522,3 +522,22 @@ textarea.form-area { width: 100%; min-height: 120px; background: var(--bg); bord
     padding: 12px; border-radius: 12px; font-family: inherit;
 }
 .lock-err { color: var(--red); font-size: 12.5px; margin-top: 8px; }
+
+/* ---------------- Interactive rows & focus rings ---------------- */
+.lever-row { cursor: pointer; border-radius: 10px; padding: 6px 8px; margin: -6px -8px 10px; transition: background .15s; }
+.lever-row:hover { background: var(--bg-3); }
+.lever-arrow { color: var(--accent); font-weight: 700; opacity: 0; transition: opacity .15s; }
+.lever-row:hover .lever-arrow, .lever-row:focus-visible .lever-arrow { opacity: 1; }
+.donut-legend .li-link { cursor: pointer; border-radius: 8px; padding: 3px 6px; margin: -3px -6px; transition: background .15s; }
+.donut-legend .li-link:hover { background: var(--bg-3); }
+
+/* Apple/Google-style visible keyboard focus, only for keyboard users */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+.btn:focus-visible, .nav-item:focus-visible, .bnav-item:focus-visible,
+.sheet-item:focus-visible, .cat-logo:focus-visible, .theme-toggle:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+}

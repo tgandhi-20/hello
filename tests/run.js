@@ -503,6 +503,32 @@ not-a-date,Mystery,-5
     check("vault decrypts and app restores", !(await page.$("#lockScreen")));
     check("all transactions survive encrypt/decrypt round-trip", await page.evaluate(
         n => window.Store.state.transactions.length === n, txCountBefore));
+    // auto-lock after inactivity (shrink the threshold for the test)
+    await page.evaluate(() => Store.updateSettings({ autoLockMin: 0.03 })); // ~1.8s
+    await page.waitForTimeout(8000); // idle past threshold + 5s check interval
+    check("auto-locks after inactivity", await page.isVisible("#lockScreen"));
+    await page.fill("#lockPin", "4242");
+    await page.click("#lockUnlock");
+    await page.waitForTimeout(400);
+    await page.evaluate(() => Store.updateSettings({ autoLockMin: 5 }));
+
+    // clickable savings levers & donut legend (loved-feature interactivity)
+    await visit("dashboard");
+    const lever = await page.$(".lever-row");
+    if (lever) {
+        await lever.click();
+        await page.waitForTimeout(350);
+        const title = await page.textContent("#viewTitle");
+        check("savings lever routes to its fix", ["Subscriptions", "Budgets", "Spending Habits"].some(t => title.includes(t)));
+        await visit("dashboard");
+    } else check("savings lever routes to its fix (lever present)", false);
+    await page.click('.donut-legend .li-link');
+    await page.waitForTimeout(350);
+    check("legend row routes to filtered transactions",
+        (await page.textContent("#viewTitle")).includes("Transactions") && (await page.inputValue("#txCatFilter")) !== "");
+    await page.selectOption("#txCatFilter", "");
+    await page.waitForTimeout(250);
+
     // disable: storage returns to plaintext
     await visit("settings");
     await page.click("#disablePin");

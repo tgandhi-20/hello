@@ -147,11 +147,13 @@
                 <span class="badge good">up to ${fmtShort(sl.monthlyTotal)}/mo · ${fmtShort(sl.yearlyTotal)}/yr</span></div>
             <div class="grid grid-2" style="gap:20px;align-items:start">
                 <div>
-                    ${sl.levers.map(l => `<div class="bar-row">
-                        <div class="bar-head"><span>${esc(l.label)}</span><span class="muted">${fmt(l.monthly)}/mo</span></div>
+                    ${sl.levers.map(l => {
+                        const dest = l.id === "subs" ? "subscriptions" : l.id === "budgets" ? "budgets" : "habits";
+                        return `<div class="bar-row lever-row" data-goto="${dest}" role="button" tabindex="0" title="Open ${dest}">
+                        <div class="bar-head"><span>${esc(l.label)} <span class="lever-arrow">→</span></span><span class="muted">${fmt(l.monthly)}/mo</span></div>
                         <div class="progress"><span style="width:${(l.monthly / max) * 100}%;background:var(--green)"></span></div>
                         <p class="muted" style="font-size:11.5px;margin-top:4px">${esc(l.detail)}</p>
-                    </div>`).join("")}
+                    </div>`; }).join("")}
                 </div>
                 <div>
                     <p class="muted" style="font-size:12px;margin-bottom:6px">If you act on all of it — cumulative savings over 12 months</p>
@@ -191,7 +193,7 @@
                 ${breakdown.length ? `<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
                     <div>${Charts.donut(breakdown)}</div>
                     <div class="donut-legend" style="flex:1;min-width:160px">
-                        ${breakdown.slice(0,7).map(d=>`<div class="li"><span class="dot" style="background:${d.color}"></span>${esc(d.label)}<span class="val">${fmt(d.value)}</span></div>`).join("")}
+                        ${breakdown.slice(0,7).map(d=>`<div class="li li-link" data-catgo="${esc(d.label)}" role="button" tabindex="0" title="See ${esc(d.label)} transactions"><span class="dot" style="background:${d.color}"></span>${catIcon(d.label)} ${esc(d.label)}<span class="val">${fmt(d.value)}</span></div>`).join("")}
                     </div></div>` : `<p class="muted">No expenses this period.</p>`}
             </div>`;
         const billsCard = `
@@ -960,7 +962,7 @@
             <div>
                 <div class="card mb-18">
                     <h3>Privacy &amp; security</h3>
-                    <p class="muted" style="font-size:12.5px;margin-bottom:12px">All data stays on this device — the app makes no network requests with your finances, enforced by a strict content-security policy. With app lock on, everything is also <strong>encrypted at rest</strong> (AES-256-GCM, key derived from your PIN) — unreadable without the PIN, even with full access to this device.</p>
+                    <p class="muted" style="font-size:12.5px;margin-bottom:12px">All data stays on this device — the app makes no network requests with your finances, enforced by a strict content-security policy. With app lock on, everything is also <strong>encrypted at rest</strong> (AES-256-GCM, key derived from your PIN) — unreadable without the PIN, even with full access to this device — and the app auto-locks after 5 minutes of inactivity.</p>
                     ${Store.state.settings.pinHash
                         ? `<div class="row-actions">
                             <span class="badge good">🔒 Locked & encrypted</span>
@@ -1062,6 +1064,11 @@
     /* ---------- per-view event wiring ---------- */
     function wireViewEvents() {
         $$("[data-goto]").forEach(b => b.addEventListener("click", () => goTo(b.dataset.goto)));
+        // keyboard activation for non-button interactive rows (levers, legend)
+        $$('[role="button"][data-goto], [role="button"][data-catgo]').forEach(el =>
+            el.addEventListener("keydown", e => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.click(); }
+            }));
         bindClick("#customizeDash", openCustomizeDash);
 
         // transactions
@@ -1713,6 +1720,17 @@
         bindClick("#obStart", () => { saveAnswers(); done(); closeModal(); toast("You're set — import your first statement", "success"); goTo("upload"); });
         bindClick("#obDemo", () => { saveAnswers(); done(); closeModal(); loadDemo(); });
     }
+
+    /* ---------- auto-lock on idle ---------- */
+    let lastActivity = Date.now();
+    ["pointerdown", "keydown", "touchstart"].forEach(ev =>
+        document.addEventListener(ev, () => { lastActivity = Date.now(); }, { passive: true }));
+    setInterval(() => {
+        const st = Store.state.settings;
+        if (!st.pinHash || $("#lockScreen")) return;
+        const mins = st.autoLockMin === undefined ? 5 : Number(st.autoLockMin);
+        if (mins > 0 && Date.now() - lastActivity > mins * 60000) showLockScreen();
+    }, 5000);
 
     /* ---------- boot ---------- */
     refreshMonthOptions();
