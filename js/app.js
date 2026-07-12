@@ -960,10 +960,10 @@
             <div>
                 <div class="card mb-18">
                     <h3>Privacy &amp; security</h3>
-                    <p class="muted" style="font-size:12.5px;margin-bottom:12px">All data stays on this device — the app makes no network requests with your finances, enforced by a strict content-security policy. Add a PIN so nobody who picks up your phone can open Fintrack.</p>
+                    <p class="muted" style="font-size:12.5px;margin-bottom:12px">All data stays on this device — the app makes no network requests with your finances, enforced by a strict content-security policy. With app lock on, everything is also <strong>encrypted at rest</strong> (AES-256-GCM, key derived from your PIN) — unreadable without the PIN, even with full access to this device.</p>
                     ${Store.state.settings.pinHash
                         ? `<div class="row-actions">
-                            <span class="badge good">🔒 App lock on</span>
+                            <span class="badge good">🔒 Locked & encrypted</span>
                             <button class="btn btn-ghost btn-sm" id="changePin">Change PIN</button>
                             <button class="btn btn-ghost btn-sm" id="lockNow">Lock now</button>
                             <button class="btn btn-ghost btn-sm danger" id="disablePin">Turn off</button>
@@ -1624,9 +1624,16 @@
         document.body.appendChild(el);
         const tryUnlock = async () => {
             const pin = $("#lockPin").value;
-            const st = Store.state.settings;
-            const hash = await sha256Hex(st.pinSalt + pin);
-            if (hash === st.pinHash) { el.remove(); }
+            let ok = false;
+            if (Store.isVaultLocked()) {
+                // encrypted at rest: a successful AES-GCM decrypt IS the PIN check
+                ok = await Store.unlockVault(pin);
+                if (ok) { refreshMonthOptions(); renderActive(); }
+            } else {
+                const st = Store.state.settings;
+                ok = (await sha256Hex(st.pinSalt + pin)) === st.pinHash;
+            }
+            if (ok) el.remove();
             else { $("#lockErr").hidden = false; $("#lockPin").value = ""; $("#lockPin").focus(); }
         };
         $("#lockUnlock").addEventListener("click", tryUnlock);
@@ -1662,7 +1669,8 @@
             const salt = randomSalt();
             const hash = await sha256Hex(salt + p1);
             Store.updateSettings({ pinSalt: salt, pinHash: hash });
-            closeModal(); toast("App lock enabled", "success"); renderActive();
+            await Store.enableVault(p1); // encrypt everything at rest with this PIN
+            closeModal(); toast("App lock on — data now encrypted at rest", "success"); renderActive();
         });
     }
     function openDisablePin() {
@@ -1675,6 +1683,7 @@
             const hash = await sha256Hex(st.pinSalt + ($("#pinOff").value || ""));
             if (hash !== st.pinHash) return toast("Wrong PIN", "error");
             Store.updateSettings({ pinHash: null, pinSalt: null });
+            await Store.disableVault(); // rewrite storage as plaintext
             closeModal(); toast("App lock disabled", "success"); renderActive();
         });
     }
@@ -1708,6 +1717,6 @@
     /* ---------- boot ---------- */
     refreshMonthOptions();
     renderActive();
-    if (Store.state.settings.pinHash && window.crypto && crypto.subtle) showLockScreen();
+    if ((Store.isVaultLocked() || Store.state.settings.pinHash) && window.crypto && crypto.subtle) showLockScreen();
     else maybeOnboard();
 })();

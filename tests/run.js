@@ -463,17 +463,20 @@ not-a-date,Mystery,-5
     await page.selectOption("#txCatFilter", "");
     await page.waitForTimeout(250);
 
-    // app lock: set PIN, lock now, wrong PIN rejected, right PIN unlocks, disable
+    // app lock: PIN + AES-GCM encryption at rest
+    const txCountBefore = (await state()).transactions.length;
     await visit("settings");
     await page.click("#setPin");
     await page.waitForTimeout(250);
     await page.fill("#pinNew", "4242");
     await page.fill("#pinNew2", "4242");
     await page.click("#pinSave");
-    await page.waitForTimeout(400);
-    check("PIN stored as salted hash (not plaintext)", await page.evaluate(() => {
-        const s = JSON.parse(localStorage.getItem("fintrack.v1")).settings;
-        return !!s.pinHash && /^[0-9a-f]{64}$/.test(s.pinHash) && !JSON.stringify(s).includes("4242");
+    await page.waitForTimeout(900); // PBKDF2 (150k iters) + encrypt + write
+    check("data encrypted at rest (vault envelope, no plaintext)", await page.evaluate(() => {
+        const raw = localStorage.getItem("fintrack.v1");
+        const p = JSON.parse(raw);
+        return p.__vault === true && !!p.kdfSalt && !!p.data &&
+            !raw.includes("4242") && !raw.includes("Payroll") && !raw.includes("transactions");
     }));
     await page.click("#lockNow");
     await page.waitForTimeout(300);
@@ -486,21 +489,31 @@ not-a-date,Mystery,-5
     await page.click("#lockUnlock");
     await page.waitForTimeout(300);
     check("correct PIN unlocks", !(await page.$("#lockScreen")));
-    // locked on reload too
+    // reload: boot from the encrypted payload alone
     await page.reload();
-    await page.waitForTimeout(500);
-    check("app locked on reload", await page.isVisible("#lockScreen"));
+    await page.waitForTimeout(600);
+    check("app locked on reload (vault)", await page.isVisible("#lockScreen"));
+    await page.fill("#lockPin", "9999");
+    await page.click("#lockUnlock");
+    await page.waitForTimeout(700);
+    check("wrong PIN cannot decrypt vault", await page.isVisible("#lockScreen"));
     await page.fill("#lockPin", "4242");
     await page.click("#lockUnlock");
-    await page.waitForTimeout(300);
-    // disable pin
+    await page.waitForTimeout(900);
+    check("vault decrypts and app restores", !(await page.$("#lockScreen")));
+    check("all transactions survive encrypt/decrypt round-trip", await page.evaluate(
+        n => window.Store.state.transactions.length === n, txCountBefore));
+    // disable: storage returns to plaintext
     await visit("settings");
     await page.click("#disablePin");
     await page.waitForTimeout(250);
     await page.fill("#pinOff", "4242");
     await page.click("#pinOffSave");
-    await page.waitForTimeout(300);
-    check("app lock disables with correct PIN", !(await state()).settings.pinHash);
+    await page.waitForTimeout(600);
+    check("disable restores plaintext storage", await page.evaluate(() => {
+        const p = JSON.parse(localStorage.getItem("fintrack.v1"));
+        return !p.__vault && Array.isArray(p.transactions) && !p.settings.pinHash;
+    }));
 
     /* ---------- mobile viewport ---------- */
     const mob = await browser.newPage({ viewport: { width: 390, height: 844 } });

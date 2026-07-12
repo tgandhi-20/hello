@@ -129,7 +129,16 @@ js/charts.js        Inline-SVG charts (donut, gauge, bars, line)
 js/app.js           App controller: all views, analytics, health, advice
 ```
 
-## Privacy
+## Privacy & security
 
 All parsing, storage and analysis happen locally in your browser. No network
-requests are made with your financial data.
+requests are made with your financial data — enforced by a same-origin-only
+Content-Security-Policy, a no-referrer policy, and a frame-busting guard.
+
+With **app lock** enabled (Settings → Privacy & security), the entire store
+is **encrypted at rest**: your PIN is stretched with PBKDF2 (150,000
+iterations, SHA-256) into an AES-256-GCM key, and the ciphertext is all that
+ever touches disk. A wrong PIN simply fails authenticated decryption; without
+the PIN the data is unreadable even with full access to the device. Disabling
+the lock rewrites storage as plaintext; forgetting the PIN requires a full
+data wipe — that's the trade-off that makes the protection real.

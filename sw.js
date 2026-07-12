@@ -1,5 +1,5 @@
 /* Fintrack service worker — offline-first caching of the app shell */
-const CACHE = "fintrack-v5";
+const CACHE = "fintrack-v6";
 const ASSETS = [
     "./",
     "./index.html",

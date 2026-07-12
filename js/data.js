@@ -42,11 +42,77 @@
         return out;
     }
 
+    /* ---------- Encrypted vault (AES-GCM, key derived from PIN) ----------
+       When app lock is enabled the whole store is encrypted at rest:
+       PBKDF2(PIN, salt, 150k iters) -> AES-256-GCM. Without the PIN the
+       payload is cryptographically unreadable, even with device access. */
+    const VAULT_ITERS = 150000;
+    let encKey = null;       // in-memory key while unlocked
+    let vaultSalt = null;
+    let vaultLocked = false; // an encrypted payload exists and isn't unlocked yet
+    let writeSeq = 0;
+
+    const hexToBuf = h => new Uint8Array((h.match(/.{2}/g) || []).map(b => parseInt(b, 16)));
+    const bufToHex = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, "0")).join("");
+    function bufToB64(buf) {
+        const bytes = new Uint8Array(buf);
+        let bin = "";
+        for (let i = 0; i < bytes.length; i += 0x8000)
+            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        return btoa(bin);
+    }
+    const b64ToBuf = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+    function randomHex(n) {
+        const a = new Uint8Array(n); crypto.getRandomValues(a); return bufToHex(a);
+    }
+    async function deriveKey(pin, saltHex) {
+        const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(String(pin)), "PBKDF2", false, ["deriveKey"]);
+        return crypto.subtle.deriveKey(
+            { name: "PBKDF2", salt: hexToBuf(saltHex), iterations: VAULT_ITERS, hash: "SHA-256" },
+            base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    }
+    async function saveEncrypted() {
+        const seq = ++writeSeq;
+        try {
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, encKey,
+                new TextEncoder().encode(JSON.stringify(state)));
+            if (seq !== writeSeq) return; // a newer write superseded this one
+            localStorage.setItem(STORE_KEY, JSON.stringify({ __vault: true, v: 1, kdfSalt: vaultSalt, iv: bufToHex(iv), data: bufToB64(ct) }));
+        } catch (e) { console.error("Encrypted save failed", e); }
+    }
+    async function unlockVault(pin) {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(STORE_KEY));
+            if (!parsed || !parsed.__vault) return false;
+            const key = await deriveKey(pin, parsed.kdfSalt);
+            const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: hexToBuf(parsed.iv) }, key, b64ToBuf(parsed.data));
+            state = migrate(JSON.parse(new TextDecoder().decode(plain)));
+            encKey = key; vaultSalt = parsed.kdfSalt; vaultLocked = false;
+            return true;
+        } catch (e) { return false; } // wrong PIN => GCM auth failure
+    }
+    async function enableVault(pin) {
+        vaultSalt = randomHex(16);
+        encKey = await deriveKey(pin, vaultSalt);
+        await saveEncrypted();
+    }
+    async function disableVault() {
+        encKey = null; vaultSalt = null;
+        save(); // rewrites plaintext
+    }
+    const isVaultLocked = () => vaultLocked;
+
     function load() {
         try {
             const raw = localStorage.getItem(STORE_KEY);
             if (!raw) return structuredClone(DEFAULT_STATE);
-            return migrate(JSON.parse(raw));
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.__vault) {
+                vaultLocked = true; vaultSalt = parsed.kdfSalt;
+                return structuredClone(DEFAULT_STATE); // real state arrives after unlock
+            }
+            return migrate(parsed);
         } catch (e) {
             console.error("Failed to load state", e);
             return structuredClone(DEFAULT_STATE);
@@ -56,6 +122,8 @@
     let state = load();
 
     function save() {
+        if (encKey) { saveEncrypted(); return; }
+        writeSeq++; // supersede any in-flight encrypted write (e.g. right after disabling the vault)
         try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
         catch (e) { console.error("Failed to save", e); }
     }
@@ -268,6 +336,7 @@
     global.Store = {
         get state() { return state; },
         uid, save, reset, importState, exportState,
+        unlockVault, enableVault, disableVault, isVaultLocked,
         addTransaction, addTransactions, updateTransaction, deleteTransaction,
         setBudget, setRollover,
         addGoal, updateGoal, deleteGoal,
