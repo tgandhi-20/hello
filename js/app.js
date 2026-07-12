@@ -35,6 +35,37 @@
         host.appendChild(el);
         setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el.remove(), 300); }, 3000);
     }
+
+    /* ---------- first-visit hints (teach each view once) ---------- */
+    function hintsSeen() {
+        try { return JSON.parse(localStorage.getItem("fintrack.hints") || "{}"); } catch (e) { return {}; }
+    }
+    function hintBanner(id, text) {
+        if (hintsSeen()[id]) return "";
+        return `<div class="hint-banner"><span class="hint-ico">💡</span><p>${text}</p>
+            <button class="link-btn" data-hintdismiss="${id}">Got it</button></div>`;
+    }
+
+    /* ---------- count-up micro-animation for money figures ---------- */
+    function animateNumbers(root) {
+        if (!root || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
+        root.querySelectorAll(".stat-value, .big-num").forEach(el => {
+            const m = /^([^0-9-]*)(-?[\d,]+(?:\.\d+)?)(.*)$/.exec(el.textContent);
+            if (!m) return;
+            const target = parseFloat(m[2].replace(/,/g, ""));
+            if (!isFinite(target) || Math.abs(target) < 1) return;
+            const dec = m[2].includes(".") ? (m[2].split(".")[1] || "").length : 0;
+            const fmtN = v => v.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec });
+            const start = performance.now(), dur = 450;
+            const step = now => {
+                const p = Math.min(1, (now - start) / dur);
+                const eased = 1 - Math.pow(1 - p, 3);
+                el.textContent = m[1] + fmtN(target * eased) + m[3];
+                if (p < 1) requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+        });
+    }
     // Keep Tab cycling inside a dialog (a11y: focus must not escape to the page)
     function trapFocus(container) {
         container.addEventListener("keydown", e => {
@@ -275,6 +306,7 @@
             else if (w.id === "recent") pieces.push(widgetRecent(ctx));
         });
         return `
+        ${hintBanner("dashboard", "This is your money at a glance. Tap any insight, lever or category to jump to the transactions behind it — and use <strong>⚙ Customize layout</strong> to make the dashboard yours.")}
         <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
             <button class="btn btn-sm btn-ghost" id="customizeDash">⚙ Customize layout</button>
         </div>
@@ -459,6 +491,7 @@
         const catOptions = `<option value="">All categories</option>` + Categorize.names().map(n => `<option ${n===txCatFilter?"selected":""}>${n}</option>`).join("");
         const tagOptions = `<option value="">All tags</option>` + allTags.map(t => `<option ${t===txTagFilter?"selected":""}>${esc(t)}</option>`).join("");
         return `
+        ${hintBanner("transactions", "Search by name, note or #tag; change a category right in the list; and use <strong>Split</strong> to divide one purchase across buckets.")}
         <div class="section-head">
             <p class="muted">${txs.length} transactions · ${monthLabel(currentMonth)}</p>
             <div class="row-actions">
@@ -671,6 +704,7 @@
             ${leftToAssign >= 0 ? `<button class="btn btn-sm" id="assignHelp">Assign with 50/30/20</button>` : ""}
         </div>` : "";
         return `
+        ${hintBanner("budgets", "Tap a bucket's icon to see its transactions. Turn on <strong>rollover</strong> for envelope-style budgeting, or start from the <strong>50/30/20 template</strong>.")}
         ${assignStrip}
         <div class="grid grid-4 mb-18">
             <div class="card" style="display:flex;align-items:center;gap:16px">
@@ -1055,6 +1089,7 @@
         closeSheet();
         window.scrollTo({ top: 0 });
         renderActive();
+        animateNumbers($("#view-" + view)); // count-up only on view changes, not every re-render
     }
 
     /* ---------- global nav ---------- */
@@ -1083,6 +1118,11 @@
     /* ---------- per-view event wiring ---------- */
     function wireViewEvents() {
         $$("[data-goto]").forEach(b => b.addEventListener("click", () => goTo(b.dataset.goto)));
+        $$("[data-hintdismiss]").forEach(b => b.addEventListener("click", () => {
+            const seen = hintsSeen(); seen[b.dataset.hintdismiss] = true;
+            try { localStorage.setItem("fintrack.hints", JSON.stringify(seen)); } catch (e) {}
+            const banner = b.closest(".hint-banner"); if (banner) banner.remove();
+        }));
         // keyboard activation for non-button interactive rows (levers, legend, insights)
         $$('[role="button"][data-goto], [role="button"][data-catgo], [role="button"][data-insq]').forEach(el =>
             el.addEventListener("keydown", e => {

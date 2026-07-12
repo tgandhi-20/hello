@@ -623,7 +623,32 @@ not-a-date,Mystery,-5
     await mob.waitForTimeout(250);
     check("mobile: FAB opens add-transaction", await mob.isVisible("#mSave"));
     await mob.keyboard.press("Escape");
+    // native card-style transaction rows on mobile
+    await mob.click('.bnav-item[data-view="transactions"]');
+    await mob.waitForTimeout(350);
+    check("mobile: transaction rows render as cards (grid)", await mob.$eval(
+        "[data-txtable] tbody tr", el => getComputedStyle(el).display === "grid"));
+    check("mobile: table header hidden in card mode", await mob.$eval(
+        "[data-txtable] thead", el => getComputedStyle(el).display === "none"));
     await mob.close();
+
+    /* ---------- first-visit hints ---------- */
+    const hintCtx = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    hintCtx.on("pageerror", e => errors.push("hint pageerror: " + e.message));
+    await hintCtx.goto(APP);
+    await hintCtx.waitForTimeout(400);
+    if (await hintCtx.isVisible("#obDemo")) { await hintCtx.click("#obDemo"); await hintCtx.waitForTimeout(600); }
+    check("hint banner on first dashboard visit", await hintCtx.isVisible(".hint-banner"));
+    await hintCtx.click("[data-hintdismiss]");
+    await hintCtx.waitForTimeout(300);
+    check("hint dismisses in place", !(await hintCtx.isVisible(".hint-banner")));
+    await hintCtx.reload();
+    await hintCtx.waitForTimeout(500);
+    check("dismissed hint stays gone after reload", !(await hintCtx.isVisible("#view-dashboard .hint-banner")));
+    await hintCtx.click('.nav-item[data-view="budgets"]');
+    await hintCtx.waitForTimeout(300);
+    check("budgets has its own first-visit hint", await hintCtx.isVisible("#view-budgets .hint-banner"));
+    await hintCtx.close();
 
     /* ---------- summary ---------- */
     console.log("---");
