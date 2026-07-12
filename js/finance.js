@@ -284,7 +284,7 @@
             const median = amounts[Math.floor(amounts.length / 2)];
             curTx.filter(t => (-t.amount) >= Math.max(100, median * 4))
                 .sort((a, b) => a.amount - b.amount).slice(0, 2)
-                .forEach(t => out.push({ kind: "large", severity: "info", cat: t.category,
+                .forEach(t => out.push({ kind: "large", severity: "info", cat: t.category, q: t.description,
                     title: `Large expense: ${t.description}`,
                     detail: `${t.date} · well above your typical transaction.`,
                     value: -t.amount }));
@@ -302,7 +302,7 @@
             for (let i = 1; i < list.length; i++) {
                 const gap = (new Date(list[i].date) - new Date(list[i - 1].date)) / 86400000;
                 if (gap <= 2 && gap >= 0) {
-                    out.push({ kind: "duplicate", severity: "bad", cat: list[i].category,
+                    out.push({ kind: "duplicate", severity: "bad", cat: list[i].category, q: list[i].description,
                         title: `Possible duplicate charge: ${list[i].description}`,
                         detail: `Charged twice within ${gap === 0 ? "the same day" : Math.round(gap) + " day(s)"} (${list[i - 1].date} and ${list[i].date}).`,
                         value: -list[i].amount });

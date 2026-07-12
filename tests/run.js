@@ -244,9 +244,31 @@ function startServer() {
     await visit("transactions");
     await page.click("#addTxBtn");
     await page.waitForTimeout(200);
+    // focus trap: 25 tabs must never leave the dialog
+    let trapped = true;
+    for (let i = 0; i < 25; i++) {
+        await page.keyboard.press("Tab");
+        const inside = await page.evaluate(() => !!document.activeElement.closest("#modal"));
+        if (!inside) { trapped = false; break; }
+    }
+    check("Tab focus stays trapped inside modal", trapped);
     await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
     check("Esc closes modal", (await page.getAttribute("#modalBackdrop", "hidden")) !== null);
+
+    /* ---------- insight rows route to their transactions ---------- */
+    await visit("dashboard");
+    const insRow = await page.$("#view-dashboard .metric.lever-row");
+    if (insRow) {
+        await insRow.click();
+        await page.waitForTimeout(350);
+        const onTx = (await page.textContent("#viewTitle")).includes("Transactions");
+        const filtered = (await page.inputValue("#txCatFilter")) !== "" || (await page.inputValue("#txSearch")) !== "";
+        check("insight row opens filtered transactions", onTx && filtered);
+        await page.fill("#txSearch", "");
+        await page.selectOption("#txCatFilter", "");
+        await page.waitForTimeout(300);
+    } else check("insight row opens filtered transactions (row present)", false);
 
     /* ---------- service worker ---------- */
     await page.waitForTimeout(400);

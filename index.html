@@ -79,7 +79,7 @@
                 <div class="topbar-right">
                     <label class="month-picker">
                         <span>Month</span>
-                        <input type="month" id="monthFilter">
+                        <input type="month" id="monthFilter" aria-label="Filter by month">
                     </label>
                     <button class="theme-toggle" id="themeToggle" aria-label="Toggle light or dark theme" title="Toggle theme">◐</button>
                 </div>
@@ -132,7 +132,7 @@
     </div>
 
     <div class="modal-backdrop" id="modalBackdrop" hidden>
-        <div class="modal" id="modal"></div>
+        <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
     </div>
     <div class="toast-host" id="toastHost"></div>
 

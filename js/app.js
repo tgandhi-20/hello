@@ -35,6 +35,19 @@
         host.appendChild(el);
         setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el.remove(), 300); }, 3000);
     }
+    // Keep Tab cycling inside a dialog (a11y: focus must not escape to the page)
+    function trapFocus(container) {
+        container.addEventListener("keydown", e => {
+            if (e.key !== "Tab") return;
+            const f = Array.from(container.querySelectorAll(
+                'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+            if (!f.length) return;
+            const first = f[0], last = f[f.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && (document.activeElement === last || !container.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+        });
+    }
+    trapFocus($("#modal"));
     function openModal(html) {
         $("#modal").innerHTML = html;
         $("#modalBackdrop").hidden = false;
@@ -173,10 +186,11 @@
         <div class="card mb-18">
             <h3>Insights · ${monthLabel(activeMonth())}</h3>
             <div class="metric-list">
-                ${ins.map(i => `<div class="metric">
+                ${ins.map(i => `<div class="metric lever-row" role="button" tabindex="0" title="See the transactions behind this"
+                    ${i.q ? `data-insq="${esc(i.q)}"` : `data-catgo="${esc(i.cat)}"`}>
                     <div class="m-ico" style="background:color-mix(in srgb, ${insColor[i.severity]} 14%, transparent);color:${insColor[i.severity]}">${insIcon[i.kind] || "✦"}</div>
                     <div class="m-body" style="flex:1">
-                        <div style="display:flex;justify-content:space-between;gap:10px"><h4>${esc(i.title)}</h4><span style="font-weight:700;white-space:nowrap">${fmt(i.value)}</span></div>
+                        <div style="display:flex;justify-content:space-between;gap:10px"><h4>${esc(i.title)} <span class="lever-arrow">→</span></h4><span style="font-weight:700;white-space:nowrap">${fmt(i.value)}</span></div>
                         <p>${esc(i.detail)}</p>
                     </div>
                 </div>`).join("")}
@@ -464,7 +478,7 @@
                 <tbody>${txs.slice(0, txShown).map(t => `<tr data-id="${t.id}">
                     <td class="muted">${esc(t.date)}</td>
                     <td>${esc(t.description)}${t.member?(m=>m?` <span class="member-chip" title="${esc(m.name)}">${esc(m.name.slice(0,2).toUpperCase())}</span>`:"")(Store.state.members.find(x=>x.id===t.member)):""}${(t.tags&&t.tags.length)?` ${t.tags.map(tag=>`<span class="tag-chip" data-tagclick="${esc(tag)}">#${esc(tag)}</span>`).join(" ")}`:""}${t.note?`<br><span class="muted" style="font-size:11.5px">📝 ${esc(t.note)}</span>`:""}</td>
-                    <td><select class="cat-select" data-recat="${t.id}">${Categorize.names().map(n => `<option ${n===t.category?"selected":""}>${n}</option>`).join("")}</select></td>
+                    <td><select class="cat-select" data-recat="${t.id}" aria-label="Category for ${esc(t.description)}">${Categorize.names().map(n => `<option ${n===t.category?"selected":""}>${n}</option>`).join("")}</select></td>
                     <td style="text-align:right" class="${t.amount<0?"amount-neg":"amount-pos"}">${fmtSigned(t.amount)}</td>
                     <td style="text-align:right;white-space:nowrap">${t.amount<0?`<button class="link-btn" data-splittx="${t.id}">Split</button> `:""}<button class="link-btn" data-edittx="${t.id}">Edit</button> <button class="link-btn danger" data-deltx="${t.id}">Delete</button></td>
                 </tr>`).join("")}</tbody>
@@ -1069,11 +1083,16 @@
     /* ---------- per-view event wiring ---------- */
     function wireViewEvents() {
         $$("[data-goto]").forEach(b => b.addEventListener("click", () => goTo(b.dataset.goto)));
-        // keyboard activation for non-button interactive rows (levers, legend)
-        $$('[role="button"][data-goto], [role="button"][data-catgo]').forEach(el =>
+        // keyboard activation for non-button interactive rows (levers, legend, insights)
+        $$('[role="button"][data-goto], [role="button"][data-catgo], [role="button"][data-insq]').forEach(el =>
             el.addEventListener("keydown", e => {
                 if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.click(); }
             }));
+        // insight rows with a merchant query open transactions searched for it
+        $$("[data-insq]").forEach(el => el.addEventListener("click", () => {
+            txSearch = el.dataset.insq; txCatFilter = ""; txTagFilter = ""; txShown = TX_PAGE;
+            goTo("transactions");
+        }));
         bindClick("#customizeDash", openCustomizeDash);
 
         // transactions
@@ -1125,7 +1144,7 @@
         bindClick("#templateBudget", applyTemplate503020);
         bindClick("#assignHelp", applyTemplate503020);
         $$("[data-catgo]").forEach(b => b.addEventListener("click", () => {
-            txCatFilter = b.dataset.catgo; txSearch = ""; txTagFilter = "";
+            txCatFilter = b.dataset.catgo; txSearch = ""; txTagFilter = ""; txShown = TX_PAGE;
             goTo("transactions");
         }));
 
@@ -1680,6 +1699,7 @@
             if (ok) el.remove();
             else { $("#lockErr").hidden = false; $("#lockPin").value = ""; $("#lockPin").focus(); }
         };
+        trapFocus(el);
         $("#lockUnlock").addEventListener("click", tryUnlock);
         $("#lockPin").addEventListener("keydown", e => { if (e.key === "Enter") tryUnlock(); });
         $("#lockForgot").addEventListener("click", () => {
