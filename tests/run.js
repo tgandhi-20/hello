@@ -69,7 +69,7 @@ function startServer() {
 
     /* ---------- dashboard ---------- */
     const dash = await page.textContent("#view-dashboard");
-    for (const label of ["Safe to spend", "Spend pace", "Net worth", "Upcoming bills", "Recent transactions"])
+    for (const label of ["Safe to spend", "Spend pace", "Net worth", "Bills & subscriptions", "Recent transactions"])
         check("dashboard shows " + label, dash.includes(label));
     check("dashboard donut excludes neutral Savings", !/Spending by category[\s\S]*?Savings/.test(dash));
 
@@ -313,6 +313,129 @@ function startServer() {
         (await state()).transactions.find(t => t.description === "Priya Groceries").member === memberId);
     const rep2 = await visit("reports");
     check("reports shows spending by member", rep2.includes("Spending by member") && rep2.includes("Priya"));
+
+    /* ---------- loved-feature placement & customizable dashboard ---------- */
+    await visit("dashboard");
+    check("customize button present", await page.isVisible("#customizeDash"));
+    await page.click("#customizeDash");
+    await page.waitForTimeout(250);
+    check("customize modal lists widgets", (await page.textContent("#modal")).includes("Spending by category"));
+    // toggle "Recent transactions" off (last widget) and move insights up
+    const toggles = await page.$$("[data-wtog]");
+    await page.evaluate(() => {
+        const cbs = document.querySelectorAll("[data-wtog]");
+        const last = cbs[cbs.length - 1];
+        last.checked = false;
+        last.dispatchEvent(new Event("change"));
+    });
+    await page.click("#wSave");
+    await page.waitForTimeout(400);
+    const dashCustom = await page.textContent("#view-dashboard");
+    check("hidden widget disappears", !dashCustom.includes("Recent transactions"));
+    check("layout persists in settings", ((await state()).settings.dashboardWidgets || []).some(w => w.on === false));
+    // restore
+    await page.click("#customizeDash");
+    await page.waitForTimeout(250);
+    await page.evaluate(() => {
+        const cbs = document.querySelectorAll("[data-wtog]");
+        const last = cbs[cbs.length - 1];
+        last.checked = true;
+        last.dispatchEvent(new Event("change"));
+    });
+    await page.click("#wSave");
+    await page.waitForTimeout(300);
+    check("widget restores", (await page.textContent("#view-dashboard")).includes("Recent transactions"));
+    check("Rocket-style savings framing on dashboard", /Saving .*\/mo|Find ones to cancel/.test(await page.textContent("#view-dashboard")));
+    const budA = await visit("budgets");
+    check("left-to-assign strip present", budA.includes("doesn't have a job yet") || budA.includes("more than your income") || Math.abs(4300 - Object.values((await state()).budgets).reduce((a,b)=>a+b,0) - 430) < 10);
+
+    /* ---------- stress: XSS injection attempts ---------- */
+    await page.evaluate(() => { window.__xss = false; });
+    await visit("transactions");
+    await page.click("#addTxBtn");
+    await page.waitForTimeout(200);
+    await page.fill("#mDesc", `<img src=x onerror="window.__xss=true">`);
+    await page.fill("#mAmt", "-13.37");
+    await page.fill("#mNote", `"><script>window.__xss=true</script>`);
+    await page.fill("#mTags", `<b>evil</b>`);
+    await page.click("#mSave");
+    await page.waitForTimeout(400);
+    await page.fill("#txSearch", "img src");
+    await page.waitForTimeout(500);
+    check("XSS: markup rendered inert as text", (await page.textContent("#view-transactions")).includes('<img src=x'));
+    check("XSS: no script executed", !(await page.evaluate(() => window.__xss)));
+    check("XSS: no img element injected into row", !(await page.$("#view-transactions td img")));
+    await page.fill("#txSearch", "");
+    await page.waitForTimeout(300);
+    // member name injection
+    await visit("settings");
+    await page.fill("#memberName", `<script>window.__xss=true</script>`);
+    await page.click("#addMemberBtn");
+    await page.waitForTimeout(300);
+    check("XSS: member name inert", !(await page.evaluate(() => window.__xss)));
+
+    /* ---------- stress: 1200-row import ---------- */
+    const bigRows = ["Date,Description,Amount"];
+    for (let i = 0; i < 1200; i++) {
+        const d = String(1 + (i % 28)).padStart(2, "0");
+        const mm = String(1 + (i % 6)).padStart(2, "0");
+        bigRows.push(`2026-${mm}-${d},Bulk Merchant ${i},-${(5 + (i % 90) + 0.25).toFixed(2)}`);
+    }
+    await visit("upload");
+    await page.fill("#pasteArea", bigRows.join("\n"));
+    const bulkStart = Date.now();
+    await page.click("#parsePaste");
+    await page.waitForSelector("#view-transactions.active", { timeout: 15000 });
+    await page.waitForTimeout(600);
+    const elapsed = Date.now() - bulkStart;
+    console.log(`  1200-row import took ${elapsed}ms`);
+    check("bulk import completes under 10s", elapsed < 10000);
+    check("bulk rows stored", (await state()).transactions.filter(t => t.description.startsWith("Bulk Merchant")).length === 1200);
+    // dashboard still renders quickly with big dataset
+    const dashStart = Date.now();
+    await visit("dashboard");
+    check("dashboard renders <3s with 1300+ transactions", Date.now() - dashStart < 3000);
+
+    /* ---------- stress: malformed CSV ---------- */
+    await visit("upload");
+    await page.fill("#pasteArea", `garbage line without commas
+,,,,
+Date,Description,Amount
+not-a-date,Mystery,-5
+2026-13-45,Bad Date,-5
+2026-06-15,"Quoted, With Comma",-12.50
+2026-06-16,No Amount Here,abc
+2026-06-17,Huge,-1000000000
+2026-06-18,Tiny,-0.004`);
+    await page.click("#parsePaste");
+    await page.waitForTimeout(500);
+    const st3 = await state();
+    check("malformed CSV: quoted comma row imported", st3.transactions.some(t => t.description === "Quoted, With Comma"));
+    check("malformed CSV: bad rows skipped without crash", !st3.transactions.some(t => t.description === "Mystery" || t.description === "No Amount Here"));
+    check("malformed CSV: extreme amount stored", st3.transactions.some(t => t.amount === -1000000000));
+
+    /* ---------- stress: split with awkward rounding ---------- */
+    await visit("transactions");
+    await page.fill("#txSearch", "Huge");
+    await page.waitForTimeout(400);
+    await page.click("[data-splittx]");
+    await page.waitForTimeout(250);
+    await page.fill('[data-samt="0"]', "999999999.99");
+    await page.fill('[data-samt="1"]', "0.01");
+    await page.waitForTimeout(200);
+    check("split validates to the cent on huge amounts", !(await page.isDisabled("#spSave")));
+    await page.keyboard.press("Escape");
+    await page.fill("#txSearch", "");
+    await page.waitForTimeout(300);
+
+    /* ---------- stress: rapid navigation ---------- */
+    for (let round = 0; round < 3; round++) {
+        for (const v of ["dashboard", "networth", "reports", "transactions", "budgets", "goals", "habits", "health", "advice", "settings"]) {
+            await page.click(`.nav-item[data-view="${v}"]`);
+        }
+    }
+    await page.waitForTimeout(500);
+    check("rapid navigation survives without errors", errors.length === 0);
 
     /* ---------- mobile viewport ---------- */
     const mob = await browser.newPage({ viewport: { width: 390, height: 844 } });

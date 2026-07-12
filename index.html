@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Fintrack — Personal Finance & Budgeting</title>
     <meta name="description" content="Import bank statements, budget by category, track net worth, subscriptions, bills and saving goals — all private, on your device.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="theme-color" content="#0d0d0d">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -49,9 +50,9 @@
                 <button class="nav-item" data-view="reports"><span class="nav-ico">▤</span> Reports</button>
                 <div class="nav-group">Money in &amp; out</div>
                 <button class="nav-item" data-view="transactions"><span class="nav-ico">≡</span> Transactions</button>
-                <button class="nav-item" data-view="upload"><span class="nav-ico">↥</span> Import</button>
-                <button class="nav-item" data-view="bills"><span class="nav-ico">🗓</span> Bills</button>
                 <button class="nav-item" data-view="subscriptions"><span class="nav-ico">🔁</span> Subscriptions</button>
+                <button class="nav-item" data-view="bills"><span class="nav-ico">🗓</span> Bills</button>
+                <button class="nav-item" data-view="upload"><span class="nav-ico">↥</span> Import</button>
                 <div class="nav-group">Plan</div>
                 <button class="nav-item" data-view="budgets"><span class="nav-ico">◑</span> Budgets</button>
                 <button class="nav-item" data-view="goals"><span class="nav-ico">◎</span> Goals</button>
@@ -103,7 +104,7 @@
         <button class="bnav-item active" data-view="dashboard"><span class="bico">◧</span>Home</button>
         <button class="bnav-item" data-view="transactions"><span class="bico">≡</span>Activity</button>
         <button class="bnav-item" data-view="budgets"><span class="bico">◑</span>Budgets</button>
-        <button class="bnav-item" data-view="goals"><span class="bico">◎</span>Goals</button>
+        <button class="bnav-item" data-view="subscriptions"><span class="bico">🔁</span>Subs</button>
         <button class="bnav-item" id="moreNavBtn"><span class="bico">⋯</span>More</button>
     </nav>
     <button class="fab" id="fabAdd" aria-label="Add transaction">+</button>
@@ -113,11 +114,11 @@
         <div class="sheet" id="moreSheet">
             <div class="sheet-handle"></div>
             <div class="sheet-grid">
+                <button class="sheet-item" data-view="goals"><span class="bico">◎</span>Goals</button>
                 <button class="sheet-item" data-view="networth"><span class="bico">◈</span>Net Worth</button>
                 <button class="sheet-item" data-view="reports"><span class="bico">▤</span>Reports</button>
-                <button class="sheet-item" data-view="upload"><span class="bico">↥</span>Import</button>
                 <button class="sheet-item" data-view="bills"><span class="bico">🗓</span>Bills</button>
-                <button class="sheet-item" data-view="subscriptions"><span class="bico">🔁</span>Subs</button>
+                <button class="sheet-item" data-view="upload"><span class="bico">↥</span>Import</button>
                 <button class="sheet-item" data-view="habits"><span class="bico">∿</span>Habits</button>
                 <button class="sheet-item" data-view="health"><span class="bico">♥</span>Health</button>
                 <button class="sheet-item" data-view="advice"><span class="bico">✦</span>Advice</button>
@@ -149,7 +150,12 @@
                   var host = document.getElementById("toastHost");
                   var el = document.createElement("div");
                   el.className = "toast success";
-                  el.innerHTML = 'A new version of Fintrack is ready. <button class="link-btn" onclick="location.reload()">Refresh</button>';
+                  el.appendChild(document.createTextNode("A new version of Fintrack is ready. "));
+                  var btn = document.createElement("button");
+                  btn.className = "link-btn";
+                  btn.textContent = "Refresh";
+                  btn.addEventListener("click", function () { location.reload(); });
+                  el.appendChild(btn);
                   host.appendChild(el);
                 }
               });

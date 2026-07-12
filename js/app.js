@@ -83,46 +83,32 @@
     /* ============================================================
        DASHBOARD
        ============================================================ */
-    function renderDashboard() {
-        if (Store.state.transactions.length === 0 && Store.state.accounts.length === 0) {
-            return `<div class="empty"><div class="big">◧</div>
-                <p>No data yet. Import a bank statement or load sample data to get started.</p>
-                <button class="btn" data-goto="upload">Import a statement</button></div>`;
-        }
-        const txs = Store.txForMonth(currentMonth);
-        const s = summarize(txs);
-        const breakdown = catBreakdown(s.byCat);
-        const series = monthlySeries(6);
-        const nw = Finance.netWorth();
-        const sts = Finance.safeToSpend(activeMonth());
-        const pace = Finance.spendPace(activeMonth());
-        const upcoming = upcomingBills().slice(0, 4);
+    /* Dashboard is a customizable set of widgets (Monarch-style):
+       users can toggle and reorder them; the layout persists. */
+    const DASH_WIDGETS = [
+        { id: "overview", label: "Safe to spend & key numbers" },
+        { id: "insights", label: "Insights & alerts" },
+        { id: "spending", label: "Spending by category" },
+        { id: "billssubs", label: "Bills & subscriptions" },
+        { id: "recent", label: "Recent transactions" }
+    ];
+    function widgetPrefs() {
+        const saved = Store.state.settings.dashboardWidgets;
+        const base = DASH_WIDGETS.map(w => ({ id: w.id, on: true }));
+        if (!Array.isArray(saved) || !saved.length) return base;
+        // keep saved order/toggles; append any new widgets added since
+        const known = new Set(saved.map(w => w.id));
+        return saved.filter(w => DASH_WIDGETS.some(d => d.id === w.id))
+            .concat(base.filter(w => !known.has(w.id)));
+    }
 
+    function widgetOverview(ctx) {
+        const { s, txs, nw, sts, pace } = ctx;
         const paceColor = pace.status === "over" ? "var(--red)" : pace.status === "fast" ? "var(--amber)" : "var(--green)";
         const paceMsg = pace.status === "over" ? `Projected to overspend — on track for ${fmtShort(pace.projectedEnd)}`
             : pace.status === "fast" ? `Spending a little fast this month` : `On track — projected ${fmtShort(pace.projectedEnd)}`;
         const paceFillPct = pace.plan > 0 ? Math.min(100, (pace.spent / pace.plan) * 100) : 0;
         const markerPct = pace.dim > 0 ? (pace.dayOfMonth / pace.dim) * 100 : 0;
-
-        const recent = txs.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
-        const ins = Finance.insights(activeMonth());
-        const insIcon = { spike: "↑", drop: "↓", large: "◆", duplicate: "⧉" };
-        const insColor = { bad: "var(--red)", warn: "var(--amber)", info: "var(--accent)", good: "var(--green)" };
-        const insBg = { bad: "rgba(248,81,73,.14)", warn: "rgba(210,153,34,.14)", info: "rgba(76,141,255,.14)", good: "rgba(63,185,80,.14)" };
-        const insightsCard = ins.length ? `
-        <div class="card mb-18">
-            <h3>Insights · ${monthLabel(activeMonth())}</h3>
-            <div class="metric-list">
-                ${ins.map(i => `<div class="metric">
-                    <div class="m-ico" style="background:${insBg[i.severity]};color:${insColor[i.severity]}">${insIcon[i.kind] || "✦"}</div>
-                    <div class="m-body" style="flex:1">
-                        <div style="display:flex;justify-content:space-between;gap:10px"><h4>${esc(i.title)}</h4><span style="font-weight:700;white-space:nowrap">${fmt(i.value)}</span></div>
-                        <p>${esc(i.detail)}</p>
-                    </div>
-                </div>`).join("")}
-            </div>
-        </div>` : "";
-
         return `
         <div class="grid grid-2 mb-18">
             <div class="card hero">
@@ -135,15 +121,40 @@
                     <p class="muted" style="font-size:12px;margin-top:6px">${paceMsg}. Marker shows how far through the month you are.</p>
                 </div>
             </div>
-            <div class="grid grid-2" style="gap:18px">
+            <div class="grid grid-2" style="gap:16px">
                 <div class="card stat"><span class="stat-label">Net worth</span><span class="stat-value ${nw.total>=0?"":"down"}">${fmtShort(nw.total)}</span><span class="stat-sub">${fmtShort(nw.assets)} assets · ${fmtShort(nw.liabilities)} debt</span></div>
                 <div class="card stat"><span class="stat-label">Income</span><span class="stat-value up">${fmtShort(s.income)}</span><span class="stat-sub">${monthLabel(currentMonth)}</span></div>
                 <div class="card stat"><span class="stat-label">Expenses</span><span class="stat-value down">${fmtShort(s.expense)}</span><span class="stat-sub">${txs.filter(t=>t.amount<0).length} transactions</span></div>
                 <div class="card stat"><span class="stat-label">Net</span><span class="stat-value ${s.net>=0?"up":"down"}">${fmtShortSigned(s.net)}</span><span class="stat-sub">${s.savingsRate.toFixed(0)}% savings rate${s.saved>0?` · ${fmtShort(s.saved)} to savings`:""}</span></div>
             </div>
-        </div>
-        ${insightsCard}
-        <div class="grid grid-2 mb-18">
+        </div>`;
+    }
+    function widgetInsights() {
+        const ins = Finance.insights(activeMonth());
+        if (!ins.length) return "";
+        const insIcon = { spike: "↑", drop: "↓", large: "◆", duplicate: "⧉" };
+        const insColor = { bad: "var(--red)", warn: "var(--amber)", info: "var(--accent)", good: "var(--green)" };
+        return `
+        <div class="card mb-18">
+            <h3>Insights · ${monthLabel(activeMonth())}</h3>
+            <div class="metric-list">
+                ${ins.map(i => `<div class="metric">
+                    <div class="m-ico" style="background:color-mix(in srgb, ${insColor[i.severity]} 14%, transparent);color:${insColor[i.severity]}">${insIcon[i.kind] || "✦"}</div>
+                    <div class="m-body" style="flex:1">
+                        <div style="display:flex;justify-content:space-between;gap:10px"><h4>${esc(i.title)}</h4><span style="font-weight:700;white-space:nowrap">${fmt(i.value)}</span></div>
+                        <p>${esc(i.detail)}</p>
+                    </div>
+                </div>`).join("")}
+            </div>
+        </div>`;
+    }
+    function widgetSpendingBillsSubs(ctx) {
+        const { breakdown } = ctx;
+        const upcoming = upcomingBills().slice(0, 4);
+        const subsMo = Finance.monthlySubscriptions();
+        const cancelledMo = Store.state.subscriptions.filter(x => !x.active)
+            .reduce((a, x) => a + (x.cycle === "yearly" ? x.amount / 12 : x.amount), 0);
+        const spendCard = `
             <div class="card">
                 <h3>Spending by category</h3>
                 ${breakdown.length ? `<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
@@ -151,16 +162,25 @@
                     <div class="donut-legend" style="flex:1;min-width:160px">
                         ${breakdown.slice(0,7).map(d=>`<div class="li"><span class="dot" style="background:${d.color}"></span>${esc(d.label)}<span class="val">${fmt(d.value)}</span></div>`).join("")}
                     </div></div>` : `<p class="muted">No expenses this period.</p>`}
-            </div>
+            </div>`;
+        const billsCard = `
             <div class="card">
-                <div class="card-title-row"><h3>Upcoming bills</h3><button class="link-btn" data-goto="bills">Manage →</button></div>
+                <div class="card-title-row"><h3>Bills & subscriptions</h3><button class="link-btn" data-goto="subscriptions">Manage →</button></div>
                 ${upcoming.length ? `<table class="table"><tbody>${upcoming.map(b=>`<tr>
                     <td>${esc(b.name)}<br><span class="muted" style="font-size:11.5px">Due day ${b.dueDay}</span></td>
                     <td style="text-align:right"><div>${fmt(b.amount)}</div><span class="due ${b.badge}">${b.dueText}</span></td>
                 </tr>`).join("")}</tbody></table>` : `<p class="muted">No bills tracked. Add recurring bills to see reminders.</p>`}
-            </div>
-        </div>
-        <div class="card">
+                <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px">
+                    <span class="muted">Subscriptions: <strong style="color:var(--text)">${fmt(subsMo)}/mo</strong></span>
+                    ${cancelledMo > 0 ? `<span style="color:var(--green);font-weight:700">✓ Saving ${fmt(cancelledMo)}/mo (${fmtShort(cancelledMo*12)}/yr) from cancellations</span>` : `<button class="link-btn" data-goto="subscriptions">Find ones to cancel →</button>`}
+                </div>
+            </div>`;
+        return { spendCard, billsCard };
+    }
+    function widgetRecent(ctx) {
+        const recent = ctx.txs.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+        return `
+        <div class="card mb-18">
             <div class="card-title-row"><h3>Recent transactions</h3><button class="link-btn" data-goto="transactions">View all →</button></div>
             ${recent.length ? `<div class="table-wrap"><table class="table">
                 <thead><tr><th>Date</th><th>Description</th><th>Category</th><th style="text-align:right">Amount</th></tr></thead>
@@ -169,6 +189,72 @@
                     <td style="text-align:right" class="${t.amount<0?"amount-neg":"amount-pos"}">${fmtSigned(t.amount)}</td>
                 </tr>`).join("")}</tbody></table></div>` : `<p class="muted">No transactions this period.</p>`}
         </div>`;
+    }
+
+    function renderDashboard() {
+        if (Store.state.transactions.length === 0 && Store.state.accounts.length === 0) {
+            return `<div class="empty"><div class="big">◧</div>
+                <p>No data yet. Import a bank statement or load sample data to get started.</p>
+                <button class="btn" data-goto="upload">Import a statement</button></div>`;
+        }
+        const txs = Store.txForMonth(currentMonth);
+        const s = summarize(txs);
+        const ctx = {
+            txs, s,
+            breakdown: catBreakdown(s.byCat),
+            nw: Finance.netWorth(),
+            sts: Finance.safeToSpend(activeMonth()),
+            pace: Finance.spendPace(activeMonth())
+        };
+        const pieces = [];
+        widgetPrefs().forEach(w => {
+            if (!w.on) return;
+            if (w.id === "overview") pieces.push(widgetOverview(ctx));
+            else if (w.id === "insights") pieces.push(widgetInsights());
+            else if (w.id === "spending" || w.id === "billssubs") {
+                // spending + bills/subs pair into one row when both enabled and adjacent
+                const cards = widgetSpendingBillsSubs(ctx);
+                const other = w.id === "spending" ? "billssubs" : "spending";
+                const prefs = widgetPrefs();
+                const bothOn = prefs.find(x => x.id === other && x.on);
+                const alreadyRendered = pieces.some(p => p.includes('data-dashrow="spendbills"'));
+                if (alreadyRendered) return;
+                if (bothOn) pieces.push(`<div class="grid grid-2 mb-18" data-dashrow="spendbills">${cards.spendCard}${cards.billsCard}</div>`);
+                else pieces.push(`<div class="mb-18" data-dashrow="spendbills">${w.id === "spending" ? cards.spendCard : cards.billsCard}</div>`);
+            }
+            else if (w.id === "recent") pieces.push(widgetRecent(ctx));
+        });
+        return `
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+            <button class="btn btn-sm btn-ghost" id="customizeDash">⚙ Customize layout</button>
+        </div>
+        ${pieces.join("")}`;
+    }
+
+    function openCustomizeDash() {
+        let prefs = widgetPrefs();
+        function body() {
+            return `<h3>Customize dashboard</h3>
+            <p class="muted" style="font-size:12.5px;margin-bottom:14px">Show, hide and reorder your dashboard — it's your money, your layout.</p>
+            ${prefs.map((w, i) => {
+                const def = DASH_WIDGETS.find(d => d.id === w.id);
+                return `<div class="acct-row" style="flex-wrap:nowrap">
+                    <label class="switch" style="flex:1;min-width:0"><input type="checkbox" data-wtog="${i}" ${w.on ? "checked" : ""}><span class="track"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(def.label)}</span></label>
+                    <button class="btn-ghost btn-sm btn" data-wup="${i}" ${i === 0 ? "disabled" : ""}>↑</button>
+                    <button class="btn-ghost btn-sm btn" data-wdn="${i}" ${i === prefs.length - 1 ? "disabled" : ""}>↓</button>
+                </div>`;
+            }).join("")}
+            <div class="modal-actions"><button class="btn btn-ghost" id="wCancel">Cancel</button><button class="btn" id="wSave">Save layout</button></div>`;
+        }
+        function refresh() { openModal(body()); wire(); }
+        function wire() {
+            $$("[data-wtog]").forEach(cb => cb.addEventListener("change", e => { prefs[Number(cb.dataset.wtog)].on = e.target.checked; }));
+            $$("[data-wup]").forEach(b => b.addEventListener("click", () => { const i = Number(b.dataset.wup); [prefs[i-1], prefs[i]] = [prefs[i], prefs[i-1]]; refresh(); }));
+            $$("[data-wdn]").forEach(b => b.addEventListener("click", () => { const i = Number(b.dataset.wdn); [prefs[i+1], prefs[i]] = [prefs[i], prefs[i+1]]; refresh(); }));
+            bindClick("#wCancel", closeModal);
+            bindClick("#wSave", () => { Store.updateSettings({ dashboardWidgets: prefs }); closeModal(); toast("Dashboard layout saved", "success"); renderActive(); });
+        }
+        refresh();
     }
 
     /* ============================================================
@@ -517,7 +603,20 @@
         const totalSpent = cats.reduce((a, c) => a + (s.byCat[c] || 0), 0);
         const usedPct = totalBudget > 0 ? Math.min(100, (totalSpent / totalBudget) * 100) : 0;
         const ringColor = usedPct >= 100 ? "var(--red)" : usedPct > 80 ? "var(--amber)" : "var(--green)";
+        // YNAB-style "give every dollar a job": income not yet budgeted or reserved
+        const incomeForAssign = Finance.estimatedMonthlyIncome();
+        const goalReserve = Store.state.goals.length ? incomeForAssign * 0.1 : 0;
+        const leftToAssign = incomeForAssign > 0 ? incomeForAssign - totalBudget - goalReserve : 0;
+        const assignStrip = incomeForAssign > 0 && Math.abs(leftToAssign) >= 10 ? `
+        <div class="suggest-strip" style="${leftToAssign < 0 ? "border-color:var(--red);background:color-mix(in srgb, var(--red) 6%, transparent)" : ""}">
+            <span style="font-size:20px">${leftToAssign >= 0 ? "💵" : "⚠"}</span>
+            <p>${leftToAssign >= 0
+                ? `<strong>${fmt(leftToAssign)}</strong> of your income doesn't have a job yet. Assign it to budgets or savings so every dollar is working.`
+                : `You've budgeted <strong>${fmt(-leftToAssign)}</strong> more than your income${goalReserve ? " (after the goal reserve)" : ""} — trim a bucket or two.`}</p>
+            ${leftToAssign >= 0 ? `<button class="btn btn-sm" id="assignHelp">Assign with 50/30/20</button>` : ""}
+        </div>` : "";
         return `
+        ${assignStrip}
         <div class="grid grid-4 mb-18">
             <div class="card" style="display:flex;align-items:center;gap:16px">
                 <div class="score-ring">${Charts.gauge(usedPct, 92, { color: ringColor, thickness: 11 })}
@@ -879,7 +978,7 @@
         el.classList.add("active");
         wireViewEvents();
     }
-    const MORE_VIEWS = ["networth", "reports", "upload", "bills", "subscriptions", "habits", "health", "advice", "settings"];
+    const MORE_VIEWS = ["goals", "networth", "reports", "bills", "upload", "habits", "health", "advice", "settings"];
     function goTo(view) {
         activeView = view;
         $$(".nav-item, .bnav-item[data-view], .sheet-item").forEach(b => b.classList.toggle("active", b.dataset.view === view));
@@ -917,6 +1016,7 @@
     /* ---------- per-view event wiring ---------- */
     function wireViewEvents() {
         $$("[data-goto]").forEach(b => b.addEventListener("click", () => goTo(b.dataset.goto)));
+        bindClick("#customizeDash", openCustomizeDash);
 
         // transactions
         bindClick("#addTxBtn", openAddTx);
@@ -964,6 +1064,7 @@
         $$("[data-rollover]").forEach(cb => cb.addEventListener("change", e => { Store.setRollover(cb.dataset.rollover, e.target.checked); renderActive(); }));
         bindClick("#autoBudget", autoSuggestBudgets);
         bindClick("#templateBudget", applyTemplate503020);
+        bindClick("#assignHelp", applyTemplate503020);
 
         // goals
         bindClick("#addGoalBtn", () => openGoalModal()); bindClick("#addGoalBtn2", () => openGoalModal());
