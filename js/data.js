@@ -102,6 +102,26 @@
         save(); // rewrites plaintext
     }
     const isVaultLocked = () => vaultLocked;
+    const hasVaultKey = () => !!encKey;
+
+    // Encrypted backup file: same envelope format as at-rest storage.
+    async function exportEncrypted() {
+        if (!encKey) throw new Error("vault key not available");
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, encKey,
+            new TextEncoder().encode(JSON.stringify(state)));
+        return JSON.stringify({ __vault: true, v: 1, kdfSalt: vaultSalt, iv: bufToHex(iv), data: bufToB64(ct) });
+    }
+    async function importEncryptedBackup(obj, pin) {
+        try {
+            const key = await deriveKey(pin, obj.kdfSalt);
+            const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: hexToBuf(obj.iv) }, key, b64ToBuf(obj.data));
+            state = migrate(JSON.parse(new TextDecoder().decode(plain)));
+            vaultSalt = obj.kdfSalt; encKey = key; vaultLocked = false;
+            await saveEncrypted();
+            return true;
+        } catch (e) { return false; }
+    }
 
     function load() {
         try {
@@ -336,7 +356,8 @@
     global.Store = {
         get state() { return state; },
         uid, save, reset, importState, exportState,
-        unlockVault, enableVault, disableVault, isVaultLocked,
+        unlockVault, enableVault, disableVault, isVaultLocked, hasVaultKey,
+        exportEncrypted, importEncryptedBackup,
         addTransaction, addTransactions, updateTransaction, deleteTransaction,
         setBudget, setRollover,
         addGoal, updateGoal, deleteGoal,

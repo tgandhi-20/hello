@@ -391,6 +391,14 @@ function startServer() {
     console.log(`  1200-row import took ${elapsed}ms`);
     check("bulk import completes under 10s", elapsed < 10000);
     check("bulk rows stored", (await state()).transactions.filter(t => t.description.startsWith("Bulk Merchant")).length === 1200);
+    // pagination keeps the DOM light at scale
+    const rowsRendered = await page.$$eval("[data-txtable] tbody tr", els => els.length);
+    check("transaction list paginates (≤100 rows in DOM)", rowsRendered <= 100);
+    check("show-more control present", await page.isVisible("#txShowMore"));
+    await page.click("#txShowMore");
+    await page.waitForTimeout(400);
+    const rowsAfterMore = await page.$$eval("[data-txtable] tbody tr", els => els.length);
+    check("show-more loads next page", rowsAfterMore > rowsRendered && rowsAfterMore <= 200);
     // dashboard still renders quickly with big dataset
     const dashStart = Date.now();
     await visit("dashboard");
@@ -503,6 +511,30 @@ not-a-date,Mystery,-5
     check("vault decrypts and app restores", !(await page.$("#lockScreen")));
     check("all transactions survive encrypt/decrypt round-trip", await page.evaluate(
         n => window.Store.state.transactions.length === n, txCountBefore));
+    // encrypted backup: export while locked-on is a vault envelope; PIN restores it
+    await visit("settings");
+    const [encDl] = await Promise.all([page.waitForEvent("download"), page.click("#exportData")]);
+    check("backup filename marks encryption", /encrypted\.json$/.test(encDl.suggestedFilename()));
+    const encPath = await encDl.path();
+    const encRaw = require("fs").readFileSync(encPath, "utf8");
+    check("backup file is ciphertext (no plaintext markers)", (() => {
+        const p = JSON.parse(encRaw);
+        return p.__vault === true && !encRaw.includes("Payroll") && !encRaw.includes("4242");
+    })());
+    // restore it: wrong PIN rejected, right PIN restores
+    const txBeforeRestore = await page.evaluate(() => Store.state.transactions.length);
+    await page.setInputFiles("#importFile", encPath);
+    await page.waitForTimeout(400);
+    check("import detects encrypted backup", (await page.textContent("#modal")).includes("Encrypted backup"));
+    await page.fill("#impPin", "9999");
+    await page.click("#impGo");
+    await page.waitForTimeout(700);
+    check("wrong PIN cannot restore backup", /wrong pin/i.test(await page.textContent("#toastHost")));
+    await page.fill("#impPin", "4242");
+    await page.click("#impGo");
+    await page.waitForTimeout(900);
+    check("encrypted backup restores intact", await page.evaluate(n => Store.state.transactions.length === n, txBeforeRestore));
+
     // auto-lock after inactivity (shrink the threshold for the test)
     await page.evaluate(() => Store.updateSettings({ autoLockMin: 0.03 })); // ~1.8s
     await page.waitForTimeout(8000); // idle past threshold + 5s check interval

@@ -10,6 +10,8 @@
 
     let currentMonth = null;            // "YYYY-MM" or null = all time
     let txSearch = "", txCatFilter = "", txTagFilter = ""; // transactions view filters
+    const TX_PAGE = 100;                // rows rendered per page (perf at scale)
+    let txShown = TX_PAGE;
 
     /* ---------- utils ---------- */
     const fmt = n => CUR() + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -457,16 +459,19 @@
         </div>
         <div class="card">
             ${txs.length === 0 ? `<div class="empty"><div class="big">≡</div><p>No transactions match.</p></div>` : `
-            <div class="table-wrap"><table class="table">
+            <div class="table-wrap"><table class="table" data-txtable>
                 <thead><tr><th>Date</th><th>Description</th><th>Category</th><th style="text-align:right">Amount</th><th></th></tr></thead>
-                <tbody>${txs.map(t => `<tr data-id="${t.id}">
+                <tbody>${txs.slice(0, txShown).map(t => `<tr data-id="${t.id}">
                     <td class="muted">${esc(t.date)}</td>
                     <td>${esc(t.description)}${t.member?(m=>m?` <span class="member-chip" title="${esc(m.name)}">${esc(m.name.slice(0,2).toUpperCase())}</span>`:"")(Store.state.members.find(x=>x.id===t.member)):""}${(t.tags&&t.tags.length)?` ${t.tags.map(tag=>`<span class="tag-chip" data-tagclick="${esc(tag)}">#${esc(tag)}</span>`).join(" ")}`:""}${t.note?`<br><span class="muted" style="font-size:11.5px">📝 ${esc(t.note)}</span>`:""}</td>
                     <td><select class="cat-select" data-recat="${t.id}">${Categorize.names().map(n => `<option ${n===t.category?"selected":""}>${n}</option>`).join("")}</select></td>
                     <td style="text-align:right" class="${t.amount<0?"amount-neg":"amount-pos"}">${fmtSigned(t.amount)}</td>
                     <td style="text-align:right;white-space:nowrap">${t.amount<0?`<button class="link-btn" data-splittx="${t.id}">Split</button> `:""}<button class="link-btn" data-edittx="${t.id}">Edit</button> <button class="link-btn danger" data-deltx="${t.id}">Delete</button></td>
                 </tr>`).join("")}</tbody>
-            </table></div>`}
+            </table></div>
+            ${txs.length > txShown ? `<div style="text-align:center;margin-top:14px">
+                <button class="btn btn-ghost" id="txShowMore">Show ${Math.min(TX_PAGE, txs.length - txShown)} more · ${txs.length - txShown} remaining</button>
+            </div>` : ""}`}
         </div>`;
     }
 
@@ -1059,7 +1064,7 @@
         renderActive(); // re-render so inline-SVG charts pick up themed colors
     });
     const monthInput = $("#monthFilter");
-    monthInput.addEventListener("change", () => { currentMonth = monthInput.value || null; renderActive(); });
+    monthInput.addEventListener("change", () => { currentMonth = monthInput.value || null; txShown = TX_PAGE; renderActive(); });
 
     /* ---------- per-view event wiring ---------- */
     function wireViewEvents() {
@@ -1078,10 +1083,11 @@
         $$("[data-edittx]").forEach(b => b.addEventListener("click", () => openEditTx(b.dataset.edittx)));
         $$("[data-splittx]").forEach(b => b.addEventListener("click", () => openSplitTx(b.dataset.splittx)));
         $$("[data-deltx]").forEach(b => b.addEventListener("click", () => { Store.deleteTransaction(b.dataset.deltx); toast("Transaction deleted"); renderActive(); }));
-        const ts = $("#txSearch"); if (ts) ts.addEventListener("input", debounce(e => { txSearch = e.target.value; const pos = e.target.selectionStart; renderActive(); const n = $("#txSearch"); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 250));
-        const tcf = $("#txCatFilter"); if (tcf) tcf.addEventListener("change", e => { txCatFilter = e.target.value; renderActive(); });
-        const ttf = $("#txTagFilter"); if (ttf) ttf.addEventListener("change", e => { txTagFilter = e.target.value; renderActive(); });
-        $$("[data-tagclick]").forEach(el => el.addEventListener("click", () => { txTagFilter = el.dataset.tagclick; renderActive(); }));
+        const ts = $("#txSearch"); if (ts) ts.addEventListener("input", debounce(e => { txSearch = e.target.value; txShown = TX_PAGE; const pos = e.target.selectionStart; renderActive(); const n = $("#txSearch"); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 250));
+        const tcf = $("#txCatFilter"); if (tcf) tcf.addEventListener("change", e => { txCatFilter = e.target.value; txShown = TX_PAGE; renderActive(); });
+        const ttf = $("#txTagFilter"); if (ttf) ttf.addEventListener("change", e => { txTagFilter = e.target.value; txShown = TX_PAGE; renderActive(); });
+        $$("[data-tagclick]").forEach(el => el.addEventListener("click", () => { txTagFilter = el.dataset.tagclick; txShown = TX_PAGE; renderActive(); }));
+        bindClick("#txShowMore", () => { txShown += TX_PAGE; renderActive(); });
 
         // upload
         const dz = $("#dropzone"), fi = $("#fileInput");
@@ -1492,13 +1498,25 @@
     }
 
     /* ---------- export / import ---------- */
-    function exportData() {
-        const blob = new Blob([JSON.stringify(Store.exportState(), null, 2)], { type: "application/json" });
+    async function exportData() {
+        const stamp = new Date().toISOString().slice(0, 10);
+        let payload, name, msg;
+        if (Store.state.settings.pinHash && Store.hasVaultKey()) {
+            // lock on => the backup file is encrypted too; PIN required to restore
+            payload = await Store.exportEncrypted();
+            name = `fintrack-backup-${stamp}.encrypted.json`;
+            msg = "Encrypted backup exported — your PIN is required to restore it";
+        } else {
+            payload = JSON.stringify(Store.exportState(), null, 2);
+            name = `fintrack-backup-${stamp}.json`;
+            msg = "Backup exported";
+        }
+        const blob = new Blob([payload], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url; a.download = `fintrack-backup-${new Date().toISOString().slice(0,10)}.json`;
+        a.href = url; a.download = name;
         document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-        toast("Backup exported", "success");
+        toast(msg, "success");
     }
     function exportCSV() {
         const rows = Store.state.transactions.slice().sort((a, b) => a.date.localeCompare(b.date));
@@ -1515,10 +1533,29 @@
     }
     function importData(file) {
         const r = new FileReader();
-        r.onload = e => { try { const obj = JSON.parse(e.target.result);
-            if (Store.importState(obj)) { refreshMonthOptions(); toast("Backup imported", "success"); goTo("dashboard"); }
-            else toast("Invalid backup file", "error"); } catch (err) { toast("Could not read backup", "error"); } };
+        r.onload = e => {
+            try {
+                const obj = JSON.parse(e.target.result);
+                if (obj && obj.__vault) return openImportEncrypted(obj);
+                if (Store.importState(obj)) { refreshMonthOptions(); toast("Backup imported", "success"); goTo("dashboard"); }
+                else toast("Invalid backup file", "error");
+            } catch (err) { toast("Could not read backup", "error"); }
+        };
         r.readAsText(file);
+    }
+    function openImportEncrypted(obj) {
+        openModal(`<h3>Encrypted backup</h3>
+            <p class="muted" style="font-size:12.5px;margin-bottom:14px">This backup is protected. Enter the PIN it was exported with to decrypt and restore it.</p>
+            <div class="form-row"><label>Backup PIN</label><input id="impPin" type="password" inputmode="numeric" maxlength="8"></div>
+            <div class="modal-actions"><button class="btn btn-ghost" id="impCancel">Cancel</button><button class="btn" id="impGo">Decrypt & restore</button></div>`);
+        bindClick("#impCancel", closeModal);
+        bindClick("#impGo", async () => {
+            const ok = await Store.importEncryptedBackup(obj, $("#impPin").value || "");
+            if (!ok) return toast("Wrong PIN — could not decrypt backup", "error");
+            closeModal(); refreshMonthOptions();
+            toast("Encrypted backup restored", "success");
+            goTo("dashboard");
+        });
     }
     function confirmReset() {
         openModal(`<h3>Reset all data?</h3><p class="muted" style="margin-bottom:18px">This permanently deletes everything stored in this browser.</p>

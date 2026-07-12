@@ -139,6 +139,9 @@ With **app lock** enabled (Settings → Privacy & security), the entire store
 is **encrypted at rest**: your PIN is stretched with PBKDF2 (150,000
 iterations, SHA-256) into an AES-256-GCM key, and the ciphertext is all that
 ever touches disk. A wrong PIN simply fails authenticated decryption; without
-the PIN the data is unreadable even with full access to the device. Disabling
+the PIN the data is unreadable even with full access to the device. Backups
+exported while the lock is on are encrypted the same way (the file is
+ciphertext and restoring it requires the PIN), and the app auto-locks after
+5 minutes of inactivity. Disabling
 the lock rewrites storage as plaintext; forgetting the PIN requires a full
 data wipe — that's the trade-off that makes the protection real.
