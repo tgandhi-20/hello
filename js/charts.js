@@ -116,5 +116,22 @@
                 <span class="muted">more</span></div></div>`;
     }
 
-    global.Charts = { donut, gauge, bars, line, heatmap, resolveColor };
+    // Tiny inline sparkline for stat tiles. points = [{value}]
+    function spark(points, opts = {}) {
+        if (!points || points.length < 2) return "";
+        const w = 64, h = 20, pad = 1.5;
+        const vals = points.map(p => p.value);
+        let min = Math.min(...vals), max = Math.max(...vals);
+        if (min === max) { min -= 1; max += 1; }
+        const x = i => pad + (i / (points.length - 1)) * (w - 2 * pad);
+        const y = v => (h - pad) - ((v - min) / (max - min)) * (h - 2 * pad);
+        const pts = points.map((p, i) => `${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
+        const color = resolveColor(opts.color || "var(--accent)");
+        return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">
+            <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"></polyline>
+            <circle cx="${x(points.length - 1).toFixed(1)}" cy="${y(vals[vals.length - 1]).toFixed(1)}" r="1.8" fill="${color}"></circle>
+        </svg>`;
+    }
+
+    global.Charts = { donut, gauge, bars, line, heatmap, spark, resolveColor };
 })(window);

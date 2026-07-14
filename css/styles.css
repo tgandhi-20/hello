@@ -575,3 +575,13 @@ textarea.form-area { width: 100%; min-height: 120px; background: var(--bg); bord
     [data-txtable] td:nth-child(4) { grid-area: amount; text-align: right; font-size: 14.5px; align-self: start; }
     [data-txtable] td:nth-child(5) { grid-area: actions; text-align: right; align-self: center; }
 }
+
+/* ---------------- Stat tile sparklines & month filter state ---------------- */
+.stat .spark { margin-top: 6px; display: block; }
+.month-picker.filtering input { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+.month-clear {
+    background: var(--bg-3); border: 1px solid var(--border); color: var(--text-dim);
+    width: 26px; height: 26px; border-radius: 50%; cursor: pointer; font-size: 14px;
+    display: grid; place-items: center; line-height: 1;
+}
+.month-clear:hover { color: var(--red); border-color: var(--red); }

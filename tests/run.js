@@ -632,6 +632,21 @@ not-a-date,Mystery,-5
         "[data-txtable] thead", el => getComputedStyle(el).display === "none"));
     await mob.close();
 
+    /* ---------- sparklines & month filter chip ---------- */
+    await visit("dashboard");
+    const sparkCount = await page.$$eval("#view-dashboard .spark", els => els.length);
+    check("stat tiles show trend sparklines", sparkCount >= 3);
+    check("month clear chip hidden when unfiltered", (await page.getAttribute("#monthClear", "hidden")) !== null);
+    await page.fill("#monthFilter", month);
+    await page.evaluate(() => document.querySelector("#monthFilter").dispatchEvent(new Event("change")));
+    await page.waitForTimeout(350);
+    check("month filter shows active state + clear chip", await page.isVisible("#monthClear") &&
+        await page.$eval("#monthPicker", el => el.classList.contains("filtering")));
+    await page.click("#monthClear");
+    await page.waitForTimeout(350);
+    check("clear chip resets to all time", (await page.inputValue("#monthFilter")) === "" &&
+        (await page.textContent("#view-dashboard")).includes("All time"));
+
     /* ---------- first-visit hints ---------- */
     const hintCtx = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     hintCtx.on("pageerror", e => errors.push("hint pageerror: " + e.message));

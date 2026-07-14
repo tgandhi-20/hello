@@ -171,10 +171,19 @@
                 </div>
             </div>
             <div class="grid grid-2" style="gap:16px">
-                <div class="card stat"><span class="stat-label">Net worth</span><span class="stat-value ${nw.total>=0?"":"down"}">${fmtShort(nw.total)}</span><span class="stat-sub">${fmtShort(nw.assets)} assets · ${fmtShort(nw.liabilities)} debt</span></div>
-                <div class="card stat"><span class="stat-label">Income</span><span class="stat-value up">${fmtShort(s.income)}</span><span class="stat-sub">${monthLabel(currentMonth)}</span></div>
-                <div class="card stat"><span class="stat-label">Expenses</span><span class="stat-value down">${fmtShort(s.expense)}</span><span class="stat-sub">${txs.filter(t=>t.amount<0).length} transactions</span></div>
-                <div class="card stat"><span class="stat-label">Net</span><span class="stat-value ${s.net>=0?"up":"down"}">${fmtShortSigned(s.net)}</span><span class="stat-sub">${s.savingsRate.toFixed(0)}% savings rate${s.saved>0?` · ${fmtShort(s.saved)} to savings`:""}</span></div>
+                ${(() => {
+                    const series = monthlySeries(6);
+                    const nwSnaps = Store.state.netWorthSnapshots.slice(-8).map(x => ({ value: x.value }));
+                    const sparkNW = Charts.spark(nwSnaps, { color: "var(--accent)" });
+                    const sparkInc = Charts.spark(series.map(m => ({ value: m.income })), { color: "var(--green)" });
+                    const sparkExp = Charts.spark(series.map(m => ({ value: m.expense })), { color: "var(--red)" });
+                    const sparkNet = Charts.spark(series.map(m => ({ value: m.income - m.expense })), { color: "var(--accent-2)" });
+                    return `
+                <div class="card stat"><span class="stat-label">Net worth</span><span class="stat-value ${nw.total>=0?"":"down"}">${fmtShort(nw.total)}</span><span class="stat-sub">${fmtShort(nw.assets)} assets · ${fmtShort(nw.liabilities)} debt</span>${sparkNW}</div>
+                <div class="card stat"><span class="stat-label">Income</span><span class="stat-value up">${fmtShort(s.income)}</span><span class="stat-sub">${monthLabel(currentMonth)}</span>${sparkInc}</div>
+                <div class="card stat"><span class="stat-label">Expenses</span><span class="stat-value down">${fmtShort(s.expense)}</span><span class="stat-sub">${txs.filter(t=>t.amount<0).length} transactions</span>${sparkExp}</div>
+                <div class="card stat"><span class="stat-label">Net</span><span class="stat-value ${s.net>=0?"up":"down"}">${fmtShortSigned(s.net)}</span><span class="stat-sub">${s.savingsRate.toFixed(0)}% savings rate${s.saved>0?` · ${fmtShort(s.saved)} to savings`:""}</span>${sparkNet}</div>`;
+                })()}
             </div>
         </div>`;
     }
@@ -1113,7 +1122,20 @@
         renderActive(); // re-render so inline-SVG charts pick up themed colors
     });
     const monthInput = $("#monthFilter");
-    monthInput.addEventListener("change", () => { currentMonth = monthInput.value || null; txShown = TX_PAGE; renderActive(); });
+    function syncMonthChip() {
+        const active = !!monthInput.value;
+        $("#monthPicker").classList.toggle("filtering", active);
+        $("#monthClear").hidden = !active;
+    }
+    monthInput.addEventListener("change", () => {
+        currentMonth = monthInput.value || null; txShown = TX_PAGE;
+        syncMonthChip(); renderActive();
+    });
+    $("#monthClear").addEventListener("click", () => {
+        monthInput.value = ""; currentMonth = null; txShown = TX_PAGE;
+        syncMonthChip(); renderActive(); toast("Showing all time");
+    });
+    syncMonthChip();
 
     /* ---------- per-view event wiring ---------- */
     function wireViewEvents() {
