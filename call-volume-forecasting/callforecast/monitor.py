@@ -29,7 +29,19 @@ from .backtest import wape
 
 @dataclass
 class MonitorConfig:
-    retrain_wape_threshold: float = 0.15   # retrain if rolling WAPE exceeds this
+    """Thresholds governing when the engine retrains itself.
+
+    Detection is **relative by default**. An absolute WAPE threshold is a trap:
+    interval-level accuracy is bounded below by the irreducible arrival noise of
+    the specific queue (often 0.20+ WAPE at half-hourly granularity), so a fixed
+    limit like 0.15 can be permanently unreachable and would fire on every check
+    - an alarm that is always on is an alarm nobody reads. Comparing against the
+    baseline achieved at training time auto-calibrates to whatever floor the
+    data actually has. Set ``retrain_wape_threshold`` explicitly only when you
+    know a meaningful absolute limit for your queue.
+    """
+
+    retrain_wape_threshold: float | None = None  # optional absolute limit
     bias_threshold: float = 0.05           # flag if |bias| exceeds this
     rolling_window: int = 14 * 48          # ~2 weeks of half-hourly intervals
     degradation_ratio: float = 1.25        # retrain if error > ratio x baseline
@@ -116,7 +128,8 @@ class ForecastMonitor:
             return False, f"insufficient reconciled actuals ({n})"
 
         w = acc["wape"]
-        if w > self.config.retrain_wape_threshold:
+        if (self.config.retrain_wape_threshold is not None
+                and w > self.config.retrain_wape_threshold):
             return True, (f"rolling WAPE {w:.3f} exceeds absolute threshold "
                           f"{self.config.retrain_wape_threshold:.3f}")
 

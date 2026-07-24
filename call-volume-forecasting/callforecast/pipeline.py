@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from .data import TIMESTAMP, VOLUME, AHT, infer_interval_minutes
-from .models import BaseModel, default_model_zoo
+from .models import BaseModel, QuantileGradientBoostingModel, default_model_zoo
 from .monitor import ForecastMonitor, MonitorConfig
 from .selection import SelectionResult, select_best_model
 from .staffing import StaffingConfig, staffing_plan
@@ -91,11 +91,16 @@ class ForecastEngine:
     staffing_config: StaffingConfig | None = None
     monitor_config: MonitorConfig | None = None
     monitor_state_path: str | None = None
+    # Staff to this quantile of the volume distribution rather than the mean.
+    # None keeps the classic point-forecast behaviour; 0.8 means "roster for a
+    # volume we only expect to exceed 20% of the time".
+    staffing_quantile: float | None = None
 
     def __post_init__(self):
         self.champion: BaseModel | None = None
         self.selection: SelectionResult | None = None
         self.aht_model: SeasonalAHTForecaster | None = None
+        self.quantile_model: BaseModel | None = None
         self.monitor = ForecastMonitor(
             self.monitor_config or MonitorConfig(),
             self.monitor_state_path,
@@ -111,7 +116,8 @@ class ForecastEngine:
         if self.staffing_config is None:
             self.staffing_config = StaffingConfig(interval_minutes=self.interval_minutes)
 
-        candidates = candidates or default_model_zoo(self.interval_minutes, self.holidays)
+        candidates = candidates or default_model_zoo(
+            self.interval_minutes, self.holidays, horizon=self.horizon)
         self.selection = select_best_model(
             candidates, history, horizon=self.horizon, n_folds=self.n_folds,
         )
@@ -119,6 +125,17 @@ class ForecastEngine:
         self.champion.fit(history)
 
         self.aht_model = SeasonalAHTForecaster(self.interval_minutes).fit(history)
+
+        # Optional risk-aware layer: an upper-quantile volume model used for
+        # rostering, so staffing is not a coin flip against arrival noise.
+        self.quantile_model = None
+        if self.staffing_quantile is not None:
+            self.quantile_model = QuantileGradientBoostingModel(
+                interval_minutes=self.interval_minutes,
+                horizon=self.horizon, quantile=self.staffing_quantile,
+                holidays=self.holidays,
+            ).fit(history)
+
         self._history = history
 
         champ_score = self.selection.results[self.selection.champion_name].metrics["wape"]
@@ -134,12 +151,20 @@ class ForecastEngine:
         future = _future_timestamps(self._history, horizon, self.interval_minutes)
         vol = self.champion.predict(future)
         aht = self.aht_model.predict(future)
-        return pd.DataFrame({TIMESTAMP: future, "forecast": vol, "aht": aht})
+        out = pd.DataFrame({TIMESTAMP: future, "forecast": vol, "aht": aht})
+        if self.quantile_model is not None:
+            # Never let the risk quantile fall below the mean forecast.
+            out["forecast_upper"] = np.maximum(
+                self.quantile_model.predict(future), vol)
+        return out
 
     def forecast_staffing(self, horizon: int | None = None,
                           log: bool = True) -> pd.DataFrame:
         fc = self.forecast_volume(horizon)
-        plan = staffing_plan(fc, self.staffing_config)
+        # Roster against the risk quantile when one is configured, but keep the
+        # mean forecast in the output so accuracy is still scored against it.
+        volume_col = "forecast_upper" if "forecast_upper" in fc.columns else "forecast"
+        plan = staffing_plan(fc, self.staffing_config, volume_col=volume_col)
         if log:
             self.monitor.log_forecast(fc, champion_name=self.selection.champion_name)
             self.monitor.save()

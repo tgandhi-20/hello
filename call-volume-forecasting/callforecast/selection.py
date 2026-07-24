@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from .backtest import BacktestResult, rolling_origin_backtest
+from .data import TIMESTAMP
 from .models import BaseModel, EnsembleModel
 
 
@@ -36,6 +37,44 @@ def _factory(model: BaseModel):
     """Return a callable producing fresh copies of a template model."""
     template = copy.deepcopy(model)
     return lambda: copy.deepcopy(template)
+
+
+def _stack_weights(top: list[BacktestResult]) -> tuple[np.ndarray, bool]:
+    """Learn combination weights by non-negative least squares (stacking).
+
+    Each backtest already produced *out-of-fold* predictions - forecasts made by
+    a model that never saw the rows it is scored on. Regressing the actuals on
+    those columns finds the combination that genuinely minimises squared error,
+    instead of assuming inverse-error weights are optimal (they are not when
+    members are strongly correlated, which forecasting models always are).
+
+    Non-negativity keeps the blend interpretable and stable, and we let the
+    weights sum to something other than 1 so the stack can also absorb a level
+    bias. Falls back to inverse-error weights if the fit is degenerate.
+
+    Note: the weights are fitted on the same out-of-fold predictions the
+    ensemble is later scored on, so the ensemble's backtest score carries a
+    small optimistic bias (a handful of parameters over thousands of rows).
+    """
+    frames = [
+        r.predictions.set_index([TIMESTAMP, "fold"])["forecast"].rename(r.model_name)
+        for r in top
+    ]
+    actual = top[0].predictions.set_index([TIMESTAMP, "fold"])["actual"]
+    P = pd.concat(frames, axis=1).dropna()
+    a = actual.reindex(P.index)
+
+    try:
+        from scipy.optimize import nnls
+        w, _ = nnls(P.to_numpy(), a.to_numpy())
+        if w.sum() > 1e-8:
+            return w, False          # keep learned scale (bias absorption)
+    except Exception:
+        pass
+
+    scores = np.array([r.score for r in top])
+    w = 1.0 / np.clip(scores, 1e-6, None)
+    return w / w.sum(), True
 
 
 def select_best_model(
@@ -59,14 +98,12 @@ def select_best_model(
 
     if build_ensemble and len(ranked) >= 2:
         top = ranked[:ensemble_top_k]
-        # Inverse-error weights: better backtest score -> larger weight.
-        scores = np.array([r.score for r in top])
-        weights = (1.0 / np.clip(scores, 1e-6, None))
-        weights = weights / weights.sum()
-
         name_to_model = {m.name: m for m in candidates}
         members = [copy.deepcopy(name_to_model[r.model_name]) for r in top]
-        ens_template = EnsembleModel(members=members, weights=weights)
+
+        weights, normalize = _stack_weights(top)
+        ens_template = EnsembleModel(members=members, weights=weights,
+                                     normalize=normalize)
 
         ens_res = rolling_origin_backtest(
             _factory(ens_template), df, horizon=horizon, n_folds=n_folds,

@@ -31,6 +31,11 @@ def main() -> None:
     print("CALL-VOLUME FORECASTING FOR STAFFING  -  end-to-end demo")
     print("=" * 70)
 
+    # Start from a clean monitor so the demo is reproducible run-to-run.
+    state_path = "scratch/monitor_state.json"
+    if os.path.exists(state_path):
+        os.remove(state_path)
+
     cfg = SyntheticConfig(days=730, interval_minutes=30)
     data = generate_synthetic(cfg)
     holidays = default_holidays(range(2023, 2026))
@@ -46,7 +51,8 @@ def main() -> None:
     engine = ForecastEngine(
         interval_minutes=30, holidays=holidays,
         horizon=horizon, n_folds=5,
-        monitor_state_path="scratch/monitor_state.json",
+        staffing_quantile=0.85,   # roster against P85 volume, not the mean
+        monitor_state_path=state_path,
     )
 
     print("\nRunning model tournament (rolling-origin backtest)...")
@@ -77,12 +83,33 @@ def main() -> None:
               "hard test)")
 
     print("\nSample of the staffing plan (busiest 8 intervals):")
-    cols = [TIMESTAMP, "forecast", "actual", "aht",
-            "agents_required", "agents_scheduled", "service_level", "occupancy"]
+    cols = [TIMESTAMP, "forecast", "forecast_upper", "actual", "aht",
+            "agents_required", "agents_scheduled", "service_level"]
+    cols = [c for c in cols if c in plan.columns]
     print(plan.nlargest(8, "forecast")[cols].to_string(index=False))
 
     total_scheduled = plan["agents_scheduled"].sum()
     print(f"\nTotal agent-intervals to schedule this week: {total_scheduled:,}")
+
+    # ---- risk-aware staffing ---------------------------------------------
+    if "forecast_upper" in plan.columns:
+        from callforecast.staffing import staffing_plan
+        print("\n" + "-" * 70)
+        print("RISK-AWARE STAFFING: mean forecast vs P85")
+        print("-" * 70)
+        act = plan["actual"].to_numpy()
+        cov_mean = (plan["forecast"].to_numpy() >= act).mean()
+        cov_p85 = (plan["forecast_upper"].to_numpy() >= act).mean()
+        mean_plan = staffing_plan(
+            plan[[TIMESTAMP, "forecast", "aht"]], engine.staffing_config)
+        print(f"Intervals covered staffing to the mean: {cov_mean:6.1%}"
+              f"   agent-intervals: {mean_plan['agents_scheduled'].sum():,}")
+        print(f"Intervals covered staffing to P85:      {cov_p85:6.1%}"
+              f"   agent-intervals: {total_scheduled:,}")
+        uplift = total_scheduled / max(mean_plan['agents_scheduled'].sum(), 1) - 1
+        print(f"Cost of that protection: {uplift:+.1%} more staffed time.")
+        print("Arrival noise is irreducible, so this is the real lever left:\n"
+              "buy service-level certainty explicitly instead of coin-flipping it.")
 
     # ---- self-improvement loop -------------------------------------------
     print("\n" + "-" * 70)

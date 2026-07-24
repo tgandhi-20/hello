@@ -67,6 +67,10 @@ class SyntheticConfig:
     base_aht: float = 300.0            # seconds
     aht_weekly_swing: float = 0.10     # AHT is higher on busy days
     seed: int = 7
+    # Emit the latent arrival rate as an ``expected`` column. Useful for
+    # measuring the irreducible noise floor: no forecaster can beat the error
+    # of the true rate, so it bounds how much accuracy is actually available.
+    include_expected: bool = False
     weekday_profile: dict[int, float] = field(
         default_factory=lambda: {
             0: 1.18,  # Monday - busiest
@@ -146,9 +150,11 @@ def generate_synthetic(config: SyntheticConfig | None = None) -> pd.DataFrame:
 
             aht = aht_day * (1 + 0.05 * np.sin(2 * np.pi * k / per_day))
             aht *= 1 + rng.normal(0, 0.03)
-            rows.append((ts, int(volume), float(max(aht, 30.0))))
+            rows.append((ts, int(volume), float(max(aht, 30.0)), float(mean)))
 
-    df = pd.DataFrame(rows, columns=[TIMESTAMP, VOLUME, AHT])
+    df = pd.DataFrame(rows, columns=[TIMESTAMP, VOLUME, AHT, "expected"])
+    if not cfg.include_expected:
+        df = df.drop(columns=["expected"])
     return df
 
 

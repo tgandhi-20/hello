@@ -23,6 +23,10 @@ Quick start::
 """
 
 from .pipeline import ForecastEngine, SeasonalAHTForecaster
+from .models import (
+    RidgeHarmonicModel, GradientBoostingModel, QuantileGradientBoostingModel,
+    SeasonalNaiveModel, HoltWintersModel, EnsembleModel, safe_lag_plan,
+)
 from .selection import select_best_model, SelectionResult
 from .staffing import StaffingConfig, required_agents, staffing_plan
 from .monitor import ForecastMonitor, MonitorConfig
@@ -31,6 +35,13 @@ from .backtest import rolling_origin_backtest, all_metrics, wape, mape, rmse, bi
 __all__ = [
     "ForecastEngine",
     "SeasonalAHTForecaster",
+    "RidgeHarmonicModel",
+    "GradientBoostingModel",
+    "QuantileGradientBoostingModel",
+    "SeasonalNaiveModel",
+    "HoltWintersModel",
+    "EnsembleModel",
+    "safe_lag_plan",
     "select_best_model",
     "SelectionResult",
     "StaffingConfig",

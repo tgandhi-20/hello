@@ -31,6 +31,7 @@ class FeatureConfig:
     yearly_harmonics: int = 3       # seasonal / annual pattern
     lags: tuple[int, ...] = ()      # autoregressive lags (in intervals)
     rolling_windows: tuple[int, ...] = ()  # rolling-mean windows (intervals)
+    rolling_shift: int = 1          # how far back the rolling window must start
     holidays: set[date] = field(default_factory=set)
 
 
@@ -99,7 +100,13 @@ def build_features(
         for lag in config.lags:
             X[f"lag_{lag}"] = y.shift(lag).to_numpy()
         for win in config.rolling_windows:
-            X[f"roll_{win}"] = y.shift(1).rolling(win, min_periods=1).mean().to_numpy()
+            # ``rolling_shift`` keeps the window entirely inside observed
+            # history for the whole forecast horizon, so the feature never
+            # depends on the model's own predictions.
+            X[f"roll_{win}"] = (
+                y.shift(config.rolling_shift)
+                 .rolling(win, min_periods=1).mean().to_numpy()
+            )
         return X, y
 
     return X, pd.Series(np.nan, index=idx)
