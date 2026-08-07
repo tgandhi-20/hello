@@ -42,3 +42,6 @@ logs/
 *.tally
 *.csv
 !docs/samples/*.example.csv
+
+# QA verification artefacts (screenshots from emulated-device runs)
+qa-screenshots/
