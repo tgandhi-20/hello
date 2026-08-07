@@ -327,6 +327,18 @@ async function main(): Promise<void> {
     eq('Dedupe (b): re-importing the same 2-coffee file -> 0 new', reImportSameFile.rows.length, 0);
     eq('Dedupe (b): re-importing the same 2-coffee file -> 2 duplicates', reImportSameFile.duplicateCount, 2);
 
+    // (b-subset) An overlapping statement whose date range only caught ONE of the two
+    // identical coffees (a genuine subset of what's already stored) must dedupe that
+    // one row and not be mistaken for "new".
+    const oneCoffeeSubset = '01/08/2026,-5.50,CAFE COFFEE SHOP\n';
+    const subsetImport = await buildImportPreview(layoutFor(oneCoffeeSubset), previewOpts(afterFirstImport));
+    eq('Dedupe (b-subset): 1-row file, a subset of 2 already imported -> 0 new', subsetImport.rows.length, 0);
+    eq(
+      'Dedupe (b-subset): 1-row file, a subset of 2 already imported -> 1 duplicate',
+      subsetImport.duplicateCount,
+      1
+    );
+
     // (c) A later, overlapping statement contains a genuine THIRD identical coffee
     // alongside the two already imported — exactly one of the three should be new.
     const threeCoffees =
