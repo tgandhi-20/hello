@@ -23,6 +23,8 @@ dev-dist/
 /scratch*
 /.qa-*.mjs
 /qa*.cjs
+/qa*.mjs
+/qa*.js
 
 # Logs
 npm-debug.log*
