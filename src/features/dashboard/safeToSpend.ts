@@ -48,27 +48,17 @@ export interface SafeToSpendResult {
   perDayCents: Cents;
 }
 
-/** Approximate weeks/month and fortnights/month — good enough for a monthly-equivalent estimate. */
-const WEEKS_PER_MONTH = 52 / 12;
-const FORTNIGHTS_PER_MONTH = 26 / 12;
+/**
+ * Re-exported from the recurring module, which owns the single definition.
+ *
+ * This file previously carried its own copy using 52/12 weeks per month while
+ * the Recurring screen used 4.348 — so Home's "bills" figure and the Recurring
+ * tab's "monthly load" disagreed by a couple of dollars on identical data.
+ * Neither number was obviously wrong, which is exactly what made it corrosive.
+ */
+import { monthlyEquivalentCents } from '@/features/recurring/detect';
 
-export function monthlyEquivalentCents(series: Pick<RecurringSeries, 'amountCents' | 'cadence'>): Cents {
-  const amt = Math.max(0, series.amountCents);
-  switch (series.cadence) {
-    case 'weekly':
-      return Math.round(amt * WEEKS_PER_MONTH);
-    case 'fortnightly':
-      return Math.round(amt * FORTNIGHTS_PER_MONTH);
-    case 'monthly':
-      return amt;
-    case 'quarterly':
-      return Math.round(amt / 3);
-    case 'yearly':
-      return Math.round(amt / 12);
-    default:
-      return amt;
-  }
-}
+export { monthlyEquivalentCents };
 
 export interface ComputeSafeToSpendParams {
   txns: Txn[];

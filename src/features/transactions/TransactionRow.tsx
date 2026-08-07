@@ -86,7 +86,12 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
       <div
         className={[
           'relative flex min-h-[64px] items-center gap-3 bg-bg px-4 py-3 select-none',
-          txn.excluded ? 'opacity-50' : '',
+          // Dim the CONTENTS, never this element. It carries the opaque bg-bg that
+          // hides the swipe-action layer sitting at `absolute inset-0` behind it —
+          // fading the element itself made that background translucent and let the
+          // Re-categorise/Delete actions bleed through, so every excluded row looked
+          // corrupted even at rest.
+          txn.excluded ? '[&>*]:opacity-45' : '',
         ].join(' ')}
         style={{
           transform: `translateX(${dragX}px)`,

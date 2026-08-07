@@ -267,19 +267,40 @@ export function detectRecurring(
   return out.sort((a, b) => (a.nextDue < b.nextDue ? -1 : a.nextDue > b.nextDue ? 1 : 0));
 }
 
-/** Monthly-equivalent cost of a cadence, for "total monthly subscription load". */
-export function monthlyEquivalentCents(series: RecurringSeries): Cents {
+/**
+ * Weeks and fortnights per average month, derived from the 365.2425-day
+ * Gregorian year (52.1775 weeks / 12).
+ *
+ * THIS IS THE ONLY DEFINITION. Safe-to-Spend imports it rather than keeping its
+ * own: the dashboard and the Recurring screen previously used 52/12 and 4.348
+ * respectively, so the same weekly bill produced two different "monthly bills"
+ * figures depending which screen you looked at. Two screens disagreeing about
+ * what you owe undermines every other number in the app.
+ */
+const WEEKS_PER_MONTH = 4.348;
+const FORTNIGHTS_PER_MONTH = 2.174;
+
+/**
+ * Monthly-equivalent cost of a cadence, for "total monthly subscription load"
+ * and for the committed portion of Safe-to-Spend.
+ *
+ * Takes only the two fields it needs so callers can pass a partial series.
+ */
+export function monthlyEquivalentCents(series: Pick<RecurringSeries, 'amountCents' | 'cadence'>): Cents {
+  // A recurring series represents a bill, so a negative amount (an income
+  // series) contributes nothing to committed spend rather than crediting it.
+  const amt = Math.max(0, series.amountCents);
   switch (series.cadence) {
     case 'weekly':
-      return Math.round(series.amountCents * 4.348);
+      return Math.round(amt * WEEKS_PER_MONTH);
     case 'fortnightly':
-      return Math.round(series.amountCents * 2.174);
+      return Math.round(amt * FORTNIGHTS_PER_MONTH);
     case 'monthly':
-      return series.amountCents;
+      return amt;
     case 'quarterly':
-      return Math.round(series.amountCents / 3);
+      return Math.round(amt / 3);
     case 'yearly':
-      return Math.round(series.amountCents / 12);
+      return Math.round(amt / 12);
   }
 }
 
