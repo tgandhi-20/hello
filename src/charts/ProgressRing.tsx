@@ -56,7 +56,7 @@ export function ProgressRing({
           />
         </svg>
         <figcaption className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 text-center">
-          {centerContent ?? <span className="tabular-nums text-lg font-semibold text-text-1">{formatPercent(value)}</span>}
+          {centerContent ?? <span className="tabular-nums text-lg font-semibold text-ink-1">{formatPercent(value)}</span>}
         </figcaption>
       </figure>
     </ChartEnter>

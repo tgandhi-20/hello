@@ -4,6 +4,49 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Typography — DESIGN.md §3. System stack only (no webfonts: offline + CSP),
+ * set globally in tokens.css on html/body. The utilities below are the two
+ * pieces of typographic treatment that carry real hierarchy work in this
+ * design system: money is a display element, and labels are always quiet.
+ */
+@layer components {
+  /**
+   * Every amount in the app renders through this class. Tight negative
+   * tracking on tabular numerals is most of what separates a designed finance
+   * app from a spreadsheet (DESIGN.md §3).
+   */
+  .money {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  /** Hero figures (Safe-to-Spend, dashboard totals) — same idea, tracked tighter still. */
+  .money-hero {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    font-weight: 600;
+  }
+
+  /** Quiet eyebrow/label style: small, tracked out, tertiary ink. Do not uppercase by default. */
+  .label {
+    font-size: 11px;
+    line-height: 16px;
+    color: var(--ink-3);
+    letter-spacing: 0.02em;
+  }
+
+  /** Section/card title style (DESIGN.md §5): weight and tight tracking do the work, not size alone. */
+  .title {
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink-1);
+  }
+}
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;

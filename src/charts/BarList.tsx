@@ -29,7 +29,7 @@ export function BarList({
   const max = cleaned.reduce((m, d) => Math.max(m, d.value), 0);
 
   if (cleaned.length === 0) {
-    return <p className={['text-sm text-text-2', className].join(' ')}>{emptyMessage}</p>;
+    return <p className={['text-sm text-ink-2', className].join(' ')}>{emptyMessage}</p>;
   }
 
   return (
@@ -45,8 +45,8 @@ export function BarList({
               {renderLeading ? renderLeading(d) : null}
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex items-center justify-between gap-2">
-                  <span className="truncate text-sm text-text-1">{d.label}</span>
-                  <span className="tabular-nums shrink-0 text-sm font-medium text-text-1">
+                  <span className="truncate text-sm text-ink-1">{d.label}</span>
+                  <span className="money shrink-0 text-sm text-ink-1">
                     {formatValue(d.value)}
                   </span>
                 </div>

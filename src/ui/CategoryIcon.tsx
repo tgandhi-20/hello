@@ -22,7 +22,11 @@ const ICON_SIZE: Record<NonNullable<CategoryIconProps['size']>, number> = {
   lg: 28,
 };
 
-/** Renders a lucide icon in a tinted circle, coloured from the category ramp token. */
+/**
+ * Renders a lucide icon in `--cat-N` on a 12%-alpha well of that same hue
+ * (DESIGN.md §5) — not a fully saturated filled circle. The well is a quiet
+ * tint, not a badge; the icon glyph itself carries the colour.
+ */
 export function CategoryIcon({ icon, colorToken, size = 'md', className = '' }: CategoryIconProps) {
   const IconComponent = ICONS[icon] ?? FALLBACK_ICON;
   const dimension = SIZE_PX[size];
@@ -34,7 +38,7 @@ export function CategoryIcon({ icon, colorToken, size = 'md', className = '' }: 
       style={{
         width: dimension,
         height: dimension,
-        backgroundColor: `color-mix(in srgb, ${color} 22%, transparent)`,
+        backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
       }}
       aria-hidden="true"
     >

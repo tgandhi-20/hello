@@ -1,72 +1,133 @@
 /**
- * Tally design tokens — CONTRACTS.md §4.
+ * Tally design tokens — DESIGN.md v2 (FROZEN spec, supersedes CONTRACTS.md §4).
  * Every colour used anywhere in the app must trace back to a token here.
  * Never hardcode a hex value in a component.
+ *
+ * Why v1 failed (DESIGN.md §0): pure #000 + saturated violet is the default of
+ * every AI-scaffolded dark app; a fully-saturated 12-hue category ramp reads as
+ * syntax highlighting; borders on every card read as drawn box soup. v2 fixes
+ * the causes: a warm near-black ground with tonal (not bordered) elevation, one
+ * desaturated accent reserved for interactive affordance, and a muted
+ * equal-lightness category ramp that reads as one family.
  */
 
 :root {
-  /* --- Core palette (frozen, CONTRACTS.md §4) --- */
-  --bg: #000000;
-  --surface-1: #0d0f13;
-  --surface-2: #161a21;
-  --border: #232830;
-  --text-1: #f2f4f8;
-  --text-2: #9aa3b2;
-  --text-3: #5c6675;
-  --accent: #7c6bff;
-  --accent-pressed: #6a5aef;
-  --positive: #3ddc97;
-  --warning: #ffb020;
-  --danger: #ff5a6e;
+  /* ============================================================
+   * Ground — tonal elevation (DESIGN.md §2). Each step up is a lighter,
+   * slightly warm-shifted near-black. Borders are the exception, not the
+   * default way surfaces separate from each other — see --hairline.
+   * ============================================================ */
+  --bg: #07070a;
+  --surface-1: #101015; /* cards, list groups */
+  --surface-2: #17171e; /* raised, pressed, input fields */
+  --surface-3: #1f1f27; /* sheets, menus, popovers */
+  --hairline: #24242d; /* USE SPARINGLY — only where two same-tone surfaces meet */
 
-  /* Translucent overlays used for pressed/hover states, scrims, focus rings */
-  --overlay-scrim: rgba(0, 0, 0, 0.6);
-  --accent-tint-12: rgba(124, 107, 255, 0.12);
-  --accent-tint-24: rgba(124, 107, 255, 0.24);
-  --danger-tint-16: rgba(255, 90, 110, 0.16);
+  /* ============================================================
+   * Ink — warm off-white, never pure white/black (DESIGN.md §1.4 — warmth is
+   * the single biggest difference between "designed" and "default").
+   *
+   * --ink-3 is shipped LIGHTER than the DESIGN.md-listed #6C6976: that value
+   * measures 3.05–3.76:1 against these surfaces (large-text-AA only, fails
+   * normal-text AA everywhere, and DESIGN.md §3 itself says to lighten rather
+   * than ship it). #8C8996 is the smallest lightening that clears 4.5:1 even
+   * against --surface-3, the lightest ground it sits on — see this agent's
+   * report for the full measured ratio table.
+   * ============================================================ */
+  --ink-1: #f4f2ee; /* primary */
+  --ink-2: #a29fa8; /* secondary */
+  --ink-3: #8c8996; /* tertiary / disabled — lightened from spec #6c6976, see note above */
+  --ink-on-accent: #0a0f13;
 
-  /* --- Category colour ramp: 12 distinct, harmonious hues on true black. ---
-     Hues are spread around the wheel and deliberately steer clear of the
-     semantic hues above (accent ~247°, positive ~154°, warning ~39°,
-     danger ~353°) so a tinted category icon is never mistaken for a status
-     colour. Lightness is varied (48–68%) alongside hue, not held constant,
-     so the ramp stays distinguishable for colourblind users who cannot rely
-     on hue alone. */
-  --cat-1: hsl(10 85% 68%); /* coral red */
-  --cat-2: hsl(20 90% 55%); /* burnt orange */
-  --cat-3: hsl(55 95% 65%); /* gold */
-  --cat-4: hsl(80 65% 55%); /* olive lime */
-  --cat-5: hsl(105 55% 60%); /* moss green */
-  --cat-6: hsl(130 55% 48%); /* forest green */
-  --cat-7: hsl(170 65% 50%); /* teal */
-  --cat-8: hsl(195 80% 48%); /* deep cyan */
-  --cat-9: hsl(210 90% 66%); /* sky blue */
-  --cat-10: hsl(275 65% 68%); /* purple */
-  --cat-11: hsl(300 60% 65%); /* magenta */
-  --cat-12: hsl(325 80% 68%); /* rose pink */
+  /* ============================================================
+   * Accent — ONE, for interactive affordance only. Deliberately blue-half-of-
+   * the-wheel (never confused with money-direction colours) and deliberately
+   * desaturated (never reads neon).
+   * ============================================================ */
+  --accent: #6a93b0; /* dusty steel blue */
+  --accent-press: #58809c;
+  --accent-tint: rgba(106, 147, 176, 0.14); /* selected rows, icon wells */
 
-  /* --- Type scale: 12/14/16/20/28/40 --- */
-  --text-xs: 12px;
-  --text-sm: 14px;
-  --text-md: 16px;
-  --text-lg: 20px;
-  --text-xl: 28px;
-  --text-2xl: 40px;
+  /* ============================================================
+   * Semantic — money direction and budget state ONLY. Never decorative.
+   * ============================================================ */
+  --positive: #6fbf9b; /* jade — income, under budget */
+  --caution: #e0a458; /* amber — approaching a cap */
+  --negative: #d2705e; /* clay — over budget, destructive actions */
 
-  /* --- System font stack: no network fonts, ever. Roboto is native on Samsung. --- */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
-    Arial, sans-serif;
+  /* ============================================================
+   * Category ramp — muted, equal-weight, one family (DESIGN.md §2). All at
+   * roughly equal lightness/chroma so the donut reads as a coherent palette,
+   * not a rainbow. Lightness still varies enough to stay distinguishable for
+   * colourblind users who can't rely on hue alone.
+   * ============================================================ */
+  --cat-1: #7fa8c4; /* blue */
+  --cat-2: #6fbf9b; /* jade */
+  --cat-3: #a8c47f; /* olive */
+  --cat-4: #e0c25e; /* wheat */
+  --cat-5: #e0a458; /* amber */
+  --cat-6: #d2705e; /* clay */
+  --cat-7: #c47f9b; /* rose */
+  --cat-8: #a87fc4; /* mauve */
+  --cat-9: #7f86c4; /* periwinkle */
+  --cat-10: #5e9ea0; /* teal */
+  --cat-11: #b39b7f; /* taupe */
+  --cat-12: #8c9199; /* slate */
 
-  /* --- Motion --- */
+  /* ============================================================
+   * Typography — system stack only, no webfonts (offline + CSP). Roboto is
+   * native on the target Samsung device. The px/line-height SCALE itself
+   * (2xs..2xl) is expressed as Tailwind fontSize entries in tailwind.config.js
+   * rather than CSS vars, so `text-md` etc. carry both size AND line-height
+   * together in one utility class.
+   * ============================================================ */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+
+  /* ============================================================
+   * Motion (DESIGN.md §4): 140–180ms, cubic-bezier(0.2,0,0,1), transform/
+   * opacity only. --duration-fast/--duration-standard kept as the two steps
+   * already referenced across the app; retimed into the v2 window.
+   * ============================================================ */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --duration-fast: 120ms;
-  --duration-standard: 200ms;
+  --duration-fast: 140ms;
+  --duration-standard: 180ms;
+
+  /* ============================================================
+   * TEMPORARY v1 -> v2 ALIASES
+   * ------------------------------------------------------------
+   * ~40 feature files still reference these old CSS custom properties (via
+   * old Tailwind class names like `text-text-1`, `border-border`,
+   * `text-warning`, `bg-accent-pressed`) while a second agent migrates those
+   * call sites to the v2 token names concurrently. Every one of these is a
+   * pure re-point at the nearest v2 token, defined ONCE here — nothing in
+   * this block introduces a new colour value.
+   *
+   * REMOVE THIS ENTIRE BLOCK (and the matching legacy keys in
+   * tailwind.config.js) once no file under src/features/** or src/app/**
+   * references the old names any more. See this agent's report for the
+   * current reference count / file list captured at migration start.
+   * ============================================================ */
+  --text-1: var(--ink-1);
+  --text-2: var(--ink-2);
+  --text-3: var(--ink-3);
+  --border: var(--hairline);
+  --accent-pressed: var(--accent-press);
+  --warning: var(--caution);
+  --danger: var(--negative);
+
+  /* Old translucent-overlay tokens, re-derived from the new accent/negative
+     so their alpha steps (12/24/16%) still make sense against the new hues. */
+  --overlay-scrim: rgba(0, 0, 0, 0.6);
+  --accent-tint-12: var(--accent-tint);
+  --accent-tint-24: rgba(106, 147, 176, 0.24);
+  --danger-tint-16: rgba(210, 112, 94, 0.16);
 }
 
 html,
 body {
   background: var(--bg);
-  color: var(--text-1);
+  color: var(--ink-1);
   font-family: var(--font-sans);
 }
 
@@ -75,6 +136,9 @@ body {
 body {
   font-variant-numeric: tabular-nums;
 }
+
+/* Money/label utility classes live in src/styles/index.css, in @layer
+   components, so they compose predictably against Tailwind utilities. */
 
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -12,23 +12,21 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
   const inputId = id ?? rest.name;
   return (
     <label className="block w-full">
-      {label ? (
-        <span className="mb-1 block text-sm text-text-2">{label}</span>
-      ) : null}
+      {label ? <span className="label mb-1 block">{label}</span> : null}
       <input
         ref={ref}
         id={inputId}
         className={[
-          'h-12 w-full rounded-2xl border bg-surface-2 px-4 text-md text-text-1',
-          'placeholder:text-text-3 outline-none transition-colors duration-200',
-          'border-border focus:border-accent',
-          error ? 'border-danger' : '',
+          'h-12 w-full rounded-control border bg-surface-2 px-4 text-md text-ink-1',
+          'placeholder:text-ink-3 outline-none transition-colors duration-180 ease-standard',
+          'border-hairline focus:border-accent',
+          error ? 'border-negative' : '',
           className,
         ].join(' ')}
         aria-invalid={error ? true : undefined}
         {...rest}
       />
-      {error ? <span className="mt-1 block text-xs text-danger">{error}</span> : null}
+      {error ? <span className="mt-1 block text-xs text-negative">{error}</span> : null}
     </label>
   );
 });

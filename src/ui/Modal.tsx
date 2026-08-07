@@ -29,8 +29,10 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       aria-label={title}
     >
       <div className="absolute inset-0 bg-[var(--overlay-scrim)]" onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-card border border-border bg-surface-1 p-5">
-        {title ? <h2 className="mb-2 text-lg font-semibold text-text-1">{title}</h2> : null}
+      <div
+        className="relative w-full max-w-sm rounded-sheet bg-surface-2 p-5 shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+      >
+        {title ? <h2 className="title mb-2">{title}</h2> : null}
         {children}
       </div>
     </div>
@@ -62,7 +64,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Modal open={open} onClose={onCancel} title={title}>
-      {body ? <div className="mb-4 text-sm text-text-2">{body}</div> : null}
+      {body ? <div className="mb-4 text-sm text-ink-2">{body}</div> : null}
       <div className="flex gap-3">
         <Button variant="ghost" fullWidth onClick={onCancel}>
           {cancelLabel}

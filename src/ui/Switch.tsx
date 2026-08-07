@@ -18,7 +18,7 @@ export function Switch({ checked, onChange, label, disabled, id }: SwitchProps) 
         disabled ? 'opacity-40' : 'cursor-pointer',
       ].join(' ')}
     >
-      {label ? <span className="text-md text-text-1">{label}</span> : null}
+      {label ? <span className="text-md text-ink-1">{label}</span> : null}
       <span className="relative inline-flex h-8 w-14 shrink-0 items-center">
         <input
           id={id}
@@ -32,13 +32,14 @@ export function Switch({ checked, onChange, label, disabled, id }: SwitchProps) 
         />
         <span
           className={[
-            'pointer-events-none absolute inset-0 rounded-pill border border-border transition-colors duration-200',
+            'pointer-events-none absolute inset-0 rounded-pill border border-hairline transition-colors duration-180 ease-standard',
             checked ? 'bg-accent' : 'bg-surface-2',
           ].join(' ')}
         />
         <span
           className={[
-            'pointer-events-none absolute h-6 w-6 rounded-full bg-white shadow transition-transform duration-200',
+            // A warm off-white knob, never pure white (DESIGN.md §1.4).
+            'pointer-events-none absolute h-6 w-6 rounded-full bg-ink-1 shadow transition-transform duration-180 ease-standard',
             checked ? 'translate-x-7' : 'translate-x-1',
           ].join(' ')}
         />

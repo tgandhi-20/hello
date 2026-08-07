@@ -124,9 +124,15 @@ the way. Do not uppercase everything — reserve it for genuine eyebrow labels.
 
 **Titles**: `text-lg`, weight 600, `letter-spacing: -0.01em`.
 
-Contrast: all text must clear WCAG AA (4.5:1) against its surface. `--ink-3` on
-`--surface-1` is the tightest pairing — verify it, and lighten the token rather
-than shipping something unreadable.
+Contrast: all text must clear WCAG AA (4.5:1) against its surface. The tightest
+pairing is `--ink-3` on **`--surface-3`** — surfaces get *lighter* from `--bg`
+upward, so the topmost surface (sheets, menus, popovers) is the hardest ground for
+the faintest ink, not `--surface-1`. Measured, the spec's original `--ink-3`
+(`#6C6976`) came in at 3.05–3.76:1 and failed normal-text AA on every surface; it
+is now `#8C8996`, which clears 4.72:1 against `--surface-3`.
+
+Note also that `--ink-1` on `--accent` is only 2.93:1 — accent-filled controls must
+use `--ink-on-accent` (5.88:1), never `--ink-1`.
 
 ---
 

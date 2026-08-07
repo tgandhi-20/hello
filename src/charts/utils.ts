@@ -5,7 +5,7 @@
  */
 
 /** Resolve a design-token name (e.g. `'cat-3'`, `'accent'`) to a CSS `var()` reference. */
-export function tokenVar(token: string | undefined, fallback = 'text-3'): string {
+export function tokenVar(token: string | undefined, fallback = 'ink-3'): string {
   return `var(--${token && token.length > 0 ? token : fallback})`;
 }
 
