@@ -10,6 +10,7 @@
 import type { Category, Cents, DateStr, RecurringCadence, RecurringSeries, Txn } from '@/types';
 import { normalizeMerchant } from '@/features/transactions/merchant';
 import { todayStr } from '@/ui/format';
+import { WEEKS_PER_MONTH, FORTNIGHTS_PER_MONTH } from '@/personal/plan';
 
 export interface DetectionOptions {
   /** Minimum occurrences in a cluster before it's confident enough to surface. */
@@ -268,17 +269,18 @@ export function detectRecurring(
 }
 
 /**
- * Weeks and fortnights per average month, derived from the 365.2425-day
- * Gregorian year (52.1775 weeks / 12).
+ * Weeks and fortnights per average month: imported from src/personal/plan.ts
+ * (52/12 and 26/12 — docs/PERSONAL.md §1, NON-NEGOTIABLE: never ×4, which
+ * understates by ~8%) rather than defined locally.
  *
- * THIS IS THE ONLY DEFINITION. Safe-to-Spend imports it rather than keeping its
- * own: the dashboard and the Recurring screen previously used 52/12 and 4.348
- * respectively, so the same weekly bill produced two different "monthly bills"
- * figures depending which screen you looked at. Two screens disagreeing about
- * what you owe undermines every other number in the app.
+ * Safe-to-Spend imports `monthlyEquivalentCents` below rather than keeping its
+ * own copy of this ratio: the dashboard and the Recurring screen previously
+ * used 52/12 and 4.348 respectively, so the same weekly bill produced two
+ * different "monthly bills" figures depending which screen you looked at. Two
+ * screens disagreeing about what you owe undermines every other number in the
+ * app. This file — via src/personal/plan.ts's single definition — is now
+ * genuinely the only place either ratio is defined.
  */
-const WEEKS_PER_MONTH = 4.348;
-const FORTNIGHTS_PER_MONTH = 2.174;
 
 /**
  * Monthly-equivalent cost of a cadence, for "total monthly subscription load"

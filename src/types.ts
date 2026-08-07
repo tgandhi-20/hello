@@ -105,6 +105,19 @@ export interface Settings {
   biometricEnabled: boolean;
   /** Categories to feature first in the quick-add grid. */
   pinnedCategoryIds: string[];
+  /**
+   * Date the user moves into the new place (personal plan §7). `undefined` =
+   * not yet moved — rent, utilities, and sublet income are inactive until
+   * this date. Must be an explicit user-set value, never inferred.
+   */
+  moveInDate?: DateStr;
+  /**
+   * Explicit answer to "does the user have a HECS/HELP debt?" (personal plan
+   * §2/§7 — if true, the whole plan shifts by ~$700/month). `undefined` =
+   * not yet answered; must be asked as a one-time setup question, never
+   * silently assumed false.
+   */
+  hasHecsDebt?: boolean;
 }
 
 export interface HabitStats {
