@@ -1,0 +1,88 @@
+/**
+ * Tally design tokens — CONTRACTS.md §4.
+ * Every colour used anywhere in the app must trace back to a token here.
+ * Never hardcode a hex value in a component.
+ */
+
+:root {
+  /* --- Core palette (frozen, CONTRACTS.md §4) --- */
+  --bg: #000000;
+  --surface-1: #0d0f13;
+  --surface-2: #161a21;
+  --border: #232830;
+  --text-1: #f2f4f8;
+  --text-2: #9aa3b2;
+  --text-3: #5c6675;
+  --accent: #7c6bff;
+  --accent-pressed: #6a5aef;
+  --positive: #3ddc97;
+  --warning: #ffb020;
+  --danger: #ff5a6e;
+
+  /* Translucent overlays used for pressed/hover states, scrims, focus rings */
+  --overlay-scrim: rgba(0, 0, 0, 0.6);
+  --accent-tint-12: rgba(124, 107, 255, 0.12);
+  --accent-tint-24: rgba(124, 107, 255, 0.24);
+  --danger-tint-16: rgba(255, 90, 110, 0.16);
+
+  /* --- Category colour ramp: 12 distinct, harmonious hues on true black. ---
+     Hues are spread around the wheel and deliberately steer clear of the
+     semantic hues above (accent ~247°, positive ~154°, warning ~39°,
+     danger ~353°) so a tinted category icon is never mistaken for a status
+     colour. Lightness is varied (48–68%) alongside hue, not held constant,
+     so the ramp stays distinguishable for colourblind users who cannot rely
+     on hue alone. */
+  --cat-1: hsl(10 85% 68%); /* coral red */
+  --cat-2: hsl(20 90% 55%); /* burnt orange */
+  --cat-3: hsl(55 95% 65%); /* gold */
+  --cat-4: hsl(80 65% 55%); /* olive lime */
+  --cat-5: hsl(105 55% 60%); /* moss green */
+  --cat-6: hsl(130 55% 48%); /* forest green */
+  --cat-7: hsl(170 65% 50%); /* teal */
+  --cat-8: hsl(195 80% 48%); /* deep cyan */
+  --cat-9: hsl(210 90% 66%); /* sky blue */
+  --cat-10: hsl(275 65% 68%); /* purple */
+  --cat-11: hsl(300 60% 65%); /* magenta */
+  --cat-12: hsl(325 80% 68%); /* rose pink */
+
+  /* --- Type scale: 12/14/16/20/28/40 --- */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+  --text-2xl: 40px;
+
+  /* --- System font stack: no network fonts, ever. Roboto is native on Samsung. --- */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+
+  /* --- Motion --- */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 120ms;
+  --duration-standard: 200ms;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+}
+
+/* Money and any tabular figures line up in columns app-wide. */
+.tabular-nums,
+body {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

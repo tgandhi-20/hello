@@ -1,0 +1,37 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Any element opted into being a scroll container should not rubber-band
+   into pull-to-refresh / bounce, which would nuke in-memory state. */
+.scroll-container {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+}
