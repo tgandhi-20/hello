@@ -164,9 +164,26 @@ mis-detected sign convention silently inverts someone's entire financial history
   a payment/refund.** This is the single most important detail in the importer. Get it
   wrong and every number in the app is backwards.
 
-Do not trust these layouts blindly — Australian banks change export formats. Detect by
-inspecting headers and sampling rows, fall back to the mapper, and let the user correct
-the sign convention in the preview.
+**These layouts are NOT reliable.** Verified against public sources: CBA exports appear
+in the wild both headerless as `Date,Amount,Description,Balance` AND headered as
+`Date,Description,Debit,Credit,Balance`. Amex likewise appears with a single signed
+`Amount` column and with split `Debit`/`Credit` columns. Treat the three formats above
+as *hints, not schemas*.
+
+Therefore the importer must be **structural, not name-based**:
+1. Sniff the delimiter and whether row 0 is a header (does it parse as a date/number?).
+2. Identify columns by *content shape*, not by title — a date column parses as dates,
+   an amount column parses as signed decimals, a description column is mostly
+   non-numeric text, a balance column is monotonic-ish and much larger in magnitude.
+3. Infer the sign convention from the data: if nearly all values share one sign, that
+   sign is spend. If a `Balance` column exists, verify the convention by checking that
+   `balance[n] - balance[n-1]` agrees with the signed amount; that check is authoritative.
+4. Fall back to the manual column mapper whenever confidence is low.
+5. **Always** show the preview with a sign-convention toggle and 5 sample rows rendered
+   as the user will see them ("Coffee $5.50 — spend" vs "Coffee $5.50 — income"). The
+   user confirms before anything is written.
+
+Never silently commit an import you had to guess at.
 
 **Dedupe:** `hash = sha256(date | amountCents | normalisedDescription | account)`.
 Re-importing an overlapping statement must not double-count. Show "N new, M duplicates
