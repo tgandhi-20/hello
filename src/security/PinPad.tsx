@@ -3,7 +3,8 @@
  * by Settings (change PIN). A custom keypad only — never the OS keyboard.
  */
 import React from 'react';
-import { Delete } from 'lucide-react';
+import { Delete, Minus, Plus } from 'lucide-react';
+import { DEFAULT_PIN_LENGTH, MIN_PIN_LENGTH, MAX_PIN_LENGTH } from './unlockMode';
 
 export interface PinDotsProps {
   length: number;
@@ -67,9 +68,17 @@ export function Keypad({ onDigit, onBackspace, disabled }: KeypadProps) {
   );
 }
 
-export const PIN_LENGTH = 6;
+/**
+ * Historical fixed PIN length, kept as the default. PIN length is now
+ * configurable (4–10 digits, see `unlockMode.ts`) — code that needs "the"
+ * length for an in-progress entry should use the length that entry was
+ * actually started with, not this constant. It remains exported because
+ * `PinDots`/`Keypad` callers need *some* default before the user has chosen
+ * one (e.g. first paint of the length stepper).
+ */
+export const PIN_LENGTH = DEFAULT_PIN_LENGTH;
 
-/** Weak-PIN advisory (non-blocking) shown during setup/change. */
+/** Weak-PIN advisory (non-blocking) shown during setup/change. Works at any length. */
 export function isWeakPin(pin: string): string | null {
   if (/^(\d)\1+$/.test(pin)) return 'All the same digit is easy to guess.';
   const ascending = '0123456789';
@@ -77,4 +86,41 @@ export function isWeakPin(pin: string): string | null {
   if (ascending.includes(pin) || descending.includes(pin)) return 'Sequential digits are easy to guess.';
   if (pin === '123123' || pin === '112233') return 'That pattern is easy to guess.';
   return null;
+}
+
+export interface PinLengthStepperProps {
+  value: number;
+  onChange: (length: number) => void;
+  disabled?: boolean;
+}
+
+/**
+ * Lets the user pick a PIN length from 4–10 digits at setup/change time —
+ * "nearly free" extra entropy per the security audit, without forcing anyone
+ * into a passphrase. Every control keeps the 48x48px minimum touch target.
+ */
+export function PinLengthStepper({ value, onChange, disabled }: PinLengthStepperProps) {
+  return (
+    <div className="flex items-center justify-center gap-4" role="group" aria-label="PIN length">
+      <button
+        type="button"
+        disabled={disabled || value <= MIN_PIN_LENGTH}
+        onClick={() => onChange(Math.max(MIN_PIN_LENGTH, value - 1))}
+        aria-label="Fewer digits"
+        className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-1 text-text-1 active:bg-surface-2 disabled:opacity-30"
+      >
+        <Minus size={18} aria-hidden="true" />
+      </button>
+      <span className="min-w-[6rem] text-center text-sm text-text-2 tabular-nums">{value} digits</span>
+      <button
+        type="button"
+        disabled={disabled || value >= MAX_PIN_LENGTH}
+        onClick={() => onChange(Math.min(MAX_PIN_LENGTH, value + 1))}
+        aria-label="More digits"
+        className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-1 text-text-1 active:bg-surface-2 disabled:opacity-30"
+      >
+        <Plus size={18} aria-hidden="true" />
+      </button>
+    </div>
+  );
 }

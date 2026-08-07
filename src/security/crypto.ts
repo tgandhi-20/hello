@@ -4,8 +4,14 @@
  * Native WebCrypto ONLY. No crypto libraries, ever.
  *
  * Model:
- *  - The vault key is a 256-bit AES-GCM key derived from the user's PIN via
- *    PBKDF2-SHA256 with 600,000 iterations and a random 16-byte salt.
+ *  - The vault key is a 256-bit AES-GCM key derived from the user's secret —
+ *    a numeric PIN or an alphanumeric passphrase, see `unlockMode.ts` — via
+ *    PBKDF2-SHA256 with 600,000 iterations and a random 16-byte salt. `pin`
+ *    is the parameter name below for historical reasons; PBKDF2 does not
+ *    care whether the string it's given came off a 10-key keypad or a full
+ *    keyboard. This is intentionally the ONE key-derivation path in the app —
+ *    a passphrase is a higher-entropy secret fed into the same scheme, not a
+ *    second crypto scheme to maintain.
  *  - That key is used directly to encrypt/decrypt every record before it
  *    touches IndexedDB. It is marked `extractable` for exactly one reason:
  *    `subtle.wrapKey`/`unwrapKey` (used by biometric.ts) require the key
@@ -61,7 +67,7 @@ export function generateSalt(): Uint8Array {
 }
 
 /**
- * Derive the 256-bit AES-GCM vault key from a PIN + salt.
+ * Derive the 256-bit AES-GCM vault key from a secret (PIN or passphrase) + salt.
  * PBKDF2-SHA256, 600,000 iterations, per CONTRACTS.md §5.
  *
  * `extractable: true` so the key can later be wrapped (biometric.ts) — see

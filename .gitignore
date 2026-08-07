@@ -17,10 +17,12 @@ dev-dist/
 !.vscode/extensions.json
 *.swp
 
-# Scratch / debug scripts
+# Scratch / debug / QA harness scripts
 /debug*.ts
 /debug*.js
 /scratch*
+/.qa-*.mjs
+/qa*.cjs
 
 # Logs
 npm-debug.log*

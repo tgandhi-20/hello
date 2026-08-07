@@ -20,9 +20,10 @@ import { Switch } from '@/ui/Switch';
 import { ConfirmDialog } from '@/ui/Modal';
 import { useToast } from '@/ui/Toast';
 import { formatMoney, todayStr } from '@/ui/format';
-import { useStore, isBiometricAvailable, disableBiometric } from '@/store/useStore';
+import { useStore, isBiometricAvailable, disableBiometric, getUnlockConfig } from '@/store/useStore';
+import { DEFAULT_UNLOCK_CONFIG, type UnlockConfig } from '@/security/unlockMode';
 import type { Cents } from '@/types';
-import { ChangePinSheet } from './ChangePinSheet';
+import { ChangeUnlockSheet } from './ChangeUnlockSheet';
 import { ImportBackupSheet } from './ImportBackupSheet';
 import { parseDollarsToCents, centsToPlainDollarsString } from './money';
 
@@ -90,15 +91,24 @@ export function SettingsScreen() {
 
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [biometricBusy, setBiometricBusy] = useState(false);
-  const [changePinOpen, setChangePinOpen] = useState(false);
+  const [changeUnlockOpen, setChangeUnlockOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [demoBusy, setDemoBusy] = useState(false);
+  const [unlockConfig, setUnlockConfig] = useState<UnlockConfig>(DEFAULT_UNLOCK_CONFIG);
 
   useEffect(() => {
     void isBiometricAvailable().then(setBiometricSupported);
   }, []);
+
+  const refreshUnlockConfig = React.useCallback(() => {
+    void getUnlockConfig().then(setUnlockConfig);
+  }, []);
+
+  useEffect(() => {
+    refreshUnlockConfig();
+  }, [refreshUnlockConfig]);
 
   async function handleBiometricToggle(next: boolean) {
     setBiometricBusy(true);
@@ -163,11 +173,16 @@ export function SettingsScreen() {
         <div className="flex flex-col divide-y divide-border">
           <button
             type="button"
-            onClick={() => setChangePinOpen(true)}
+            onClick={() => setChangeUnlockOpen(true)}
             className="flex min-h-[56px] items-center gap-3 py-3 text-left"
           >
             <KeyRound size={20} className="text-text-2" aria-hidden="true" />
-            <span className="flex-1 text-md text-text-1">Change PIN</span>
+            <span className="flex-1 text-md text-text-1">
+              {unlockConfig.mode === 'pin' ? 'Change PIN' : 'Change passphrase'}
+            </span>
+            <span className="text-sm text-text-3">
+              {unlockConfig.mode === 'pin' ? `${unlockConfig.pinLength}-digit PIN` : 'Passphrase'}
+            </span>
           </button>
 
           <div className="flex min-h-[56px] items-center gap-3 py-3">
@@ -199,8 +214,13 @@ export function SettingsScreen() {
         </div>
         <p className="mt-2 flex items-start gap-2 text-xs text-text-3">
           <ShieldCheck size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
-          Everything is encrypted on this device only. Your PIN is never stored — losing it means
-          losing access unless you have a backup.
+          Everything is encrypted on this device only. Your {unlockConfig.mode === 'pin' ? 'PIN' : 'passphrase'} is
+          never stored — losing it means losing access unless you have a backup.
+        </p>
+        <p className="mt-1 text-xs text-text-3">
+          {unlockConfig.mode === 'pin'
+            ? 'A PIN protects against someone picking up your unlocked phone. It does not protect against a stolen device with its raw data copied off — switch to a passphrase for that.'
+            : 'A passphrase protects against both an unlocked phone and a stolen device with its raw data copied off.'}
         </p>
       </Card>
 
@@ -274,7 +294,11 @@ export function SettingsScreen() {
         </p>
       </Card>
 
-      <ChangePinSheet open={changePinOpen} onClose={() => setChangePinOpen(false)} />
+      <ChangeUnlockSheet
+        open={changeUnlockOpen}
+        onClose={() => setChangeUnlockOpen(false)}
+        onChanged={refreshUnlockConfig}
+      />
       <ImportBackupSheet open={importOpen} onClose={() => setImportOpen(false)} />
       <ConfirmDialog
         open={resetOpen}

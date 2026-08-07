@@ -44,6 +44,11 @@ import {
   type BiometricRegistration,
 } from '@/security/biometric';
 import {
+  DEFAULT_PIN_LENGTH,
+  DEFAULT_UNLOCK_CONFIG,
+  type UnlockConfig,
+} from '@/security/unlockMode';
+import {
   getMeta,
   setMeta,
   deleteMeta,
@@ -155,6 +160,39 @@ async function decryptAllWithIds<T>(
 async function decryptAll<T>(storeName: DataStoreName, key: CryptoKey): Promise<T[]> {
   const withIds = await decryptAllWithIds<T>(storeName, key);
   return withIds.map((r) => r.value);
+}
+
+/**
+ * Shared bootstrap for a brand-new vault — used by both `setupPin` (frozen
+ * §9 interface) and the standalone `setupPassphrase` below. Writes the salt,
+ * verifier, and `unlockConfig` (which mode + PIN length, if any — see
+ * `unlockMode.ts`; not secret, needed by the lock screen before unlock) to
+ * the plain `meta` store, then seeds default categories/settings under the
+ * new key.
+ */
+async function initializeFreshVault(
+  secret: string,
+  config: UnlockConfig
+): Promise<{ key: CryptoKey; categories: Category[]; settings: Settings }> {
+  const salt = generateSalt();
+  const key = await deriveKey(secret, salt);
+  const verifier = await makeVerifier(key);
+  await setMeta('salt', bufToBase64(salt));
+  await setMeta('verifier', verifier);
+  await setMeta('unlockConfig', config);
+  setActiveKey(key);
+
+  const categories = buildDefaultCategories();
+  const settings: Settings = { ...DEFAULT_SETTINGS };
+
+  await encryptAndPutMany(
+    'categories',
+    key,
+    categories.map((c) => ({ id: c.id, value: c }))
+  );
+  await encryptAndPut('settings', key, SETTINGS_ID, settings);
+
+  return { key, categories: sortCategories(categories), settings };
 }
 
 function compareTxnDesc(a: Txn, b: Txn): number {
@@ -288,27 +326,16 @@ export const useStore = create<TallyStore>((set, get) => {
     // --- lock lifecycle -----------------------------------------------
 
     async setupPin(pin) {
-      const salt = generateSalt();
-      const key = await deriveKey(pin, salt);
-      const verifier = await makeVerifier(key);
-      await setMeta('salt', bufToBase64(salt));
-      await setMeta('verifier', verifier);
-      setActiveKey(key);
-
-      const categories = buildDefaultCategories();
-      const settings: Settings = { ...DEFAULT_SETTINGS };
-
-      await encryptAndPutMany(
-        'categories',
-        key,
-        categories.map((c) => ({ id: c.id, value: c }))
-      );
-      await encryptAndPut('settings', key, SETTINGS_ID, settings);
-
+      // PIN length is whatever the caller actually typed (4–10 digits, chosen
+      // on the setup screen) — no separate parameter needed, see unlockMode.ts.
+      const { categories, settings } = await initializeFreshVault(pin, {
+        mode: 'pin',
+        pinLength: pin.length,
+      });
       budgetIndex.clear();
       set({
         txns: [],
-        categories: sortCategories(categories),
+        categories,
         budgets: [],
         rules: [],
         recurring: [],
@@ -762,6 +789,44 @@ export async function hasBiometricConfigured(): Promise<boolean> {
 export { isBiometricAvailable };
 
 /**
+ * Which unlock mode this vault currently uses, and — for PIN mode — how many
+ * digits. Read from the plain `meta` store (not secret, see unlockMode.ts's
+ * doc comment) so the lock screen can pick the right input widget (keypad vs.
+ * passphrase field) *before* anything is decrypted. Vaults created before
+ * this feature existed have no `unlockConfig` record — they default to the
+ * historical behaviour: a 6-digit PIN, which is exactly what they already are.
+ */
+export async function getUnlockConfig(): Promise<UnlockConfig> {
+  const config = await getMeta<UnlockConfig>('unlockConfig');
+  return config ?? DEFAULT_UNLOCK_CONFIG;
+}
+
+/**
+ * First-run setup for passphrase mode. Not part of the frozen §9 interface
+ * (mirrors `changePin`/`disableBiometric` living outside it) — `setupPin`
+ * stays exactly as §9 declares it for PIN mode; this is its passphrase
+ * sibling, sharing the same `initializeFreshVault` bootstrap so the two
+ * modes can never drift into two different crypto paths.
+ */
+export async function setupPassphrase(passphrase: string): Promise<void> {
+  const { categories, settings } = await initializeFreshVault(passphrase, {
+    mode: 'passphrase',
+    pinLength: DEFAULT_PIN_LENGTH, // unused in passphrase mode, kept stable
+  });
+  budgetIndex.clear();
+  useStore.setState({
+    txns: [],
+    categories,
+    budgets: [],
+    rules: [],
+    recurring: [],
+    settings,
+    hydrated: true,
+    lockState: 'unlocked',
+  });
+}
+
+/**
  * Turn biometric unlock off. Discards the wrapped-key blob and credential
  * reference (the WebAuthn credential itself is left registered with the
  * platform — there's no way to unregister it from the web, and leaving it
@@ -779,38 +844,78 @@ export async function disableBiometric(): Promise<void> {
 }
 
 /**
- * Change the PIN. Not part of the frozen §9 interface (there's no server-side
- * concept to reconcile — it's a pure key-rotation operation), so it lives as
- * a standalone export rather than a TallyStore method.
+ * Change the unlock secret — a PIN, a passphrase, or a switch between the
+ * two — and/or its `UnlockConfig`. Not part of the frozen §9 interface
+ * (there's no server-side concept to reconcile — it's a pure key-rotation
+ * operation), so it lives as a standalone export rather than a TallyStore
+ * method. `changePin`, `switchToPassphrase`, and `switchToPin` below are
+ * thin, named wrappers over this — deliberately reusing ONE mechanism for
+ * "change my PIN" and "switch to a passphrase" rather than writing a
+ * parallel migration path for the latter (deliverable 4).
  *
- * Because the PIN-derived key IS the vault's AES-GCM key (not a wrapper
- * around a separate random master key), changing the PIN means a *new* key
- * and therefore re-encrypting every record under it — there is no shortcut.
- * This is intentionally more expensive than a wrapped-key design would be,
- * in exchange for a simpler, more auditable crypto model (see crypto.ts).
+ * Because the secret-derived key IS the vault's AES-GCM key (not a wrapper
+ * around a separate random master key), changing it means a *new* key and
+ * therefore re-encrypting every record under it — there is no shortcut. This
+ * is intentionally more expensive than a wrapped-key design would be, in
+ * exchange for a simpler, more auditable crypto model (see crypto.ts).
+ *
+ * ATOMICITY / FAIL-SAFETY — read before touching this function:
+ * IndexedDB writes below are five independent per-store transactions (see
+ * `data/db.ts`'s `putManyEncrypted`/`putEncrypted`, each opening its own
+ * `db.transaction(...)`), not one combined cross-store transaction, so this
+ * is NOT atomic in the strict sense — an interruption in the narrow window
+ * while those transactions are committing could in principle leave some
+ * stores re-encrypted under the new key while others are still under the
+ * old one. What IS guaranteed, and is the reason this can't brick the vault
+ * on the far more common failure modes (tab closed, app backgrounded and
+ * killed, network/CPU hiccup, a bug in this function itself):
+ *   1. The OLD salt/verifier/config in `meta` — the only thing `unlock()`
+ *      ever reads to decide which key is "current" — is left completely
+ *      untouched until every single re-encrypted record has been written
+ *      AND read back and verified to decrypt correctly under the new key.
+ *   2. That verification reads back actual freshly-committed IndexedDB
+ *      records (not the in-memory values that were about to be written) for
+ *      a sample spanning three different stores — settings (always present),
+ *      the first category (always present after setup), and the first
+ *      transaction (if any exist) — and decrypts each with the new key
+ *      before proceeding.
+ *   3. Only after that verification passes does this function flip the
+ *      meta salt/verifier/config pointer to the new key — the single
+ *      instant at which "the vault's key" changes from the caller's
+ *      perspective.
+ * So: an interruption before all writes finish leaves the OLD key as the one
+ * `unlock()` still expects, and the meta pointer is never flipped, so a
+ * failed swap cannot be visible as "correct password, unreadable data" the
+ * way a naive "write everything then flip a flag" implementation could be if
+ * that flip happened before confirming the writes landed. The residual risk
+ * this does NOT close — the multi-transaction, non-atomic bulk write itself
+ * — pre-dates this change (the original `changePin` had the same shape) and
+ * would need a combined multi-store IndexedDB transaction in `data/db.ts` to
+ * fully close; that file is outside this change's ownership boundary.
  *
  * Any existing biometric enrollment wrapped the OLD key, so it's invalidated
  * here and the user needs to re-enable biometric unlock afterwards.
  */
-export async function changePin(
-  currentPin: string,
-  newPin: string
+export async function setUnlockSecret(
+  currentSecret: string,
+  newSecret: string,
+  newConfig: UnlockConfig
 ): Promise<{ ok: boolean; error?: string }> {
   const saltB64 = await getMeta<string>('salt');
   const verifierBlob = await getMeta<EncryptedBlob>('verifier');
   if (!saltB64 || !verifierBlob) return { ok: false, error: 'Vault is not set up yet.' };
 
-  const oldKey = await deriveKey(currentPin, base64ToBuf(saltB64));
+  const oldKey = await deriveKey(currentSecret, base64ToBuf(saltB64));
   const currentOk = await checkVerifier(oldKey, verifierBlob);
-  if (!currentOk) return { ok: false, error: 'Current PIN is incorrect.' };
+  if (!currentOk) return { ok: false, error: 'Your current PIN or passphrase is incorrect.' };
 
   const state = useStore.getState();
   if (state.lockState !== 'unlocked' || !state.hydrated) {
-    return { ok: false, error: 'Unlock Tally before changing your PIN.' };
+    return { ok: false, error: 'Unlock Tally before changing how it unlocks.' };
   }
 
   const newSalt = generateSalt();
-  const newKey = await deriveKey(newPin, newSalt);
+  const newKey = await deriveKey(newSecret, newSalt);
   const newVerifier = await makeVerifier(newKey);
 
   const budgetRecords: { id: string; value: Budget }[] = [];
@@ -822,6 +927,8 @@ export async function changePin(
     if (budget) budgetRecords.push({ id, value: budget });
   }
 
+  // Re-encrypt every record under the new key. `meta` (salt/verifier/config)
+  // is deliberately NOT touched yet — see the fail-safety note above.
   await Promise.all([
     encryptAndPutMany(
       'txns',
@@ -847,8 +954,21 @@ export async function changePin(
     encryptAndPut('settings', newKey, SETTINGS_ID, { ...state.settings, biometricEnabled: false }),
   ]);
 
+  // Fail-safe verification: read back what was ACTUALLY committed (not the
+  // in-memory values used to write it) from three different stores and
+  // confirm the new key genuinely decrypts them, before the meta pointer
+  // that `unlock()` trusts is allowed to move.
+  const verified = await verifyReencryptedSample(newKey, state);
+  if (!verified) {
+    return {
+      ok: false,
+      error: 'Could not verify the re-encrypted vault. Nothing about how you unlock has changed — try again.',
+    };
+  }
+
   await setMeta('salt', bufToBase64(newSalt));
   await setMeta('verifier', newVerifier);
+  await setMeta('unlockConfig', newConfig);
   // The old biometric wrap targeted a key that no longer exists as the active vault key.
   await deleteMeta('biometricReg');
   await deleteMeta('biometricWrappedKey');
@@ -857,4 +977,68 @@ export async function changePin(
   useStore.setState({ settings: { ...state.settings, biometricEnabled: false } });
 
   return { ok: true };
+}
+
+async function verifyReencryptedSample(newKey: CryptoKey, priorState: TallyStore): Promise<boolean> {
+  try {
+    const [settingsRecords, categoryRecords, txnRecords] = await Promise.all([
+      getAllEncrypted('settings'),
+      getAllEncrypted('categories'),
+      priorState.txns.length > 0 ? getAllEncrypted('txns') : Promise.resolve([]),
+    ]);
+
+    const settingsRecord = settingsRecords.find((r) => r.id === SETTINGS_ID);
+    if (!settingsRecord) return false;
+    await decryptJSON(newKey, settingsRecord.blob);
+
+    if (priorState.categories.length > 0) {
+      const firstCategory = categoryRecords.find((r) => r.id === priorState.categories[0].id);
+      if (!firstCategory) return false;
+      await decryptJSON(newKey, firstCategory.blob);
+    }
+
+    if (priorState.txns.length > 0) {
+      const firstTxn = txnRecords.find((r) => r.id === priorState.txns[0].id);
+      if (!firstTxn) return false;
+      await decryptJSON(newKey, firstTxn.blob);
+    }
+
+    return true;
+  } catch {
+    // AES-GCM auth failure or malformed JSON — the sample did not decrypt
+    // cleanly under the new key. Treated as a failed migration.
+    return false;
+  }
+}
+
+/** Change the PIN, keeping (or changing) its length. Same-mode convenience wrapper over `setUnlockSecret`. */
+export async function changePin(
+  currentPin: string,
+  newPin: string
+): Promise<{ ok: boolean; error?: string }> {
+  return setUnlockSecret(currentPin, newPin, { mode: 'pin', pinLength: newPin.length });
+}
+
+/**
+ * Migration: switch an existing PIN (or passphrase) vault to passphrase mode.
+ * Reuses `setUnlockSecret`/`changePin`'s re-encrypt-and-verify mechanism —
+ * deliverable 4 explicitly calls for reusing this rather than a parallel
+ * migration path, since the PIN/passphrase-derived key IS the vault key.
+ */
+export async function switchToPassphrase(
+  currentSecret: string,
+  newPassphrase: string
+): Promise<{ ok: boolean; error?: string }> {
+  return setUnlockSecret(currentSecret, newPassphrase, {
+    mode: 'passphrase',
+    pinLength: DEFAULT_PIN_LENGTH,
+  });
+}
+
+/** The reverse of `switchToPassphrase` — back to a numeric PIN. */
+export async function switchToPin(
+  currentSecret: string,
+  newPin: string
+): Promise<{ ok: boolean; error?: string }> {
+  return setUnlockSecret(currentSecret, newPin, { mode: 'pin', pinLength: newPin.length });
 }

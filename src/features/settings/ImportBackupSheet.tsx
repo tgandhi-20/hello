@@ -3,7 +3,7 @@ import { FileUp } from 'lucide-react';
 import { Sheet } from '@/ui/Sheet';
 import { Button } from '@/ui/Button';
 import { useToast } from '@/ui/Toast';
-import { Keypad, PinDots, PIN_LENGTH } from '@/security/PinPad';
+import { PassphraseField } from '@/security/PassphraseField';
 import { useStore } from '@/store/useStore';
 
 export interface ImportBackupSheetProps {
@@ -37,12 +37,12 @@ export function ImportBackupSheet({ open, onClose }: ImportBackupSheetProps) {
     onClose();
   }
 
-  async function handleComplete(fullPin: string) {
-    if (!file) return;
+  async function handleComplete() {
+    if (!file || pin.length === 0) return;
     setBusy(true);
     setError(null);
     try {
-      await importBackup(file, fullPin);
+      await importBackup(file, pin);
       show('Backup restored.', { variant: 'success' });
       handleClose();
     } catch (e) {
@@ -51,19 +51,6 @@ export function ImportBackupSheet({ open, onClose }: ImportBackupSheetProps) {
     } finally {
       setBusy(false);
     }
-  }
-
-  function onDigit(d: string) {
-    if (busy) return;
-    if (pin.length >= PIN_LENGTH) return;
-    const next = pin + d;
-    setPin(next);
-    if (next.length === PIN_LENGTH) void handleComplete(next);
-  }
-
-  function onBackspace() {
-    if (busy) return;
-    setPin((p) => p.slice(0, -1));
   }
 
   return (
@@ -93,11 +80,22 @@ export function ImportBackupSheet({ open, onClose }: ImportBackupSheetProps) {
             <p className="text-center text-sm text-text-2">
               Selected: <span className="text-text-1">{file.name}</span>
             </p>
-            <p className="text-center text-sm text-text-2">Enter the PIN that backup was made with.</p>
-            <div className="flex flex-col items-center gap-5 py-2">
-              <PinDots length={PIN_LENGTH} filled={pin.length} />
+            <p className="text-center text-sm text-text-2">
+              Enter the PIN or passphrase that backup was made with.
+            </p>
+            <div className="flex flex-col gap-4 py-2">
+              <PassphraseField
+                value={pin}
+                onChange={setPin}
+                onSubmit={() => void handleComplete()}
+                placeholder="PIN or passphrase"
+                autoFocus
+                disabled={busy}
+              />
               {error ? <p className="text-center text-sm text-danger">{error}</p> : null}
-              <Keypad onDigit={onDigit} onBackspace={onBackspace} disabled={busy} />
+              <Button variant="primary" fullWidth disabled={busy || pin.length === 0} onClick={() => void handleComplete()}>
+                Restore
+              </Button>
             </div>
           </>
         )}
