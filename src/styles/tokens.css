@@ -55,6 +55,11 @@
   --caution: #e0a458; /* amber — approaching a cap */
   --negative: #d2705e; /* clay — over budget, destructive actions */
 
+  /* Modal/Sheet backdrop. Not part of DESIGN.md's named palette, but every
+     overlay-bearing surface (Modal, Sheet) needs the same scrim so a stack of
+     either always dims consistently. */
+  --scrim: rgba(0, 0, 0, 0.6);
+
   /* ============================================================
    * Category ramp — muted, equal-weight, one family (DESIGN.md §2). All at
    * roughly equal lightness/chroma so the donut reads as a coherent palette,
@@ -92,36 +97,6 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --duration-fast: 140ms;
   --duration-standard: 180ms;
-
-  /* ============================================================
-   * TEMPORARY v1 -> v2 ALIASES
-   * ------------------------------------------------------------
-   * ~40 feature files still reference these old CSS custom properties (via
-   * old Tailwind class names like `text-text-1`, `border-border`,
-   * `text-warning`, `bg-accent-pressed`) while a second agent migrates those
-   * call sites to the v2 token names concurrently. Every one of these is a
-   * pure re-point at the nearest v2 token, defined ONCE here — nothing in
-   * this block introduces a new colour value.
-   *
-   * REMOVE THIS ENTIRE BLOCK (and the matching legacy keys in
-   * tailwind.config.js) once no file under src/features/** or src/app/**
-   * references the old names any more. See this agent's report for the
-   * current reference count / file list captured at migration start.
-   * ============================================================ */
-  --text-1: var(--ink-1);
-  --text-2: var(--ink-2);
-  --text-3: var(--ink-3);
-  --border: var(--hairline);
-  --accent-pressed: var(--accent-press);
-  --warning: var(--caution);
-  --danger: var(--negative);
-
-  /* Old translucent-overlay tokens, re-derived from the new accent/negative
-     so their alpha steps (12/24/16%) still make sense against the new hues. */
-  --overlay-scrim: rgba(0, 0, 0, 0.6);
-  --accent-tint-12: var(--accent-tint);
-  --accent-tint-24: rgba(106, 147, 176, 0.24);
-  --danger-tint-16: rgba(210, 112, 94, 0.16);
 }
 
 html,

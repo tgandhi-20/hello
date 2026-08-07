@@ -11,8 +11,8 @@ export interface BudgetProgressCardProps {
 }
 
 function toneFor(ratio: number): SemanticTone {
-  if (ratio > 1) return 'danger';
-  if (ratio >= 0.8) return 'warning';
+  if (ratio > 1) return 'negative';
+  if (ratio >= 0.8) return 'caution';
   return 'accent';
 }
 

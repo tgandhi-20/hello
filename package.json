@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "checks": "npx tsx src/import/__checks__/run.ts && npx tsx src/store/__checks__/run.ts && npx tsx src/features/dashboard/__checks__/run.ts && npx tsx src/features/goal/__checks__/run.ts && npx tsx src/features/routine/__checks__/run.ts && npx tsx src/features/food/__checks__/run.ts && npx tsx src/features/statements/__checks__/run.ts && npx tsx src/personal/__checks__/run.ts",
+    "checks": "npx tsx src/import/__checks__/run.ts && npx tsx src/store/__checks__/run.ts && npx tsx src/features/dashboard/__checks__/run.ts && npx tsx src/features/goal/__checks__/run.ts && npx tsx src/features/routine/__checks__/run.ts && npx tsx src/features/food/__checks__/run.ts && npx tsx src/features/statements/__checks__/run.ts && npx tsx src/personal/__checks__/run.ts && npx tsx src/app/__checks__/run.ts",
     "check": "npm run typecheck && npm run checks"
   },
   "dependencies": {

@@ -71,7 +71,7 @@ export function Keypad({ onKey, disabledBackspace }: KeypadProps) {
               aria-label="Backspace"
               disabled={disabledBackspace}
               onClick={() => press('back')}
-              className="flex h-16 items-center justify-center rounded-2xl bg-surface-1 text-ink-1 active:bg-surface-2 disabled:opacity-40 transition-[transform,background-color] duration-200 active:scale-[0.97]"
+              className="flex h-16 items-center justify-center rounded-2xl bg-surface-1 text-ink-1 active:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 transition-[transform,background-color] duration-200 active:scale-[0.97]"
             >
               <Delete size={24} aria-hidden="true" />
             </button>
@@ -83,7 +83,7 @@ export function Keypad({ onKey, disabledBackspace }: KeypadProps) {
             type="button"
             aria-label={key === '.' ? 'Decimal point' : `Digit ${key}`}
             onClick={() => press(key)}
-            className="h-16 rounded-2xl bg-surface-1 text-2xl font-semibold tabular-nums text-ink-1 active:bg-surface-2 transition-[transform,background-color] duration-200 active:scale-[0.97]"
+            className="h-16 rounded-2xl bg-surface-1 text-2xl font-semibold tabular-nums text-ink-1 active:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-[transform,background-color] duration-200 active:scale-[0.97]"
           >
             {key}
           </button>

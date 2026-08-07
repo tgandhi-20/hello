@@ -16,4 +16,4 @@ export interface ChartDatum {
   colorToken?: string;
 }
 
-export type SemanticTone = 'accent' | 'positive' | 'warning' | 'danger';
+export type SemanticTone = 'accent' | 'positive' | 'caution' | 'negative';

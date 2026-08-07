@@ -57,6 +57,7 @@ export function Keypad({ onDigit, onBackspace, disabled }: KeypadProps) {
               'flex h-16 min-h-[48px] items-center justify-center rounded-2xl',
               'bg-surface-1 border border-hairline text-xl font-semibold text-ink-1',
               'transition-[transform,background-color] duration-150 active:scale-[0.96] active:bg-surface-2',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
               'disabled:opacity-40 disabled:active:scale-100',
             ].join(' ')}
           >
@@ -107,7 +108,7 @@ export function PinLengthStepper({ value, onChange, disabled }: PinLengthStepper
         disabled={disabled || value <= MIN_PIN_LENGTH}
         onClick={() => onChange(Math.max(MIN_PIN_LENGTH, value - 1))}
         aria-label="Fewer digits"
-        className="flex h-12 w-12 items-center justify-center rounded-full border border-hairline bg-surface-1 text-ink-1 active:bg-surface-2 disabled:opacity-30"
+        className="flex h-12 w-12 items-center justify-center rounded-full border border-hairline bg-surface-1 text-ink-1 active:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-30"
       >
         <Minus size={18} aria-hidden="true" />
       </button>
@@ -117,7 +118,7 @@ export function PinLengthStepper({ value, onChange, disabled }: PinLengthStepper
         disabled={disabled || value >= MAX_PIN_LENGTH}
         onClick={() => onChange(Math.min(MAX_PIN_LENGTH, value + 1))}
         aria-label="More digits"
-        className="flex h-12 w-12 items-center justify-center rounded-full border border-hairline bg-surface-1 text-ink-1 active:bg-surface-2 disabled:opacity-30"
+        className="flex h-12 w-12 items-center justify-center rounded-full border border-hairline bg-surface-1 text-ink-1 active:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-30"
       >
         <Plus size={18} aria-hidden="true" />
       </button>

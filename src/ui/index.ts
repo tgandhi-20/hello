@@ -3,6 +3,7 @@ export * from './Card';
 export * from './ListGroup';
 export * from './Sheet';
 export * from './Toast';
+export * from './sheetStack';
 export * from './Modal';
 export * from './Input';
 export * from './Select';

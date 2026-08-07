@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { sheetClosed, sheetOpened } from './sheetStack';
 
 export interface SheetProps {
   open: boolean;
@@ -36,6 +37,15 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
+
+  // Tell `Toast` a sheet is on screen so it can lift itself clear of this sheet's
+  // top edge instead of rendering across the sheet's content/actions — see
+  // sheetStack.ts's doc comment for why.
+  useEffect(() => {
+    if (!open) return;
+    sheetOpened();
+    return () => sheetClosed();
+  }, [open]);
 
   // Move focus into the sheet on open, restore it to whatever was focused before on
   // close — same rationale as Modal (see its comment): otherwise a keyboard/AT user's
@@ -78,7 +88,7 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
       aria-modal="true"
       aria-label={title}
     >
-      <div className="absolute inset-0 bg-[var(--overlay-scrim)] transition-opacity duration-180" onClick={onClose} />
+      <div className="absolute inset-0 bg-scrim transition-opacity duration-180" onClick={onClose} />
       <div
         ref={sheetRef}
         tabIndex={-1}

@@ -1,13 +1,7 @@
 /**
  * Tally design system v2 — DESIGN.md (FROZEN spec, supersedes CONTRACTS.md §4).
  * Every value here traces to a CSS custom property in src/styles/tokens.css —
- * never a raw hex. See tokens.css for the "why" behind the palette and the
- * temporary v1 alias block; the `text-1/2/3`, `border`, `warning`, `danger`,
- * `accent.pressed` colour keys below exist ONLY so ~40 in-flight feature files
- * keep rendering correctly while a second agent migrates their class names to
- * the v2 names (`ink-1/2/3`, `hairline`, `caution`, `negative`,
- * `accent.press`). Remove those keys, and the matching CSS vars, once that
- * migration is done.
+ * never a raw hex.
  *
  * @type {import('tailwindcss').Config}
  */
@@ -33,12 +27,11 @@ export default {
           DEFAULT: 'var(--accent)',
           press: 'var(--accent-press)',
           tint: 'var(--accent-tint)',
-          // TEMPORARY v1 alias — old class name for --accent-press.
-          pressed: 'var(--accent-pressed)',
         },
         positive: 'var(--positive)',
         caution: 'var(--caution)',
         negative: 'var(--negative)',
+        scrim: 'var(--scrim)',
         cat: {
           1: 'var(--cat-1)',
           2: 'var(--cat-2)',
@@ -53,15 +46,6 @@ export default {
           11: 'var(--cat-11)',
           12: 'var(--cat-12)',
         },
-        // ---- TEMPORARY v1 aliases (see header note) ----
-        border: 'var(--border)',
-        text: {
-          1: 'var(--text-1)',
-          2: 'var(--text-2)',
-          3: 'var(--text-3)',
-        },
-        warning: 'var(--warning)',
-        danger: 'var(--danger)',
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],

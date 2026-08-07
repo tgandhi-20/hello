@@ -1,6 +1,7 @@
 /**
  * Reachability check: every top-level feature "Screen" component exported from a
- * `src/features/*/index.ts` barrel must be referenced *somewhere* under `src/app/**`.
+ * feature's `index.ts` barrel (`src/features/<feature>/index.ts`) must be
+ * referenced somewhere under `src/app/**`.
  *
  * Why this exists: a feature can be fully built and fully tested (its own
  * `__checks__/run.ts` green) and still never render in the actual app, because
@@ -21,7 +22,7 @@
  * Run with: `npx tsx src/app/__checks__/run.ts`
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, dirname, relative } from 'node:path';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

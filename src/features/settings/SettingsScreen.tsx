@@ -20,6 +20,7 @@ import { Select } from '@/ui/Select';
 import { Switch } from '@/ui/Switch';
 import { ConfirmDialog } from '@/ui/Modal';
 import { useToast } from '@/ui/Toast';
+import { StorageStatus } from '@/ui/storage';
 import { formatMoney, todayStr } from '@/ui/format';
 import { useStore, isBiometricAvailable, disableBiometric, getUnlockConfig } from '@/store/useStore';
 import { DEFAULT_UNLOCK_CONFIG, type UnlockConfig } from '@/security/unlockMode';
@@ -275,6 +276,10 @@ export function SettingsScreen() {
       {/* --- Data --- */}
       <Card>
         <h2 className="mb-3 text-md font-semibold text-ink-1">Your data</h2>
+        {/* There is no server and no backup (CONTRACTS.md §0) — this device's storage
+            grant is the only thing standing between "everything" and "nothing" if
+            Android decides to reclaim space. Calm and factual either way. */}
+        <StorageStatus className="mb-3" />
         <div className="flex flex-col gap-3">
           <Button variant="ghost" fullWidth disabled={exportBusy} onClick={() => void handleExport()}>
             <Download size={18} aria-hidden="true" />

@@ -43,7 +43,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       aria-modal="true"
       aria-label={title}
     >
-      <div className="absolute inset-0 bg-[var(--overlay-scrim)]" onClick={onClose} />
+      <div className="absolute inset-0 bg-scrim" onClick={onClose} />
       <div
         ref={panelRef}
         tabIndex={-1}

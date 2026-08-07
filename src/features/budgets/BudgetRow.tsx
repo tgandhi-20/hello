@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import type { Category } from '@/types';
 import { CategoryIcon, ProgressBar, formatMoney } from '@/ui';
+import type { ProgressBarProps } from '@/ui';
 import { safeDiv, clampRatio } from '@/charts';
-import type { SemanticTone } from '@/charts';
 import { parseDollarsToCents } from '@/features/settings/money';
 
 export interface BudgetRowProps {
@@ -13,7 +13,10 @@ export interface BudgetRowProps {
   onSave: (limitCents: number) => void | Promise<void>;
 }
 
-function toneFor(ratio: number): SemanticTone {
+// `ProgressBar`'s `warning`/`danger` prop names are its own frozen API (see its doc
+// comment) — it paints them with the v2 `--caution`/`--negative` tokens internally,
+// so this function targets that prop's naming, not `@/charts`' `SemanticTone`.
+function toneFor(ratio: number): NonNullable<ProgressBarProps['tone']> {
   if (ratio > 1) return 'danger';
   if (ratio >= 0.8) return 'warning';
   // Under 80% of cap is budget state ("under budget"), not an interactive control — `--positive`
@@ -22,7 +25,7 @@ function toneFor(ratio: number): SemanticTone {
 }
 
 /** One category's monthly cap: progress bar, remaining-per-day, tap-to-edit limit. Never shaming — over
- * budget renders in `--danger` colour but with plain, factual copy, per CONTRACTS.md §4's tone law. */
+ * budget renders in `--negative` colour but with plain, factual copy, per CONTRACTS.md §4's tone law. */
 export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onSave }: BudgetRowProps) {
   const [editing, setEditing] = useState(false);
   // Seeding a plain `<input type="number">` needs a bare "12.34" — not `formatMoney`'s
