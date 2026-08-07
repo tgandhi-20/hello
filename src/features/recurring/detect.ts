@@ -34,8 +34,15 @@ export const DEFAULT_OPTIONS: DetectionOptions = {
   // and the report for how that's mitigated (amount tolerance, confidence bar, and the
   // user-facing mute/confirm control) rather than eliminated outright.
   minOccurrences: 3,
-  amountTolerancePct: 0.15,
-  amountToleranceFlatCents: 300,
+  // Wider than it looks at first glance, and deliberately so: this band gates cluster
+  // *membership* (chain-linked, see clusterByAmount), not what counts as "a price
+  // increase worth flagging" (that's the separate, tighter 5%/$1 check below, near
+  // `priceIncreaseThreshold`). A band tight enough to keep unrelated same-merchant
+  // purchases apart (a $12 lunch vs. a $95 catering order at the same place) but loose
+  // enough that a genuinely large hike — the case this feature exists for — doesn't get
+  // excluded from its own series and silently vanish instead of being flagged.
+  amountTolerancePct: 0.3,
+  amountToleranceFlatCents: 500,
   minCadenceConfidence: 0.7,
   today: new Date().toISOString().slice(0, 10),
 };
@@ -104,7 +111,6 @@ function mode<T>(values: T[]): T {
  */
 function clusterByAmount(txns: Txn[], opts: DetectionOptions): Txn[][] {
   const sorted = [...txns].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  if (process?.env?.DEBUG_RECURRING) console.error('DEBUG sorted dates', sorted.map(t => [t.date, t.amountCents]));
   const clusters: Txn[][] = [];
   let current: Txn[] = [];
   let anchor = 0;
@@ -210,9 +216,7 @@ export function detectRecurring(
   for (const [normalizedMerchant, group] of byMerchant) {
     if (group.length < opts.minOccurrences) continue;
 
-    const __clusters = clusterByAmount(group, opts);
-    if (process?.env?.DEBUG_RECURRING) console.error('DEBUG clusters for', normalizedMerchant, __clusters.map(c => c.map(t => t.amountCents)));
-    for (const cluster of __clusters) {
+    for (const cluster of clusterByAmount(group, opts)) {
       if (cluster.length < opts.minOccurrences) continue;
 
       const sorted = [...cluster].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));

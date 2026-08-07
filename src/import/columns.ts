@@ -267,9 +267,12 @@ export function detectStructure(rawRows: string[][]): StructuralLayout {
       for (let j = i + 1; j < nonBalance.length; j++) {
         const a = nonBalance[i];
         const b = nonBalance[j];
-        const aEmptyFrac = fraction(a.emptyCount, a.total);
-        const bEmptyFrac = fraction(b.emptyCount, b.total);
-        if (aEmptyFrac < 0.2 || bEmptyFrac < 0.2) continue; // both fully populated -> not a split pair
+        // A genuine debit/credit split can be very lopsided (far more everyday debits
+        // than income credits) — what matters isn't a minimum empty *fraction*, just
+        // that each column is blank at least sometimes. A column that's blank in ZERO
+        // rows (a real amount/balance column always is) can never legitimately be one
+        // side of a split pair, however "complementary" it coincidentally looks.
+        if (a.emptyCount === 0 || b.emptyCount === 0) continue;
         let bothPopulated = 0;
         let eitherPopulated = 0;
         for (let r = 0; r < a.moneyValues.length; r++) {
