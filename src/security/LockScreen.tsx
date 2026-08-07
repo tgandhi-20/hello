@@ -14,7 +14,7 @@
  * Unlock/Continue button, and the mode-choice Continue button all live there.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Fingerprint, Lock, AlertTriangle, KeyRound, Type, Check } from 'lucide-react';
+import { Fingerprint, Lock, AlertTriangle, KeyRound, Type, Check, ShieldAlert } from 'lucide-react';
 import {
   useStore,
   hasBiometricConfigured,
@@ -23,9 +23,11 @@ import {
   setupPassphrase,
 } from '@/store/useStore';
 import { Button } from '@/ui/Button';
+import { useToast } from '@/ui/Toast';
 import { Keypad, PinDots, PinLengthStepper, PIN_LENGTH, isWeakPin } from './PinPad';
 import { PassphraseField } from './PassphraseField';
 import { ModeOptionCard } from './ModeOptionCard';
+import { RecoverySheet } from './RecoverySheet';
 import {
   type UnlockMode,
   type UnlockConfig,
@@ -73,6 +75,7 @@ export function LockScreen() {
   const [remainingMs, setRemainingMs] = useState(0);
   const [biometricReady, setBiometricReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
   const triedBiometricRef = useRef(false);
 
   useEffect(() => {
@@ -80,9 +83,12 @@ export function LockScreen() {
   }, [lockState]);
 
   // Once we know this is an existing vault, find out (without decrypting
-  // anything) which input widget to draw.
+  // anything) which input widget to draw. Skipped for `'unsupported'`
+  // (P1 fix) — storage doesn't work in that state, so this would just be
+  // another rejected `getMeta` call for no reason; the dedicated screen
+  // below never reaches this effect's UI anyway.
   useEffect(() => {
-    if (screen !== 'unlock') return;
+    if (screen !== 'unlock' || lockState === 'unsupported') return;
     let cancelled = false;
     void getUnlockConfig().then((c) => {
       if (!cancelled) setUnlockConfigState(c);
@@ -90,11 +96,12 @@ export function LockScreen() {
     return () => {
       cancelled = true;
     };
-  }, [screen]);
+  }, [screen, lockState]);
 
-  // Feature-detect biometric once we're on the unlock screen.
+  // Feature-detect biometric once we're on the unlock screen. Same
+  // `'unsupported'` skip as above.
   useEffect(() => {
-    if (screen !== 'unlock') return;
+    if (screen !== 'unlock' || lockState === 'unsupported') return;
     let cancelled = false;
     void (async () => {
       const [configured, available] = await Promise.all([
@@ -106,7 +113,8 @@ export function LockScreen() {
     return () => {
       cancelled = true;
     };
-  }, [screen]);
+  }, [screen, lockState]);
+
 
   // Countdown tick while backed off.
   useEffect(() => {
@@ -236,6 +244,8 @@ export function LockScreen() {
     try {
       const ok = await unlock(secret);
       if (!ok) {
+        // A *correct* key derivation that just doesn't match the stored
+        // verifier — genuinely the wrong PIN/passphrase, not a data problem.
         const nextAttempts = attempts + 1;
         setAttempts(nextAttempts);
         setError(unlockConfig.mode === 'pin' ? 'Incorrect PIN.' : 'Incorrect passphrase.');
@@ -247,6 +257,23 @@ export function LockScreen() {
       } else {
         setAttempts(0);
       }
+    } catch {
+      // P0 fix: `unlock()` used to be able to throw here (an IndexedDB read
+      // failure, most commonly) with no `catch` anywhere above it — the
+      // thrown error became an unhandled promise rejection, `finally` still
+      // cleared `busy`/the PIN dots, and the user saw literally nothing:
+      // just a screen that silently reset itself, forever, on every attempt.
+      //
+      // This is a DIFFERENT failure than "wrong PIN" (which `unlock()`
+      // reports by returning `false`, handled above) — it means the PIN was
+      // fine but something below it broke, so it gets its own honest,
+      // plain-language message instead of "Incorrect PIN," which would be
+      // actively misleading here. Never show the raw error/stack — it could
+      // in principle wrap something derived from encrypted financial data
+      // (CONTRACTS.md §5) — and this branch deliberately never logs it either.
+      setError(
+        "Tally couldn't read your data just now. Try again — if this keeps happening, use “Trouble unlocking?” below."
+      );
     } finally {
       setBusy(false);
       setUnlockSecret('');
@@ -266,6 +293,32 @@ export function LockScreen() {
   function onUnlockBackspace() {
     if (busy || isBackedOff) return;
     setPin((p) => p.slice(0, -1));
+  }
+
+  // -------------------------------------------------------------------
+  // Screen: this browser can't provide the storage Tally needs (P1 fix).
+  // No PIN entry at all — there's structurally nothing to unlock; showing
+  // a normal keypad here would let someone type a PIN that can never
+  // succeed, with no explanation. See useStore.ts's init IIFE.
+  // -------------------------------------------------------------------
+  if (lockState === 'unsupported') {
+    return (
+      <div
+        className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-bg px-6 text-center"
+        role="alert"
+      >
+        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-hairline bg-surface-1">
+          <ShieldAlert size={26} className="text-negative" aria-hidden="true" />
+        </div>
+        <h1 className="text-xl font-semibold text-ink-1">This browser can't run Tally</h1>
+        <p className="max-w-sm text-sm text-ink-2">
+          Tally keeps everything in this device's on-device storage, and this browser isn't
+          providing it right now — this usually means private/incognito mode, or site data
+          turned off in browser settings. Nothing has been lost. Try a normal (non-private)
+          browser tab, or check this browser's site-data settings and reload.
+        </p>
+      </div>
+    );
   }
 
   // -------------------------------------------------------------------
@@ -415,6 +468,20 @@ export function LockScreen() {
             />
           </div>
         ) : null}
+
+        {/* Deliberately small/quiet text, not a button in the primary action zone —
+            this must be easy to find for someone genuinely stuck, but never a target
+            an anxious or fumbling tap lands on by accident (deliverable 6). Only on
+            the unlock screen: there's nothing to "recover" before a vault exists. */}
+        {screen === 'unlock' ? (
+          <button
+            type="button"
+            onClick={() => setRecoveryOpen(true)}
+            className="mt-1 min-h-[48px] px-2 text-xs text-ink-3 underline decoration-dotted underline-offset-4"
+          >
+            Trouble unlocking?
+          </button>
+        ) : null}
       </div>
 
       {/* Bottom third: entry controls. This is the whole one-handed-use point (CONTRACTS.md §4). */}
@@ -451,13 +518,43 @@ export function LockScreen() {
           </Button>
         )}
       </div>
+
+      <RecoverySheet open={recoveryOpen} onClose={() => setRecoveryOpen(false)} />
     </div>
   );
 }
 
-/** Gate: renders `children` once unlocked, otherwise the lock/setup screen. */
+/**
+ * Gate: renders `children` once unlocked, otherwise the lock/setup screen.
+ *
+ * Also owns telling the user honestly when a hydrate skipped some unreadable
+ * records (P0 fix — see useStore.ts's `decryptAllWithIds` doc comment). This
+ * lives here rather than inside `LockScreen` because `LockScreen` unmounts
+ * the instant `lockState` flips to `'unlocked'` — a toast fired from an
+ * effect there could easily lose the race against its own unmount. `LockGate`
+ * stays mounted across that transition, so it's the right place to watch for
+ * it. `shownForCountRef` tracks the count already announced so this doesn't
+ * re-fire on unrelated re-renders while the count sits above zero.
+ */
 export function LockGate({ children }: { children: React.ReactNode }) {
   const lockState = useStore((s) => s.lockState);
+  const hydrated = useStore((s) => s.hydrated);
+  const skippedRecordCount = useStore((s) => s.skippedRecordCount);
+  const { show } = useToast();
+  const shownForCountRef = useRef(0);
+
+  useEffect(() => {
+    if (!hydrated || skippedRecordCount <= 0) return;
+    if (shownForCountRef.current === skippedRecordCount) return;
+    shownForCountRef.current = skippedRecordCount;
+    const noun = skippedRecordCount === 1 ? 'record' : 'records';
+    const verb = skippedRecordCount === 1 ? "wasn't" : "weren't";
+    show(
+      `${skippedRecordCount} ${noun} couldn't be read and ${verb} loaded. The rest of your data opened normally.`,
+      { variant: 'danger', durationMs: 10000 }
+    );
+  }, [hydrated, skippedRecordCount, show]);
+
   if (lockState === 'unlocked') return <>{children}</>;
   return <LockScreen />;
 }

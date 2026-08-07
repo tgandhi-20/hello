@@ -11,6 +11,7 @@ import {
   Sparkles,
   Trash2,
   ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import { Card } from '@/ui/Card';
 import { Button } from '@/ui/Button';
@@ -86,6 +87,7 @@ export function SettingsScreen() {
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
   const enableBiometric = useStore((s) => s.enableBiometric);
+  const lock = useStore((s) => s.lock);
   const resetAll = useStore((s) => s.resetAll);
   const loadDemoData = useStore((s) => s.loadDemoData);
   const exportBackup = useStore((s) => s.exportBackup);
@@ -228,6 +230,13 @@ export function SettingsScreen() {
             ? 'A PIN protects against someone picking up your unlocked phone. It does not protect against a stolen device with its raw data copied off — switch to a passphrase for that.'
             : 'A passphrase protects against both an unlocked phone and a stolen device with its raw data copied off.'}
         </p>
+        {/* P2: previously the only ways to lock were the 2-minute background timer or a
+            full reload — no on-demand action. Handing the phone to someone else for a
+            second shouldn't require either. */}
+        <Button variant="ghost" fullWidth onClick={() => lock()}>
+          <Lock size={18} aria-hidden="true" />
+          Lock now
+        </Button>
       </section>
 
       {/* --- Money --- */}

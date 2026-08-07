@@ -164,4 +164,13 @@ export interface ImportPreview {
   signInverted: boolean;
 }
 
-export type LockState = 'uninitialised' | 'locked' | 'unlocked';
+/**
+ * `'unsupported'` (P1 fix): this browser cannot provide the IndexedDB storage
+ * Tally needs (private/locked-down mode, or a browser that throws on open).
+ * Without this state, store init left `lockState` at its initial `'locked'`
+ * default when storage failed, so the app rendered a normal PIN screen for a
+ * vault that structurally cannot exist — any PIN a user typed would fail
+ * forever with no explanation. See src/store/useStore.ts's init IIFE and
+ * src/security/LockScreen.tsx's dedicated screen for this state.
+ */
+export type LockState = 'uninitialised' | 'locked' | 'unlocked' | 'unsupported';

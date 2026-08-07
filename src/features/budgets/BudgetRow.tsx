@@ -4,6 +4,7 @@ import { CategoryIcon, ProgressBar, formatMoney } from '@/ui';
 import type { ProgressBarProps } from '@/ui';
 import { safeDiv, clampRatio } from '@/charts';
 import { parseDollarsToCents } from '@/features/settings/money';
+import { MAX_AMOUNT_CENTS, clampAmountCents } from '@/features/log/amountLimits';
 
 export interface BudgetRowProps {
   category: Category;
@@ -42,7 +43,11 @@ export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onS
   const commit = () => {
     // CONTRACTS.md §3: money parsing is integer string-math, never parseFloat/toFixed.
     const parsed = parseDollarsToCents(draft);
-    const cents = parsed !== null && parsed > 0 ? parsed : 0;
+    // P2 fix: this `<input type="number">` had no upper bound, so typing e.g. 30
+    // nines persisted and rendered as a >10^30 cent figure, corrupting the
+    // Budgets aggregate. Clamp to the same ceiling the quick-add keypad already
+    // enforces, so a budget cap can never exceed what any real transaction could.
+    const cents = parsed !== null && parsed > 0 ? clampAmountCents(parsed) : 0;
     setEditing(false);
     if (cents !== limitCents) onSave(cents);
   };
@@ -68,6 +73,7 @@ export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onS
             type="number"
             inputMode="decimal"
             min={0}
+            max={MAX_AMOUNT_CENTS / 100}
             step="0.01"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

@@ -8,6 +8,18 @@ export interface SheetProps {
   children: React.ReactNode;
   /** Optional footer, e.g. primary action row — kept in the bottom-third by design. */
   footer?: React.ReactNode;
+  /**
+   * Set true while the sheet is mid an irreversible commit (e.g. a PIN
+   * rotation or backup restore writing to IndexedDB) that must not be
+   * interrupted. Suppresses Escape, backdrop-tap, and drag-to-dismiss — the
+   * sheet can only close once the caller flips this back to `false` itself,
+   * typically in a `finally` after the commit settles (P0 fix — see
+   * ChangeUnlockSheet, whose dismissible-mid-rotation gap was one of the
+   * concrete ways the underlying data-loss bug was reachable in one tab).
+   * Optional and defaults to `false`, so every existing caller behaves
+   * exactly as before.
+   */
+  busy?: boolean;
 }
 
 const DISMISS_THRESHOLD_PX = 96;
@@ -16,7 +28,7 @@ const DISMISS_THRESHOLD_PX = 96;
  * Bottom sheet modal with a drag-to-dismiss handle. Mobile-first: content and primary
  * actions live near the bottom of the screen for one-handed thumb reach.
  */
-export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
+export function Sheet({ open, onClose, title, children, footer, busy = false }: SheetProps) {
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const dragStartY = useRef<number | null>(null);
@@ -32,11 +44,11 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape' && !busy) onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, onClose, busy]);
 
   // Tell `Toast` a sheet is on screen so it can lift itself clear of this sheet's
   // top edge instead of rendering across the sheet's content/actions — see
@@ -63,18 +75,19 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
   if (!open) return null;
 
   const onPointerDown = (e: React.PointerEvent) => {
+    if (busy) return;
     dragStartY.current = e.clientY;
     setDragging(true);
   };
   const onPointerMove = (e: React.PointerEvent) => {
-    if (dragStartY.current === null) return;
+    if (busy || dragStartY.current === null) return;
     const delta = e.clientY - dragStartY.current;
     setDragY(Math.max(0, delta));
   };
   const endDrag = () => {
     setDragging(false);
     dragStartY.current = null;
-    if (dragY > DISMISS_THRESHOLD_PX) {
+    if (!busy && dragY > DISMISS_THRESHOLD_PX) {
       onClose();
     } else {
       setDragY(0);
@@ -87,8 +100,12 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      aria-busy={busy || undefined}
     >
-      <div className="absolute inset-0 bg-scrim transition-opacity duration-180" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-scrim transition-opacity duration-180"
+        onClick={busy ? undefined : onClose}
+      />
       <div
         ref={sheetRef}
         tabIndex={-1}
@@ -100,7 +117,10 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
         }}
       >
         <div
-          className="flex justify-center pt-3 pb-1 touch-none cursor-grab active:cursor-grabbing"
+          className={[
+            'flex justify-center pt-3 pb-1',
+            busy ? 'touch-none opacity-40' : 'touch-none cursor-grab active:cursor-grabbing',
+          ].join(' ')}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}

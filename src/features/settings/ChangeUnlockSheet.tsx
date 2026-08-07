@@ -83,6 +83,9 @@ export function ChangeUnlockSheet({ open, onClose, onChanged }: ChangeUnlockShee
   }
 
   function handleClose() {
+    // No-op while `busy` — `<Sheet busy>` already suppresses Escape/backdrop/drag,
+    // this is belt-and-braces for any other path that might call onClose directly.
+    if (busy) return;
     reset();
     onClose();
   }
@@ -218,7 +221,7 @@ export function ChangeUnlockSheet({ open, onClose, onChanged }: ChangeUnlockShee
             : 'Confirm new passphrase';
 
   return (
-    <Sheet open={open} onClose={handleClose} title={title}>
+    <Sheet open={open} onClose={handleClose} title={title} busy={busy}>
       <div className="flex flex-col gap-5 py-2">
         {step === 'current' ? (
           currentConfig.mode === 'pin' ? (
