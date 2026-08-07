@@ -59,5 +59,16 @@ export default defineConfig({
   build: {
     target: 'es2020',
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        // Split third-party deps into their own chunk(s) so they cache
+        // independently of app code across deploys (vendor code changes far
+        // less often than app code, so this improves cache hit rate on
+        // updates without affecting what's precached for offline use).
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
   },
 });

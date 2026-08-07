@@ -1,6 +1,5 @@
 import React from 'react';
-import * as LucideIcons from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { FALLBACK_ICON, ICONS } from './icons';
 
 export interface CategoryIconProps {
   /** lucide-react icon name, e.g. 'Coffee' — matches `Category.icon` in src/types.ts. */
@@ -25,8 +24,7 @@ const ICON_SIZE: Record<NonNullable<CategoryIconProps['size']>, number> = {
 
 /** Renders a lucide icon in a tinted circle, coloured from the category ramp token. */
 export function CategoryIcon({ icon, colorToken, size = 'md', className = '' }: CategoryIconProps) {
-  const IconComponent = ((LucideIcons as unknown as Record<string, LucideIcon>)[icon] ??
-    LucideIcons.Circle) as LucideIcon;
+  const IconComponent = ICONS[icon] ?? FALLBACK_ICON;
   const dimension = SIZE_PX[size];
   const color = `var(--${colorToken})`;
 
