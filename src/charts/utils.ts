@@ -58,6 +58,59 @@ export function describeArc(cx: number, cy: number, r: number, startDeg: number,
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
 }
 
+/**
+ * Split `availableDeg` of arc across `fractions.length` segments proportional to each
+ * fraction's share, but never below `minDeg` per segment. Segments that would come out
+ * under the minimum are pinned to it; the angle that costs them is taken back out of the
+ * remaining segments (redistributed proportionally among those still above minimum), so
+ * the total returned always sums to exactly `availableDeg`. This is what keeps a 95/1/1/1/1/1
+ * split legible — the five 1% slivers still render as a real, visible sliver rather than a
+ * near-zero-length arc — while the 95% segment still reads as clearly dominant.
+ */
+export function allocateArcSweeps(fractions: number[], availableDeg: number, minDeg: number): number[] {
+  const n = fractions.length;
+  if (n === 0) return [];
+  const safeAvailable = Math.max(availableDeg, 0);
+  const shares = fractions.map((f) => (Number.isFinite(f) && f > 0 ? f : 0));
+  const shareTotal = shares.reduce((a, b) => a + b, 0);
+  const normalized = shareTotal > 0 ? shares.map((s) => s / shareTotal) : shares.map(() => 1 / n);
+  // Cap the minimum itself so it's never impossible to satisfy for a large n (e.g. 30
+  // categories can't each get an 8deg minimum out of 360deg).
+  const effectiveMin = Math.min(Math.max(minDeg, 0), safeAvailable / n);
+
+  const result = new Array(n).fill(0);
+  const fixed = new Array(n).fill(false);
+  let remainingAngle = safeAvailable;
+  let settled = false;
+  let guard = 0;
+
+  while (!settled && guard <= n) {
+    guard += 1;
+    settled = true;
+    let activeShareTotal = 0;
+    for (let i = 0; i < n; i++) if (!fixed[i]) activeShareTotal += normalized[i];
+    if (activeShareTotal <= 0) break;
+    for (let i = 0; i < n; i++) {
+      if (fixed[i]) continue;
+      const angle = (normalized[i] / activeShareTotal) * remainingAngle;
+      if (angle < effectiveMin - 1e-9) {
+        result[i] = effectiveMin;
+        fixed[i] = true;
+        remainingAngle -= effectiveMin;
+        settled = false;
+      }
+    }
+  }
+
+  let activeShareTotal = 0;
+  for (let i = 0; i < n; i++) if (!fixed[i]) activeShareTotal += normalized[i];
+  for (let i = 0; i < n; i++) {
+    if (fixed[i]) continue;
+    result[i] = activeShareTotal > 0 ? (normalized[i] / activeShareTotal) * remainingAngle : remainingAngle / n;
+  }
+  return result;
+}
+
 let uidCounter = 0;
 /** Small, collision-safe id generator for SVG `id`/`clip-path` references (React 18 has no `useId` requirement here). */
 export function nextChartId(prefix: string): string {

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Search, Receipt } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { EmptyState, Select, formatMoney, formatRelativeDay, useToast, vibrate } from '@/ui';
+import { EmptyState, Select, formatMoney, formatRelativeDay, useToast, vibrate, TOAST_RESERVE_BOTTOM } from '@/ui';
 import type { AccountId, Category, Txn } from '@/types';
 import { groupByDay, filterTxns } from './selectors';
 import { useWindowedList } from './useWindowedList';
@@ -17,7 +17,7 @@ type Item =
   | { kind: 'txn'; txn: Txn };
 
 const ACCOUNT_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'All accounts' },
+  { value: '', label: 'Account' },
   { value: 'cash', label: 'Cash' },
   { value: 'cba', label: 'CBA' },
   { value: 'bankwest', label: 'Bankwest' },
@@ -135,7 +135,7 @@ export function TransactionsScreen() {
         <div className="grid grid-cols-3 gap-2">
           <Select
             aria-label="Filter by category"
-            options={[{ value: '', label: 'All categories' }, ...categories.map((c) => ({ value: c.id, label: c.label }))]}
+            options={[{ value: '', label: 'Category' }, ...categories.map((c) => ({ value: c.id, label: c.label }))]}
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
           />
@@ -147,7 +147,7 @@ export function TransactionsScreen() {
           />
           <Select
             aria-label="Filter by month"
-            options={[{ value: '', label: 'All months' }, ...months.map((m) => ({ value: m, label: m }))]}
+            options={[{ value: '', label: 'Month' }, ...months.map((m) => ({ value: m, label: m }))]}
             value={month}
             onChange={(e) => setMonth(e.target.value)}
           />
@@ -157,7 +157,11 @@ export function TransactionsScreen() {
       {filtered.length === 0 ? (
         <EmptyState icon={Search} headline="No matches" body="Try a different search or clear your filters." />
       ) : (
-        <div ref={containerRef} className="min-h-0 flex-1 overflow-y-auto scroll-container" style={{ overscrollBehavior: 'none' }}>
+        <div
+          ref={containerRef}
+          className="min-h-0 flex-1 overflow-y-auto scroll-container"
+          style={{ overscrollBehavior: 'none', paddingBottom: TOAST_RESERVE_BOTTOM }}
+        >
           <div style={{ height: totalHeight, position: 'relative' }}>
             {visible.map(({ item, top }) => (
               <div key={item.kind === 'header' ? `h-${item.date}` : item.txn.id} style={{ position: 'absolute', top, left: 0, right: 0 }}>

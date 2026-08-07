@@ -1,5 +1,6 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { useRecurringSync } from '@/features/recurring';
 import { TopBar } from './TopBar';
 import { TabBar } from './TabBar';
 
@@ -20,6 +21,13 @@ const TITLES: Record<string, string> = {
 export function AppShell() {
   const { pathname } = useLocation();
   const title = TITLES[pathname] ?? 'Tally';
+
+  // Detect recurring series here, at the shell, rather than inside any one screen.
+  // Safe-to-Spend reserves upcoming bills out of the daily allowance, and it reads
+  // that list from the store. When the sync only ran on the Log screen, a user who
+  // opened the app straight to Home saw "$0.00 bills" and an allowance that had
+  // reserved nothing for rent — overstating what was genuinely safe to spend.
+  useRecurringSync();
 
   return (
     <div className="flex h-full flex-col bg-bg">

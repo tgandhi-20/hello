@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { ChartDatum } from './types';
-import { tokenVar, sumNonNegative, safeDiv, describeArc, formatPercent } from './utils';
+import { tokenVar, sumNonNegative, safeDiv, describeArc, formatPercent, allocateArcSweeps, clamp } from './utils';
 import { ChartEnter } from './ChartEnter';
 
 export interface DonutProps {
@@ -16,7 +16,15 @@ export interface DonutProps {
   className?: string;
 }
 
-const GAP_DEG = 2.5;
+/** Gap rendered between adjacent ring segments, in viewBox degrees. */
+const GAP_DEG = 3;
+/**
+ * Every segment gets at least this many degrees of visible arc, however small its real
+ * share is — a 1% category should still read as a thin sliver, not vanish into a dot.
+ * Combined with `strokeLinecap: butt` (no rounded overtravel past the arc's own
+ * endpoints) this is what keeps tiny segments from bunching into overlapping blobs.
+ */
+const MIN_SWEEP_DEG = 8;
 
 /**
  * Category-breakdown donut ring with a centre label. Hollow centre carries the
@@ -26,7 +34,7 @@ const GAP_DEG = 2.5;
 export function Donut({
   data,
   size = 160,
-  thickness = 20,
+  thickness = 14,
   centerLabel,
   centerValue,
   formatValue = (v) => String(v),
@@ -45,16 +53,33 @@ export function Donut({
 
   const segments = useMemo(() => {
     if (isEmpty) return [];
+    const n = cleaned.length;
+    // With only one segment there's nothing to gap against — let it run the full ring.
+    const gap = n > 1 ? Math.min(GAP_DEG, 360 / n / 3) : 0;
+    const available = 360 - gap * n;
+    const fractions = cleaned.map((d) => safeDiv(d.value, total, 0));
+    const sweeps = allocateArcSweeps(fractions, available, MIN_SWEEP_DEG);
     let cursor = 0;
-    return cleaned.map((d) => {
-      const fraction = safeDiv(d.value, total, 0);
-      const sweep = fraction * 360;
-      const start = cursor + (sweep > GAP_DEG ? GAP_DEG / 2 : 0);
-      const end = cursor + Math.max(sweep - (sweep > GAP_DEG ? GAP_DEG / 2 : 0), 0.001);
-      cursor += sweep;
-      return { d, fraction, path: describeArc(cx, cy, r, start, end) };
+    return cleaned.map((d, i) => {
+      const sweep = sweeps[i];
+      const start = cursor + gap / 2;
+      const end = start + sweep;
+      cursor += sweep + gap;
+      return { d, fraction: fractions[i], path: describeArc(cx, cy, r, start, end) };
     });
   }, [cleaned, isEmpty, r, total]);
+
+  // The centre hole has to hold two lines of text without touching the ring. Scale both
+  // font sizes off the hole's actual pixel diameter (a function of `size`, since the SVG
+  // viewBox is a fixed 0-100 box that scales proportionally with it) rather than a fixed
+  // Tailwind size — a 120px donut and a 200px donut need very differently sized labels.
+  const holeDiameterPx = useMemo(() => {
+    const holeRadius = Math.max(r - thickness / 2, 0);
+    return (holeRadius * 2 * size) / 100;
+  }, [r, thickness, size]);
+  const valueFontPx = clamp(holeDiameterPx * 0.15, 11, 18);
+  const labelFontPx = clamp(holeDiameterPx * 0.09, 9, 12);
+  const captionMaxWidthPx = Math.max(holeDiameterPx * 0.9, 32);
 
   const ariaLabel = isEmpty
     ? 'Category breakdown: no spending recorded yet.'
@@ -87,13 +112,23 @@ export function Donut({
               fill="none"
               stroke={tokenVar(s.d.colorToken, 'accent')}
               strokeWidth={thickness}
-              strokeLinecap="round"
+              strokeLinecap="butt"
             />
           ))}
         </svg>
         <figcaption className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 text-center">
-          {centerLabel ? <span className="text-xs text-text-2">{centerLabel}</span> : null}
-          <span className="tabular-nums text-lg font-semibold text-text-1">
+          {centerLabel ? (
+            <span
+              className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-text-2"
+              style={{ fontSize: labelFontPx, maxWidth: captionMaxWidthPx, lineHeight: 1.2 }}
+            >
+              {centerLabel}
+            </span>
+          ) : null}
+          <span
+            className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-semibold tabular-nums text-text-1"
+            style={{ fontSize: valueFontPx, maxWidth: captionMaxWidthPx, lineHeight: 1.2 }}
+          >
             {centerValue ?? formatValue(total)}
           </span>
         </figcaption>

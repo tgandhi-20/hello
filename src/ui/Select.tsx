@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronDown } from 'lucide-react';
 
 export interface SelectOption {
   value: string;
@@ -18,22 +19,33 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function 
   return (
     <label className="block w-full">
       {label ? <span className="mb-1 block text-sm text-text-2">{label}</span> : null}
-      <select
-        ref={ref}
-        id={selectId}
-        className={[
-          'h-12 w-full rounded-2xl border border-border bg-surface-2 px-4 text-md text-text-1',
-          'outline-none transition-colors duration-200 focus:border-accent',
-          className,
-        ].join(' ')}
-        {...rest}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      <span className="relative block">
+        <select
+          ref={ref}
+          id={selectId}
+          className={[
+            // `appearance-none` drops the browser's own arrow (whose reserved width isn't
+            // guaranteed, which is what let long option text run flush against it with no
+            // ellipsis) in favour of an explicit chevron + `pr-9` gutter sized for it, and
+            // `truncate` guarantees the selected value always ellipsises instead of clipping.
+            'h-12 w-full appearance-none truncate rounded-2xl border border-border bg-surface-2 py-0 pl-4 pr-9 text-md text-text-1',
+            'outline-none transition-colors duration-200 focus:border-accent',
+            className,
+          ].join(' ')}
+          {...rest}
+        >
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          size={18}
+          aria-hidden="true"
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-3"
+        />
+      </span>
     </label>
   );
 });

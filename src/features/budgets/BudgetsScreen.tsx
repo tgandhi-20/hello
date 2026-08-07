@@ -111,9 +111,18 @@ export function BudgetsScreen() {
       <Card className="flex items-center justify-between">
         <div>
           <p className="text-sm text-text-2">Spent vs budgeted this month</p>
-          <p className="tabular-nums text-lg font-semibold text-text-1">
-            {formatMoney(totalSpent)} <span className="text-text-3">of</span> {formatMoney(totalBudget)}
-          </p>
+          {totalBudget > 0 ? (
+            <p className="tabular-nums text-lg font-semibold text-text-1">
+              {formatMoney(totalSpent)} <span className="text-text-3">of</span> {formatMoney(totalBudget)}
+            </p>
+          ) : (
+            <>
+              <p className="tabular-nums text-lg font-semibold text-text-1">
+                {formatMoney(totalSpent)} <span className="text-text-3">spent</span>
+              </p>
+              <p className="text-sm text-text-3">No budgets set yet — try Suggest budgets below.</p>
+            </>
+          )}
         </div>
       </Card>
 

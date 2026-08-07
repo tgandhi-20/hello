@@ -52,7 +52,7 @@ export function CategoryBreakdownCard({ txns, categories }: CategoryBreakdownCar
     <Card className="flex flex-col gap-4">
       <h2 className="text-md font-semibold text-text-1">Where it's going</h2>
       <div className="flex items-center gap-5">
-        <Donut data={data} size={120} centerLabel="This month" formatValue={(v) => formatMoney(v)} />
+        <Donut data={data} size={148} centerLabel="This month" formatValue={(v) => formatMoney(v)} />
         <div className="min-w-0 flex-1">
           <BarList
             data={data}

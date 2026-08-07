@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronDown, ChevronUp, StickyNote } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { Button, CategoryIcon, EmptyState, Select, SegmentedControl, formatMoney, formatRelativeDay, todayStr, addDays, useToast, vibrate } from '@/ui';
+import { Button, CategoryIcon, EmptyState, Select, SegmentedControl, formatMoney, formatRelativeDay, todayStr, addDays, useToast, vibrate, TOAST_RESERVE_BOTTOM } from '@/ui';
 import type { AccountId, Category, DateStr } from '@/types';
 import { CategoryGrid } from './CategoryTile';
 import { Keypad, applyKey, bufferToCents, centsToBuffer } from './Keypad';
@@ -112,7 +112,10 @@ export function QuickAdd() {
 
   if (!selected) {
     return (
-      <div className="flex flex-col gap-4 px-4 py-4">
+      // Reserve the toast's own footprint at the bottom of the grid — a save toast fires
+      // after every single log (the app's most frequent interaction) and would otherwise
+      // sit directly on top of the bottom row of tiles for its whole lifetime.
+      <div className="flex flex-col gap-4 px-4 py-4" style={{ paddingBottom: TOAST_RESERVE_BOTTOM }}>
         <CategoryGrid categories={ranked} onSelect={pickCategory} />
       </div>
     );

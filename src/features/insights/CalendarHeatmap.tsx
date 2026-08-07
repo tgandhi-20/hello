@@ -69,12 +69,13 @@ export function CalendarHeatmap({ month, onMonthChange, cells, txns, categories 
 
       {/*
         Design law: every touch target is >=48x48px, no exceptions (CONTRACTS.md §4). Seven
-        columns of 48px cells need ~360px+ of width, comfortable on the S26 Ultra's wide
-        viewport but not guaranteed on every device — `minmax(48px, 1fr)` keeps cells at or
-        above 48px and the outer `overflow-x-auto` (scoped to this grid, never the page body)
-        is the fallback on anything narrower, rather than silently shrinking below the minimum.
+        columns of 48px cells need ~336px+ of width. `-mx-4` bleeds past this card's own
+        16px padding on each side (reclaiming the 32px it costs) so that width comfortably
+        fits inside a 412px viewport with room to spare; `minmax(48px, 1fr)` keeps cells at
+        or above 48px regardless, and the `overflow-x-auto` (scoped to this grid, never the
+        page body) is only a fallback for narrower devices, not the normal path.
       */}
-      <div className="scroll-container -mx-1 overflow-x-auto px-1">
+      <div className="scroll-container -mx-4 overflow-x-auto px-1">
         <div
           className="grid gap-1 text-center text-xs text-text-3"
           style={{ gridTemplateColumns: 'repeat(7, minmax(48px, 1fr))' }}

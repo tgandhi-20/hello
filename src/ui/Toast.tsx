@@ -28,6 +28,19 @@ const VARIANT_CLASSES: Record<ToastVariant, string> = {
   danger: 'border-danger',
 };
 
+/**
+ * Distance the toast stack sits above the screen bottom (clears the 5-tab bar).
+ * Exported so scrollable screens that sit under a toast — quick-add's category grid,
+ * the transactions list — can reserve exactly this much bottom padding and never have
+ * their last row hidden under a toast for its whole lifetime.
+ */
+export const TOAST_BOTTOM_OFFSET_PX = 88;
+/** Toast pill height + its gap from the offset above, padded a little for comfort. */
+const TOAST_HEIGHT_ALLOWANCE_PX = 72;
+/** Total bottom padding a scroll container should reserve so a toast never covers its
+ * last row. `calc()` so it still respects the safe-area inset on gesture-nav phones. */
+export const TOAST_RESERVE_BOTTOM = `calc(${TOAST_BOTTOM_OFFSET_PX + TOAST_HEIGHT_ALLOWANCE_PX}px + env(safe-area-inset-bottom))`;
+
 let idCounter = 0;
 
 /** Mount once near the root of the app. Screens call `useToast()` to show toasts. */
@@ -60,7 +73,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         className="fixed left-0 right-0 z-[70] flex flex-col items-center gap-2 px-4 pointer-events-none"
-        style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))' }}
+        style={{ bottom: `calc(${TOAST_BOTTOM_OFFSET_PX}px + env(safe-area-inset-bottom))` }}
       >
         {toasts.map((t) => (
           <div

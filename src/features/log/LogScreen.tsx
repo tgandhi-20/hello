@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SegmentedControl } from '@/ui';
 import { QuickAdd } from './QuickAdd';
 import { TransactionsScreen } from '@/features/transactions';
-import { RecurringScreen, useRecurringSync } from '@/features/recurring';
+import { RecurringScreen } from '@/features/recurring';
 import { HabitsScreen } from '@/features/habits';
 
 type Tab = 'add' | 'transactions' | 'recurring' | 'habits';
@@ -15,10 +15,9 @@ type Tab = 'add' | 'transactions' | 'recurring' | 'habits';
  */
 export function LogScreen() {
   const [tab, setTab] = useState<Tab>('add');
-  // Keeps the recurring radar current whenever this route is visited, not just when the
-  // Recurring tab is opened — so a mid-month rent charge is already detected by the time
-  // the user looks.
-  useRecurringSync();
+  // Recurring detection now runs once in AppShell, so it stays current no matter which
+  // route the user opens — Home needs it too, to reserve upcoming bills out of
+  // Safe-to-Spend. Running it here as well would just duplicate the work.
 
   return (
     <div className="flex h-full min-h-0 flex-col">
