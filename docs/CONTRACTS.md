@@ -236,3 +236,65 @@ Below it: month spend vs budget, category donut, sparkline trend, recent transac
 - Every destructive action confirms.
 - Loading and error states for CSV import (a 5,000-row file must not freeze the UI).
 - The app must be usable one-handed while walking. That's the real acceptance test.
+
+---
+
+## 9. Store API (Agent 2 implements — Agents 3, 4, 5 consume)
+
+**FROZEN.** Agent 2 must implement exactly this. Agents 3–5 code against it and must
+not reach into IndexedDB or crypto directly — always go through the store.
+
+```ts
+// src/store/useStore.ts  (zustand)
+interface TallyStore {
+  // --- state ---
+  lockState: LockState;
+  hydrated: boolean;              // false until first decrypt completes
+  txns: Txn[];                    // all transactions, newest first
+  categories: Category[];
+  budgets: Budget[];
+  rules: Rule[];
+  recurring: RecurringSeries[];
+  settings: Settings;
+
+  // --- lock lifecycle ---
+  setupPin(pin: string): Promise<void>;      // first run
+  unlock(pin: string): Promise<boolean>;     // false = wrong PIN
+  unlockBiometric(): Promise<boolean>;       // false = unavailable/declined -> fall back to PIN
+  enableBiometric(): Promise<boolean>;
+  lock(): void;                              // zeroes in-memory key
+
+  // --- mutations (all persist encrypted, then update state) ---
+  addTxn(t: Omit<Txn,'id'|'hash'|'createdAt'|'updatedAt'>): Promise<Txn>;
+  addTxns(ts: Omit<Txn,'id'|'createdAt'|'updatedAt'>[]): Promise<{added:number;skipped:number}>;
+  updateTxn(id: string, patch: Partial<Txn>): Promise<void>;
+  deleteTxn(id: string): Promise<void>;
+  setBudget(categoryId: string, month: MonthStr, limitCents: Cents): Promise<void>;
+  addCategory(c: Omit<Category,'id'>): Promise<Category>;
+  updateCategory(id: string, patch: Partial<Category>): Promise<void>;
+  deleteCategory(id: string): Promise<void>;
+  addRule(match: string, categoryId: string): Promise<void>;
+  setRecurring(series: RecurringSeries[]): Promise<void>;
+  updateSettings(patch: Partial<Settings>): Promise<void>;
+
+  // --- data management ---
+  exportBackup(): Promise<Blob>;                       // encrypted .tally
+  importBackup(file: File, pin: string): Promise<void>;
+  resetAll(): Promise<void>;
+  loadDemoData(): Promise<void>;                       // realistic AU sample data
+}
+```
+
+`addTxns` computes `hash` and skips duplicates — that is where import dedupe lives.
+
+**Selectors** live in `src/store/selectors.ts` as pure functions over state, so any agent
+can add its own without touching Agent 2's files:
+`txnsForMonth(txns, month)`, `spendByCategory(txns, month)`, `totalSpendCents(txns, month)`,
+`incomeCents(txns, month)`, `dayCells(txns, month): DayCell[]`, `categoryById(cats, id)`.
+Agent 2 ships these six; other agents add more in their own directories.
+
+**Ownership resolution** (gap flagged by Agent 1): `src/features/settings/**` is owned by
+**Agent 2**. It holds PIN change, biometric toggle, auto-lock timeout, backup export/import,
+reset, *and* the income/payday/savings fields — those are plain inputs writing to the same
+`Settings` object Agent 2 already owns. Agent 5 reads those values, never writes them.
+`/more` remains navigation chrome owned by Agent 1.
