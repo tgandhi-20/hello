@@ -118,6 +118,19 @@ export interface Settings {
    * silently assumed false.
    */
   hasHecsDebt?: boolean;
+  /**
+   * The user's actual savings balance, as they last told us. Integer cents.
+   *
+   * The app sees transactions, never bank balances, so this is the one figure it
+   * cannot observe and must be given. `undefined` = never entered, in which case
+   * the goal card shows the plan's projected figure and says so, rather than
+   * implying it knows something it doesn't.
+   *
+   * It lives on `Settings` specifically so it is encrypted at rest along with
+   * everything else. It is a real financial fact about the user and has no
+   * business sitting in plaintext storage.
+   */
+  goalCurrentBalanceCents?: Cents;
 }
 
 export interface HabitStats {
