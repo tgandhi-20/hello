@@ -18,7 +18,7 @@ import { RoutineCard } from '@/features/routine';
 
 function DashboardSkeleton() {
   return (
-    <div className="flex flex-col gap-4 px-4 py-6" aria-busy="true" aria-label="Loading dashboard">
+    <div className="flex flex-col gap-6 px-4 py-6" aria-busy="true" aria-label="Loading dashboard">
       <Skeleton className="h-32" />
       <Skeleton className="h-20" />
       <Skeleton className="h-48" />
@@ -92,7 +92,7 @@ export function DashboardScreen() {
   const safeToSpend = computeSafeToSpend({ txns, recurring, settings, month });
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-6">
+    <div className="flex flex-col gap-6 px-4 py-6">
       <FoodWeekCard txns={txns} categories={categories} />
       <DepositGoalCard />
       <RoutineCard />

@@ -13,7 +13,7 @@ import { RiskNotes } from './RiskNotes';
  */
 export function RoutineScreen(): React.JSX.Element {
   return (
-    <div className="flex flex-col gap-4 px-4 py-4">
+    <div className="flex flex-col gap-6 px-4 py-6">
       <ChecklistSection />
       <AmexGuardrail />
       <SubscriptionTruth />

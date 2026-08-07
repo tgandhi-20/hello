@@ -16,7 +16,9 @@ export interface BudgetRowProps {
 function toneFor(ratio: number): SemanticTone {
   if (ratio > 1) return 'danger';
   if (ratio >= 0.8) return 'warning';
-  return 'accent';
+  // Under 80% of cap is budget state ("under budget"), not an interactive control — `--positive`
+  // is the token DESIGN.md §2 reserves for exactly this, not `--accent`.
+  return 'positive';
 }
 
 /** One category's monthly cap: progress bar, remaining-per-day, tap-to-edit limit. Never shaming — over

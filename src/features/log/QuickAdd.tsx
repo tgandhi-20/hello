@@ -111,12 +111,31 @@ export function QuickAdd() {
   }
 
   if (!selected) {
+    // The ranked list already puts the fastest-to-reach categories first (pinned, then
+    // most-used), but every tile carrying identical visual weight meant that ordering was
+    // the *only* hierarchy signal — 18 identical tiles read as one undifferentiated grid.
+    // Splitting into "Frequent" (thumb-reachable without scrolling) and "All categories"
+    // gives this screen's one job — tap a category fast — a visibly dominant fast path,
+    // using the same eyebrow-label pattern the rest of the app already uses for grouping
+    // (see More's "Money"/"The plan"/"App" sections) rather than inventing a new one.
+    const frequentCount = Math.min(Math.max(pinnedCategoryIds.length, 4), ranked.length);
+    const frequent = ranked.slice(0, frequentCount);
+    const rest = ranked.slice(frequentCount);
     return (
       // Reserve the toast's own footprint at the bottom of the grid — a save toast fires
       // after every single log (the app's most frequent interaction) and would otherwise
       // sit directly on top of the bottom row of tiles for its whole lifetime.
-      <div className="flex flex-col gap-4 px-4 py-4" style={{ paddingBottom: TOAST_RESERVE_BOTTOM }}>
-        <CategoryGrid categories={ranked} onSelect={pickCategory} />
+      <div className="flex flex-col gap-6 px-4 py-4" style={{ paddingBottom: TOAST_RESERVE_BOTTOM }}>
+        <div className="flex flex-col gap-2">
+          <span className="label px-1">Frequent</span>
+          <CategoryGrid categories={frequent} onSelect={pickCategory} />
+        </div>
+        {rest.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            <span className="label px-1">All categories</span>
+            <CategoryGrid categories={rest} onSelect={pickCategory} />
+          </div>
+        ) : null}
       </div>
     );
   }

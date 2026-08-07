@@ -61,7 +61,7 @@ export function ChecklistSection(): React.JSX.Element | null {
                 </button>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-ink-1">{item.label}</p>
-                  <p className="truncate text-xs text-ink-3">{item.detail}</p>
+                  <p className="line-clamp-2 text-xs text-ink-3">{item.detail}</p>
                 </div>
               </div>
               <p className={['pl-[60px] text-xs font-medium', TONE_CLASSES[status.tone]].join(' ')}>

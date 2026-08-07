@@ -167,7 +167,7 @@ export function SettingsScreen() {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-6">
+    <div className="flex flex-col gap-6 px-4 py-6">
       {/* --- Security --- */}
       <section className="flex flex-col gap-2">
         <p className="label px-1">Security</p>

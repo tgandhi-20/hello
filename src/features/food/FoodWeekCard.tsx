@@ -45,9 +45,14 @@ export function FoodWeekCard({ txns, categories }: FoodWeekCardProps) {
 
   const groceriesToken = categories.find((c) => c.id === GROCERIES_CATEGORY_ID)?.colorToken ?? 'cat-3';
 
+  // Groceries keeps its real category colour — it's the behavioural lever this card exists to
+  // highlight (PERSONAL.md §4: cooking more is the lever, the ratio is the proof). "Away" spans
+  // three categories with three different hues, so rather than borrow `--accent` (reserved for
+  // interactive affordance, DESIGN.md §2) it stays quiet ink — a neutral backdrop the coloured
+  // groceries slice reads against, not a second competing colour.
   const splitData: ChartDatum[] = [
     { id: 'groceries', label: 'Groceries', value: stats.buckets.groceriesCents, colorToken: groceriesToken },
-    { id: 'away', label: 'Eating out, lunch & coffee', value: stats.buckets.awayCents, colorToken: 'accent' },
+    { id: 'away', label: 'Eating out, lunch & coffee', value: stats.buckets.awayCents, colorToken: 'ink-3' },
   ];
 
   const over = stats.remainingCents < 0;

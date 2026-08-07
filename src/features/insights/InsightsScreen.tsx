@@ -43,28 +43,35 @@ export function InsightsScreen() {
     );
   }
 
+  // `--accent` is reserved for interactive affordance (DESIGN.md §2), not for picking out "the
+  // current month" in a static bar chart — weight/brightness carries that emphasis instead, the
+  // same way typography carries hierarchy elsewhere (DESIGN.md §1.3): the current month is bright
+  // ink-1, every other month recedes to ink-3.
   const columnData: ChartDatum[] = monthTotals.map((mt) => ({
     id: mt.month,
     label: monthShortLabel(mt.month),
     value: mt.totalCents,
-    colorToken: mt.month === month ? 'accent' : 'ink-3',
+    colorToken: mt.month === month ? 'ink-1' : 'ink-3',
   }));
 
+  // One series, no state to distinguish between bars — plain ink, not the interactive accent.
   const weekdayData: ChartDatum[] = weekday.map((w, i) => ({
     id: String(i),
     label: w.label,
     value: w.totalCents,
-    colorToken: 'accent',
+    colorToken: 'ink-2',
   }));
 
+  // Needs/wants/savings is a categorical split, not a direction-or-state signal, so it draws from
+  // the category ramp (DESIGN.md §2) rather than mixing in the reserved accent/semantic tokens.
   const splitSegments: ChartDatum[] = [
-    { id: 'need', label: 'Needs', value: split.needCents, colorToken: 'positive' },
-    { id: 'want', label: 'Wants', value: split.wantCents, colorToken: 'accent' },
-    { id: 'save', label: 'Savings', value: split.saveCents, colorToken: 'cat-8' },
+    { id: 'need', label: 'Needs', value: split.needCents, colorToken: 'cat-1' },
+    { id: 'want', label: 'Wants', value: split.wantCents, colorToken: 'cat-5' },
+    { id: 'save', label: 'Savings', value: split.saveCents, colorToken: 'cat-2' },
   ];
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-6">
+    <div className="flex flex-col gap-6 px-4 py-6">
       <Card>
         <CalendarHeatmap month={month} onMonthChange={setMonth} cells={cells} txns={txns} categories={categories} />
       </Card>

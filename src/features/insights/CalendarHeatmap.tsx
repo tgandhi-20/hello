@@ -16,10 +16,19 @@ export interface CalendarHeatmapProps {
 }
 
 /** Blend from `--surface-1` (no spend) up to full `--accent` (busiest day) — one hue, varying
- * lightness/saturation via `color-mix`, so intensity reads correctly without relying on hue at all. */
+ * lightness/saturation via `color-mix`, so intensity reads correctly without relying on hue at all.
+ *
+ * `intensity` itself is linear against the month's single highest day (store/selectors.ts). Spend
+ * distributions are typically right-skewed — a handful of big days (a bill, a shop) alongside many
+ * ordinary ones — so a linear map compresses every ordinary day into a narrow, visually-identical
+ * low band while only the single outlier stands out. A sqrt curve is a standard contrast-stretch for
+ * exactly this shape: it spreads the low-to-mid range out (where the days that actually need
+ * distinguishing live) while still monotonically topping out at the real max, so the ramp stays an
+ * honest, ordered representation of "more" vs "less" — just a legible one. */
 function cellBackground(intensity: number, hasSpend: boolean): string {
   if (!hasSpend) return 'var(--surface-1)';
-  const pct = Math.round(16 + clampRatio(intensity) * 76); // 16%..92% accent mix
+  const perceptual = Math.sqrt(clampRatio(intensity));
+  const pct = Math.round(18 + perceptual * 74); // 18%..92% accent mix
   return `color-mix(in srgb, var(--accent) ${pct}%, var(--surface-1))`;
 }
 

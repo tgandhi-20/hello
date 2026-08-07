@@ -85,8 +85,12 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
       </div>
       <div
         className={[
-          'relative flex min-h-[64px] items-center gap-3 bg-bg px-4 py-3 select-none',
-          // Dim the CONTENTS, never this element. It carries the opaque bg-bg that
+          // `bg-surface-1` (not `bg-bg`) so the list reads as one raised surface with hairline
+          // row dividers (DESIGN.md §5 "List rows... Not one card per row"), rather than floating
+          // directly on the page ground — it's still fully opaque, which is what actually matters
+          // for hiding the swipe-action layer sitting at `absolute inset-0` behind it.
+          'relative flex min-h-[64px] items-center gap-3 border-b border-hairline bg-surface-1 px-4 py-3 select-none',
+          // Dim the CONTENTS, never this element. It carries the opaque background that
           // hides the swipe-action layer sitting at `absolute inset-0` behind it —
           // fading the element itself made that background translucent and let the
           // Re-categorise/Delete actions bleed through, so every excluded row looked
