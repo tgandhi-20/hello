@@ -20,6 +20,7 @@ const TITLES: Record<string, string> = {
   '/recurring': 'Recurring',
   '/habits': 'Habits',
   '/transactions': 'Transactions',
+  '/statements': 'Statements',
 };
 
 /**

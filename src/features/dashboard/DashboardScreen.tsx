@@ -15,6 +15,7 @@ import { UpcomingBillsCard } from './UpcomingBillsCard';
 import { FoodWeekCard } from '@/features/food';
 import { DepositGoalCard } from '@/features/goal';
 import { RoutineCard } from '@/features/routine';
+import { StatementsCard } from '@/features/statements';
 
 function DashboardSkeleton() {
   return (
@@ -101,6 +102,7 @@ export function DashboardScreen() {
       <CategoryBreakdownCard txns={monthTxns} categories={categories} />
       <TrendCard txns={txns} month={month} />
       <RecentTransactionsCard txns={txns} categories={categories} />
+      <StatementsCard />
       <UpcomingBillsCard recurring={recurring} categories={categories} />
     </div>
   );

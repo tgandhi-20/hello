@@ -8,6 +8,7 @@ import {
   Target,
   CalendarCheck2,
   Flame,
+  CreditCard,
   Settings as SettingsIcon,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -28,6 +29,7 @@ interface LinkDef {
 const MONEY_LINKS: LinkDef[] = [
   { to: '/transactions', label: 'Transactions', subtitle: 'Every logged and imported entry', icon: Receipt },
   { to: '/budgets', label: 'Budgets', subtitle: 'Category caps vs actual spend', icon: PiggyBank },
+  { to: '/statements', label: 'Statements', subtitle: 'Predicted card balances and due dates', icon: CreditCard },
   { to: '/recurring', label: 'Recurring', subtitle: 'Detected bills and subscriptions', icon: Repeat },
   { to: '/import', label: 'Import statement', subtitle: 'CBA, Amex or Bankwest CSV', icon: Upload },
 ];
