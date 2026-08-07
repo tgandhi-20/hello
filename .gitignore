@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+*.local
+
+# Vite / PWA generated artifacts
+dev-dist/
+.vite/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Scratch / debug / QA harness scripts
+/debug*.ts
+/debug*.js
+/scratch*
+/.qa-*.mjs
+/qa*.cjs
+/qa*.mjs
+/qa*.js
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# Environment — never commit secrets
+.env
+.env.*
+!.env.example
+
+# Tally — personal financial data must NEVER be committed.
+# Encrypted backups, exported ledgers and any real bank statements stay local.
+*.tally
+*.csv
+!docs/samples/*.example.csv
+
+# QA verification artefacts (screenshots from emulated-device runs)
+qa-screenshots/
