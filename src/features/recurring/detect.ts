@@ -10,6 +10,7 @@
 import type { Category, Cents, DateStr, RecurringCadence, RecurringSeries, Txn } from '@/types';
 import { normalizeMerchant } from '@/features/transactions/merchant';
 import { todayStr } from '@/ui/format';
+import { WEEKS_PER_MONTH, FORTNIGHTS_PER_MONTH } from '@/personal/plan';
 
 export interface DetectionOptions {
   /** Minimum occurrences in a cluster before it's confident enough to surface. */
@@ -173,6 +174,31 @@ function nominalOf(cadence: RecurringCadence): number {
   return CADENCES.find((c) => c.cadence === cadence)!.nominalDays;
 }
 
+/** Public wrapper over `nominalOf` — the statements feature (src/features/statements/upcoming.ts) projects a series' future occurrence dates over a 60-day horizon and needs the same per-cadence step length this file already uses, rather than a second, possibly-drifting copy of the same numbers. */
+export function cadenceNominalDays(cadence: RecurringCadence): number {
+  return nominalOf(cadence);
+}
+
+/**
+ * Advance a (possibly stale) due date forward by whole cadence lengths until
+ * it's no longer in the past. Used below to keep a user-CONFIRMED series'
+ * `nextDue` moving forward automatically even on a pass where no fresh
+ * transaction confirms the next occurrence — a confirmed series is a
+ * standing statement from the user ("this happens every month"), and it
+ * would defeat the point of confirming a cadence if the due date silently
+ * froze the moment new matching transactions stopped arriving.
+ */
+export function rollForwardDueDate(dueDate: DateStr, cadence: RecurringCadence, today: DateStr): DateStr {
+  const nominal = nominalOf(cadence);
+  let next = dueDate;
+  let guard = 0;
+  while (next < today && guard < 60) {
+    next = addDaysUTC(next, nominal);
+    guard++;
+  }
+  return next;
+}
+
 function nextDueFrom(lastSeen: DateStr, cadence: RecurringCadence, medianIntervalDays: number, today: DateStr): DateStr {
   // Blend the cadence's nominal length with the observed median interval so a series
   // that's consistently landing a couple of days early/late projects accordingly.
@@ -198,6 +224,24 @@ function seriesKey(normalizedMerchant: string, cadence: RecurringCadence): strin
  * Detect recurring series from transaction history. `existing` lets a previous
  * detection's `id`/`muted` survive re-detection (so muting a series sticks, and the
  * radar doesn't reshuffle ids every time new transactions land).
+ *
+ * CONFIRMED SERIES ARE AUTHORITATIVE (src/features/statements/types.ts's
+ * `RecurringSeries.confirmed` declaration-merged field — the statements
+ * feature's "can recurring transactions be saved too" deliverable). Two
+ * separate guarantees, both below:
+ *   1. Within the clustering loop: when a fresh cluster's key (merchant +
+ *      cadence) matches an existing CONFIRMED series, the user's own
+ *      amount/category/nextDue/account are kept as-is rather than replaced
+ *      by whatever this pass just recomputed — only `txnIds`/`lastSeen`
+ *      (informational, never edited by the user) refresh from the new data.
+ *   2. After the loop: any confirmed series whose key no longer matches a
+ *      current cluster at all (the user edited its cadence away from what
+ *      auto-detection sees, or its merchant temporarily stopped generating
+ *      enough occurrences to cluster) is still carried through unchanged —
+ *      never silently dropped — with its `nextDue` rolled forward if it's
+ *      gone stale (see `rollForwardDueDate`).
+ * Unconfirmed series keep the prior fully-automatic behaviour: recomputed
+ * fresh on every pass, replaced wholesale by `out`.
  */
 export function detectRecurring(
   txns: Txn[],
@@ -244,41 +288,66 @@ export function detectRecurring(
 
       const key = seriesKey(normalizedMerchant, cadenceResult.cadence);
       const prior = existingByKey.get(key);
+      const confirmed = prior?.confirmed ?? false;
 
       const displayMerchant = mode(sorted.map((t) => t.merchant || t.description));
-      const categoryId = mode(sorted.map((t) => t.categoryId));
+      const detectedCategoryId = mode(sorted.map((t) => t.categoryId));
 
+      // Confirmed: the user's own amount/category/next-due/account are
+      // authoritative and survive this pass untouched. Unconfirmed: fully
+      // recomputed, as before.
       const series: RecurringSeries = {
         id: prior?.id ?? `rec-${key}-${sorted[0].id}`,
         merchant: displayMerchant,
-        categoryId,
+        categoryId: confirmed ? prior!.categoryId : detectedCategoryId,
         cadence: cadenceResult.cadence,
-        amountCents: lastTxn.amountCents,
+        amountCents: confirmed ? prior!.amountCents : lastTxn.amountCents,
         lastSeen: lastTxn.date,
-        nextDue: nextDueFrom(lastTxn.date, cadenceResult.cadence, cadenceResult.medianIntervalDays, opts.today),
+        nextDue: confirmed
+          ? prior!.nextDue
+          : nextDueFrom(lastTxn.date, cadenceResult.cadence, cadenceResult.medianIntervalDays, opts.today),
         txnIds: sorted.map((t) => t.id),
         priceIncreaseCents,
         muted: prior?.muted ?? false,
+        confirmed,
+        accountId: prior?.accountId,
+        confirmedAt: prior?.confirmedAt,
       };
       out.push(series);
     }
+  }
+
+  // Confirmed series are authoritative: never silently drop one just because
+  // this pass's clustering didn't reproduce its exact merchant+cadence key
+  // (see this function's doc comment, guarantee 2). Roll a stale `nextDue`
+  // forward so a confirmed cadence keeps projecting ahead even without a
+  // fresh matching transaction to anchor it.
+  const emittedIds = new Set(out.map((s) => s.id));
+  for (const s of existing) {
+    if (!s.confirmed || emittedIds.has(s.id)) continue;
+    out.push({
+      ...s,
+      nextDue: s.nextDue < opts.today ? rollForwardDueDate(s.nextDue, s.cadence, opts.today) : s.nextDue,
+    });
+    emittedIds.add(s.id);
   }
 
   return out.sort((a, b) => (a.nextDue < b.nextDue ? -1 : a.nextDue > b.nextDue ? 1 : 0));
 }
 
 /**
- * Weeks and fortnights per average month, derived from the 365.2425-day
- * Gregorian year (52.1775 weeks / 12).
+ * Weeks and fortnights per average month: imported from src/personal/plan.ts
+ * (52/12 and 26/12 — docs/PERSONAL.md §1, NON-NEGOTIABLE: never ×4, which
+ * understates by ~8%) rather than defined locally.
  *
- * THIS IS THE ONLY DEFINITION. Safe-to-Spend imports it rather than keeping its
- * own: the dashboard and the Recurring screen previously used 52/12 and 4.348
- * respectively, so the same weekly bill produced two different "monthly bills"
- * figures depending which screen you looked at. Two screens disagreeing about
- * what you owe undermines every other number in the app.
+ * Safe-to-Spend imports `monthlyEquivalentCents` below rather than keeping its
+ * own copy of this ratio: the dashboard and the Recurring screen previously
+ * used 52/12 and 4.348 respectively, so the same weekly bill produced two
+ * different "monthly bills" figures depending which screen you looked at. Two
+ * screens disagreeing about what you owe undermines every other number in the
+ * app. This file — via src/personal/plan.ts's single definition — is now
+ * genuinely the only place either ratio is defined.
  */
-const WEEKS_PER_MONTH = 4.348;
-const FORTNIGHTS_PER_MONTH = 2.174;
 
 /**
  * Monthly-equivalent cost of a cadence, for "total monthly subscription load"

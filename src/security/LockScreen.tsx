@@ -278,12 +278,12 @@ export function LockScreen() {
           className="flex flex-1 flex-col items-center gap-5 overflow-y-auto px-6 pb-4 pt-8 text-center scroll-container"
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2rem)' }}
         >
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-hairline bg-surface-1">
             <Lock size={26} className="text-accent" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-text-1">How should Tally unlock?</h1>
-            <p className="mt-1 text-sm text-text-2">
+            <h1 className="text-xl font-semibold text-ink-1">How should Tally unlock?</h1>
+            <p className="mt-1 text-sm text-ink-2">
               Both encrypt your data the same way — this only changes how you prove it's you.
             </p>
           </div>
@@ -298,7 +298,7 @@ export function LockScreen() {
               truth={PIN_TRUTH}
             >
               {setupMode === 'pin' ? (
-                <div className="mt-3 border-t border-border pt-3">
+                <div className="mt-3 border-t border-hairline pt-3">
                   <PinLengthStepper value={setupPinLength} onChange={setSetupPinLength} disabled={busy} />
                 </div>
               ) : null}
@@ -316,7 +316,7 @@ export function LockScreen() {
         </div>
 
         <div
-          className="border-t border-border bg-surface-1/40 px-6 pb-8 pt-6"
+          className="border-t border-hairline bg-surface-1 px-6 pb-8 pt-6"
           style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
         >
           <Button variant="primary" size="lg" fullWidth onClick={beginSetupEntry}>
@@ -360,12 +360,12 @@ export function LockScreen() {
         className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-surface-1">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-hairline bg-surface-1">
           <Lock size={26} className="text-accent" aria-hidden="true" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-text-1">{title}</h1>
-          <p className="mt-1 text-sm text-text-2">{subtitle}</p>
+          <h1 className="text-xl font-semibold text-ink-1">{title}</h1>
+          <p className="mt-1 text-sm text-ink-2">{subtitle}</p>
         </div>
 
         {activeMode === 'pin' ? (
@@ -373,16 +373,16 @@ export function LockScreen() {
         ) : null}
 
         {weakWarning && screen === 'setup-confirm' ? (
-          <div className="flex items-center gap-2 rounded-2xl border border-warning/40 bg-[color-mix(in_srgb,var(--warning)_12%,transparent)] px-4 py-2 text-xs text-warning">
+          <div className="flex items-center gap-2 rounded-card bg-[color-mix(in_srgb,var(--caution)_12%,transparent)] px-4 py-2 text-xs text-caution">
             <AlertTriangle size={16} aria-hidden="true" />
             <span>{weakWarning} You can still use it, but a less predictable PIN is safer.</span>
           </div>
         ) : null}
 
-        {error ? <p className="text-sm text-danger">{error}</p> : null}
+        {error ? <p className="text-sm text-negative">{error}</p> : null}
 
         {isBackedOff ? (
-          <p className="text-sm text-text-3">Try again in {Math.ceil(remainingMs / 1000)}s</p>
+          <p className="text-sm text-ink-3">Try again in {Math.ceil(remainingMs / 1000)}s</p>
         ) : null}
 
         {screen === 'unlock' && biometricReady ? (
@@ -390,7 +390,7 @@ export function LockScreen() {
             type="button"
             onClick={() => void attemptBiometric()}
             disabled={busy}
-            className="mt-2 flex min-h-[48px] items-center gap-2 rounded-pill border border-border px-5 text-sm font-medium text-text-1 active:bg-surface-2 disabled:opacity-40"
+            className="mt-2 flex min-h-[48px] items-center gap-2 rounded-pill border border-hairline px-5 text-sm font-medium text-ink-1 active:bg-surface-2 disabled:opacity-40"
           >
             <Fingerprint size={20} className="text-accent" aria-hidden="true" />
             Use fingerprint
@@ -419,7 +419,7 @@ export function LockScreen() {
 
       {/* Bottom third: entry controls. This is the whole one-handed-use point (CONTRACTS.md §4). */}
       <div
-        className="border-t border-border bg-surface-1/40 px-6 pb-8 pt-6"
+        className="border-t border-hairline bg-surface-1 px-6 pb-8 pt-6"
         style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
       >
         {activeMode === 'pin' ? (

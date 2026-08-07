@@ -1,4 +1,16 @@
-/** @type {import('tailwindcss').Config} */
+/**
+ * Tally design system v2 — DESIGN.md (FROZEN spec, supersedes CONTRACTS.md §4).
+ * Every value here traces to a CSS custom property in src/styles/tokens.css —
+ * never a raw hex. See tokens.css for the "why" behind the palette and the
+ * temporary v1 alias block; the `text-1/2/3`, `border`, `warning`, `danger`,
+ * `accent.pressed` colour keys below exist ONLY so ~40 in-flight feature files
+ * keep rendering correctly while a second agent migrates their class names to
+ * the v2 names (`ink-1/2/3`, `hairline`, `caution`, `negative`,
+ * `accent.press`). Remove those keys, and the matching CSS vars, once that
+ * migration is done.
+ *
+ * @type {import('tailwindcss').Config}
+ */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
@@ -8,20 +20,25 @@ export default {
         surface: {
           1: 'var(--surface-1)',
           2: 'var(--surface-2)',
+          3: 'var(--surface-3)',
         },
-        border: 'var(--border)',
-        text: {
-          1: 'var(--text-1)',
-          2: 'var(--text-2)',
-          3: 'var(--text-3)',
+        hairline: 'var(--hairline)',
+        ink: {
+          1: 'var(--ink-1)',
+          2: 'var(--ink-2)',
+          3: 'var(--ink-3)',
+          'on-accent': 'var(--ink-on-accent)',
         },
         accent: {
           DEFAULT: 'var(--accent)',
+          press: 'var(--accent-press)',
+          tint: 'var(--accent-tint)',
+          // TEMPORARY v1 alias — old class name for --accent-press.
           pressed: 'var(--accent-pressed)',
         },
         positive: 'var(--positive)',
-        warning: 'var(--warning)',
-        danger: 'var(--danger)',
+        caution: 'var(--caution)',
+        negative: 'var(--negative)',
         cat: {
           1: 'var(--cat-1)',
           2: 'var(--cat-2)',
@@ -36,25 +53,49 @@ export default {
           11: 'var(--cat-11)',
           12: 'var(--cat-12)',
         },
+        // ---- TEMPORARY v1 aliases (see header note) ----
+        border: 'var(--border)',
+        text: {
+          1: 'var(--text-1)',
+          2: 'var(--text-2)',
+          3: 'var(--text-3)',
+        },
+        warning: 'var(--warning)',
+        danger: 'var(--danger)',
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
       },
+      // Type scale — DESIGN.md §3. Deliberately finer than v1, with real jumps
+      // between steps (weight/tracking/colour, not just size, carry hierarchy —
+      // see the .money/.money-hero/.label utilities in src/styles/index.css).
       fontSize: {
-        xs: '12px',
-        sm: '14px',
-        md: '16px',
-        lg: '20px',
-        xl: '28px',
-        '2xl': '40px',
+        '2xs': ['11px', { lineHeight: '16px' }],
+        xs: ['13px', { lineHeight: '18px' }],
+        sm: ['15px', { lineHeight: '22px' }],
+        md: ['17px', { lineHeight: '24px' }],
+        lg: ['22px', { lineHeight: '28px' }],
+        xl: ['30px', { lineHeight: '36px' }],
+        '2xl': ['40px', { lineHeight: '44px' }],
       },
+      // Radius — DESIGN.md §4: one radius per role, not one radius everywhere.
       borderRadius: {
-        card: '16px',
-        sheet: '24px',
-        pill: '999px',
+        control: '8px', // buttons, inputs, chips' inner corner where not pill
+        card: '14px', // cards, list groups
+        sheet: '22px', // bottom sheets, menus, popovers
+        pill: '999px', // chips, toggles, fully-rounded controls
       },
+      // Motion — DESIGN.md §4: 140-180ms, cubic-bezier(0.2,0,0,1), transform/
+      // opacity only. `duration-140`/`duration-180` give both ends of that
+      // window as explicit utilities (Tailwind's default numeric scale
+      // doesn't include either); `ease-standard` is the required curve.
       transitionDuration: {
-        DEFAULT: '200ms',
+        DEFAULT: '180ms',
+        140: '140ms',
+        180: '180ms',
+      },
+      transitionTimingFunction: {
+        standard: 'cubic-bezier(0.2, 0, 0, 1)',
       },
       spacing: {
         safe: 'env(safe-area-inset-bottom)',

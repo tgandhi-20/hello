@@ -52,16 +52,16 @@ export function CalendarHeatmap({ month, onMonthChange, cells, txns, categories 
           type="button"
           aria-label="Previous month"
           onClick={() => onMonthChange(prevMonth(month))}
-          className="flex h-12 w-12 items-center justify-center rounded-full text-text-2 active:bg-surface-2"
+          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
         >
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
-        <h2 className="text-md font-semibold text-text-1">{monthLabel(month)}</h2>
+        <h2 className="text-md font-semibold text-ink-1">{monthLabel(month)}</h2>
         <button
           type="button"
           aria-label="Next month"
           onClick={() => onMonthChange(nextMonth(month))}
-          className="flex h-12 w-12 items-center justify-center rounded-full text-text-2 active:bg-surface-2"
+          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
         >
           <ChevronRight size={20} aria-hidden="true" />
         </button>
@@ -77,7 +77,7 @@ export function CalendarHeatmap({ month, onMonthChange, cells, txns, categories 
       */}
       <div className="scroll-container -mx-4 overflow-x-auto px-1">
         <div
-          className="grid gap-1 text-center text-xs text-text-3"
+          className="grid gap-1 text-center text-xs text-ink-3"
           style={{ gridTemplateColumns: 'repeat(7, minmax(48px, 1fr))' }}
           aria-hidden="true"
         >
@@ -114,9 +114,9 @@ export function CalendarHeatmap({ month, onMonthChange, cells, txns, categories 
                 ].join(' ')}
                 style={{ backgroundColor: cellBackground(cell.intensity, hasSpend) }}
               >
-                <span className={hasSpend ? 'text-text-1' : 'text-text-3'}>{dayNum}</span>
+                <span className={hasSpend ? 'text-ink-1' : 'text-ink-3'}>{dayNum}</span>
                 {hasSpend ? (
-                  <span className="tabular-nums leading-none text-text-1">
+                  <span className="money leading-none text-ink-1">
                     {formatMoney(cell.totalCents, { compact: true })}
                   </span>
                 ) : null}

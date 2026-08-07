@@ -105,6 +105,32 @@ export interface Settings {
   biometricEnabled: boolean;
   /** Categories to feature first in the quick-add grid. */
   pinnedCategoryIds: string[];
+  /**
+   * Date the user moves into the new place (personal plan §7). `undefined` =
+   * not yet moved — rent, utilities, and sublet income are inactive until
+   * this date. Must be an explicit user-set value, never inferred.
+   */
+  moveInDate?: DateStr;
+  /**
+   * Explicit answer to "does the user have a HECS/HELP debt?" (personal plan
+   * §2/§7 — if true, the whole plan shifts by ~$700/month). `undefined` =
+   * not yet answered; must be asked as a one-time setup question, never
+   * silently assumed false.
+   */
+  hasHecsDebt?: boolean;
+  /**
+   * The user's actual savings balance, as they last told us. Integer cents.
+   *
+   * The app sees transactions, never bank balances, so this is the one figure it
+   * cannot observe and must be given. `undefined` = never entered, in which case
+   * the goal card shows the plan's projected figure and says so, rather than
+   * implying it knows something it doesn't.
+   *
+   * It lives on `Settings` specifically so it is encrypted at rest along with
+   * everything else. It is a real financial fact about the user and has no
+   * business sitting in plaintext storage.
+   */
+  goalCurrentBalanceCents?: Cents;
 }
 
 export interface HabitStats {

@@ -26,7 +26,7 @@ const TABS: TabDef[] = [
 export function TabBar() {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-[rgba(13,15,19,0.92)] backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-hairline bg-[color-mix(in_srgb,var(--surface-1)_92%,transparent)] backdrop-blur"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Primary"
     >
@@ -41,7 +41,7 @@ export function TabBar() {
             to="/log"
             aria-label="Quick add"
             onClick={() => vibrate('tap')}
-            className="flex h-14 w-14 -translate-y-4 items-center justify-center rounded-full bg-accent text-white shadow-lg transition-transform duration-200 active:scale-95"
+            className="flex h-14 w-14 -translate-y-4 items-center justify-center rounded-full bg-accent text-ink-on-accent shadow-lg transition-transform duration-200 active:scale-95"
           >
             <Plus size={28} strokeWidth={2.25} aria-hidden="true" />
           </NavLink>
@@ -65,7 +65,7 @@ function TabLink({ tab }: { tab: TabDef }) {
       className={({ isActive }) =>
         [
           'flex min-w-[48px] flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium',
-          isActive ? 'text-accent' : 'text-text-3',
+          isActive ? 'text-accent' : 'text-ink-3',
         ].join(' ')
       }
     >

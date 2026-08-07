@@ -15,6 +15,7 @@ import {
 import { Card } from '@/ui/Card';
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
+import { ListGroup, ListRow } from '@/ui/ListGroup';
 import { Select } from '@/ui/Select';
 import { Switch } from '@/ui/Switch';
 import { ConfirmDialog } from '@/ui/Modal';
@@ -75,7 +76,7 @@ function MoneyField({ label, valueCents, onCommit, hint }: MoneyFieldProps) {
         onChange={(e) => setText(e.target.value)}
         onBlur={commit}
       />
-      {hint ? <p className="mt-1 text-xs text-text-3">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-xs text-ink-3">{hint}</p> : null}
     </div>
   );
 }
@@ -168,68 +169,72 @@ export function SettingsScreen() {
   return (
     <div className="flex flex-col gap-4 px-4 py-6">
       {/* --- Security --- */}
-      <Card>
-        <h2 className="mb-3 text-md font-semibold text-text-1">Security</h2>
-        <div className="flex flex-col divide-y divide-border">
-          <button
-            type="button"
+      <section className="flex flex-col gap-2">
+        <p className="label px-1">Security</p>
+        <ListGroup>
+          <ListRow
             onClick={() => setChangeUnlockOpen(true)}
-            className="flex min-h-[56px] items-center gap-3 py-3 text-left"
-          >
-            <KeyRound size={20} className="text-text-2" aria-hidden="true" />
-            <span className="flex-1 text-md text-text-1">
-              {unlockConfig.mode === 'pin' ? 'Change PIN' : 'Change passphrase'}
-            </span>
-            <span className="text-sm text-text-3">
-              {unlockConfig.mode === 'pin' ? `${unlockConfig.pinLength}-digit PIN` : 'Passphrase'}
-            </span>
-          </button>
+            leading={<KeyRound size={20} className="text-ink-2" aria-hidden="true" />}
+            title={unlockConfig.mode === 'pin' ? 'Change PIN' : 'Change passphrase'}
+            trailing={
+              <span className="text-sm text-ink-3">
+                {unlockConfig.mode === 'pin' ? `${unlockConfig.pinLength}-digit PIN` : 'Passphrase'}
+              </span>
+            }
+            chevron
+          />
 
-          <div className="flex min-h-[56px] items-center gap-3 py-3">
-            <Fingerprint size={20} className="text-text-2" aria-hidden="true" />
-            <span className="flex-1 text-md text-text-1">Biometric unlock</span>
-            {biometricSupported ? (
-              <Switch
-                checked={settings.biometricEnabled}
-                onChange={(v) => void handleBiometricToggle(v)}
-                disabled={biometricBusy}
-                id="biometric-toggle"
+          <ListRow
+            as="div"
+            leading={<Fingerprint size={20} className="text-ink-2" aria-hidden="true" />}
+            title="Biometric unlock"
+            trailing={
+              biometricSupported ? (
+                <Switch
+                  checked={settings.biometricEnabled}
+                  onChange={(v) => void handleBiometricToggle(v)}
+                  disabled={biometricBusy}
+                  id="biometric-toggle"
+                />
+              ) : (
+                <span className="text-xs text-ink-3">Not available</span>
+              )
+            }
+          />
+
+          <ListRow
+            as="div"
+            leading={<Timer size={20} className="text-ink-2" aria-hidden="true" />}
+            title="Auto-lock"
+            trailing={
+              <Select
+                aria-label="Auto-lock timeout"
+                options={LOCK_TIMEOUT_OPTIONS}
+                value={String(settings.lockTimeoutMs)}
+                onChange={(e) => void updateSettings({ lockTimeoutMs: Number(e.target.value) })}
+                className="w-40"
               />
-            ) : (
-              <span className="text-xs text-text-3">Not available</span>
-            )}
-          </div>
-
-          <div className="flex min-h-[56px] items-center gap-3 py-3">
-            <Timer size={20} className="text-text-2" aria-hidden="true" />
-            <span className="flex-1 text-md text-text-1">Auto-lock after</span>
-            <Select
-              aria-label="Auto-lock timeout"
-              options={LOCK_TIMEOUT_OPTIONS}
-              value={String(settings.lockTimeoutMs)}
-              onChange={(e) => void updateSettings({ lockTimeoutMs: Number(e.target.value) })}
-              className="w-40"
-            />
-          </div>
-        </div>
-        <p className="mt-2 flex items-start gap-2 text-xs text-text-3">
+            }
+          />
+        </ListGroup>
+        <p className="flex items-start gap-2 px-1 text-xs text-ink-3">
           <ShieldCheck size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
           Everything is encrypted on this device only. Your {unlockConfig.mode === 'pin' ? 'PIN' : 'passphrase'} is
           never stored — losing it means losing access unless you have a backup.
         </p>
-        <p className="mt-1 text-xs text-text-3">
+        <p className="px-1 text-xs text-ink-3">
           {unlockConfig.mode === 'pin'
             ? 'A PIN protects against someone picking up your unlocked phone. It does not protect against a stolen device with its raw data copied off — switch to a passphrase for that.'
             : 'A passphrase protects against both an unlocked phone and a stolen device with its raw data copied off.'}
         </p>
-      </Card>
+      </section>
 
       {/* --- Money --- */}
       <Card>
-        <h2 className="mb-3 text-md font-semibold text-text-1">Income &amp; savings</h2>
+        <h2 className="mb-3 text-md font-semibold text-ink-1">Income &amp; savings</h2>
         <div className="flex flex-col gap-4">
           <div className="flex items-start gap-3">
-            <Wallet size={20} className="mt-8 shrink-0 text-text-2" aria-hidden="true" />
+            <Wallet size={20} className="mt-8 shrink-0 text-ink-2" aria-hidden="true" />
             <div className="flex-1">
               <MoneyField
                 label="Monthly income"
@@ -244,7 +249,7 @@ export function SettingsScreen() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <CalendarClock size={20} className="shrink-0 text-text-2" aria-hidden="true" />
+            <CalendarClock size={20} className="shrink-0 text-ink-2" aria-hidden="true" />
             <Select
               label="Payday"
               options={PAYDAY_OPTIONS}
@@ -254,7 +259,7 @@ export function SettingsScreen() {
             />
           </div>
           <div className="flex items-start gap-3">
-            <PiggyBank size={20} className="mt-8 shrink-0 text-text-2" aria-hidden="true" />
+            <PiggyBank size={20} className="mt-8 shrink-0 text-ink-2" aria-hidden="true" />
             <div className="flex-1">
               <MoneyField
                 label="Savings target"
@@ -269,7 +274,7 @@ export function SettingsScreen() {
 
       {/* --- Data --- */}
       <Card>
-        <h2 className="mb-3 text-md font-semibold text-text-1">Your data</h2>
+        <h2 className="mb-3 text-md font-semibold text-ink-1">Your data</h2>
         <div className="flex flex-col gap-3">
           <Button variant="ghost" fullWidth disabled={exportBusy} onClick={() => void handleExport()}>
             <Download size={18} aria-hidden="true" />
@@ -288,7 +293,7 @@ export function SettingsScreen() {
             Reset everything
           </Button>
         </div>
-        <p className="mt-2 flex items-start gap-2 text-xs text-warning">
+        <p className="mt-2 flex items-start gap-2 text-xs text-caution">
           A backup file is encrypted, but treat it like a copy of your bank statements — store it
           somewhere private.
         </p>

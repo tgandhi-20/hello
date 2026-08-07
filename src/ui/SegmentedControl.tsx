@@ -22,7 +22,7 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       role="tablist"
-      className={['flex rounded-2xl border border-border bg-surface-1 p-1', className].join(' ')}
+      className={['flex rounded-control bg-surface-1 p-1', className].join(' ')}
     >
       {options.map((opt) => {
         const active = opt.value === value;
@@ -34,8 +34,8 @@ export function SegmentedControl<T extends string>({
             aria-selected={active}
             onClick={() => onChange(opt.value)}
             className={[
-              'flex-1 min-h-[48px] rounded-xl px-3 text-sm font-medium transition-colors duration-200',
-              active ? 'bg-accent text-white' : 'text-text-2 active:bg-surface-2',
+              'flex-1 min-h-[48px] rounded-control px-3 text-sm font-medium transition-colors duration-180 ease-standard',
+              active ? 'bg-accent text-ink-on-accent' : 'text-ink-2 active:bg-surface-2',
             ].join(' ')}
           >
             {opt.label}

@@ -47,7 +47,7 @@ export function InsightsScreen() {
     id: mt.month,
     label: monthShortLabel(mt.month),
     value: mt.totalCents,
-    colorToken: mt.month === month ? 'accent' : 'surface-2',
+    colorToken: mt.month === month ? 'accent' : 'ink-3',
   }));
 
   const weekdayData: ChartDatum[] = weekday.map((w, i) => ({
@@ -70,14 +70,14 @@ export function InsightsScreen() {
       </Card>
 
       <Card className="flex flex-col gap-3">
-        <h2 className="text-md font-semibold text-text-1">Month by month</h2>
+        <h2 className="text-md font-semibold text-ink-1">Month by month</h2>
         <ColumnChart data={columnData} formatValue={(v) => formatMoney(v)} />
       </Card>
 
       <Card className="flex flex-col gap-3">
         <div>
-          <h2 className="text-md font-semibold text-text-1">Needs, wants &amp; savings</h2>
-          <p className="text-xs text-text-2">Reference line at 50% / 80% — the 50/30/20 rule of thumb.</p>
+          <h2 className="text-md font-semibold text-ink-1">Needs, wants &amp; savings</h2>
+          <p className="text-xs text-ink-2">Reference line at 50% / 80% — the 50/30/20 rule of thumb.</p>
         </div>
         <StackedBar
           segments={splitSegments}
@@ -90,21 +90,21 @@ export function InsightsScreen() {
       </Card>
 
       <Card className="flex flex-col gap-3">
-        <h2 className="text-md font-semibold text-text-1">Biggest movers vs last month</h2>
+        <h2 className="text-md font-semibold text-ink-1">Biggest movers vs last month</h2>
         {movers.length === 0 ? (
-          <p className="text-sm text-text-2">Not enough history yet to compare.</p>
+          <p className="text-sm text-ink-2">Not enough history yet to compare.</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-border">
+          <ul className="flex flex-col divide-y divide-hairline">
             {movers.map((m) => (
               <li key={m.categoryId} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
-                <span className="min-w-0 flex-1 truncate text-sm text-text-1">{m.label}</span>
-                <span className="tabular-nums flex shrink-0 items-center gap-1 text-sm">
+                <span className="min-w-0 flex-1 truncate text-sm text-ink-1">{m.label}</span>
+                <span className="flex shrink-0 items-center gap-1 text-sm">
                   {m.deltaCents > 0 ? (
-                    <ArrowUp size={14} className="text-danger" aria-hidden="true" />
+                    <ArrowUp size={14} className="text-negative" aria-hidden="true" />
                   ) : m.deltaCents < 0 ? (
                     <ArrowDown size={14} className="text-positive" aria-hidden="true" />
                   ) : null}
-                  <span className={m.deltaCents > 0 ? 'text-text-1' : 'text-text-2'}>
+                  <span className={['money', m.deltaCents > 0 ? 'text-ink-1' : 'text-ink-2'].join(' ')}>
                     {formatMoney(Math.abs(m.deltaCents))}
                   </span>
                 </span>
@@ -116,14 +116,14 @@ export function InsightsScreen() {
 
       <Card className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-md font-semibold text-text-1">Average daily spend</h2>
-          <p className="text-xs text-text-2">Based on days elapsed this month</p>
+          <h2 className="text-md font-semibold text-ink-1">Average daily spend</h2>
+          <p className="text-xs text-ink-2">Based on days elapsed this month</p>
         </div>
-        <span className="tabular-nums text-xl font-semibold text-text-1">{formatMoney(avgDaily)}</span>
+        <span className="money-hero text-xl text-ink-1">{formatMoney(avgDaily)}</span>
       </Card>
 
       <Card className="flex flex-col gap-3">
-        <h2 className="text-md font-semibold text-text-1">Spend by day of week</h2>
+        <h2 className="text-md font-semibold text-ink-1">Spend by day of week</h2>
         <ColumnChart data={weekdayData} formatValue={(v) => formatMoney(v)} />
       </Card>
     </div>

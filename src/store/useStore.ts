@@ -61,6 +61,8 @@ import {
 } from '@/data/db';
 import { buildDefaultCategories, DEFAULT_PINNED_CATEGORY_IDS } from '@/data/defaultCategories';
 import { generateDemoTxns } from '@/data/demoData';
+import { PLAN_DEFAULTS } from '@/personal/plan';
+import { applyPersonalPlan } from '@/personal/applyPersonalPlan';
 import { hashTxn, dedupeGroupKey } from '@/data/dedupe';
 import { planCategoryDeletion, resolveFallbackCategoryId } from './categoryDeletion';
 import {
@@ -73,15 +75,20 @@ import {
 const SETTINGS_ID = 'settings';
 const DEFAULT_LOCK_TIMEOUT_MS = 120_000; // 2 minutes, CONTRACTS.md §5
 
+// Sourced from src/personal/plan.ts (docs/PERSONAL.md §2/§6) rather than
+// re-typed here — that file is the single source of truth for these figures.
 const DEFAULT_SETTINGS: Settings = {
   currency: 'AUD',
   locale: 'en-AU',
-  paydayDayOfMonth: 15,
-  monthlyIncomeCents: 0,
-  savingsTargetCents: 0,
+  paydayDayOfMonth: PLAN_DEFAULTS.paydayDayOfMonth, // 15th
+  monthlyIncomeCents: PLAN_DEFAULTS.monthlyIncomeCents, // $6,457
+  savingsTargetCents: PLAN_DEFAULTS.savingsTargetCents, // $3,500
   lockTimeoutMs: DEFAULT_LOCK_TIMEOUT_MS,
   biometricEnabled: false,
   pinnedCategoryIds: [...DEFAULT_PINNED_CATEGORY_IDS],
+  // moveInDate and hasHecsDebt intentionally start unset (docs/PERSONAL.md
+  // §2/§7): both must be explicit one-time setup answers, never silently
+  // assumed. A settings/onboarding screen should prompt for both.
 };
 
 export interface TallyStore {
@@ -343,6 +350,10 @@ export const useStore = create<TallyStore>((set, get) => {
         hydrated: true,
         lockState: 'unlocked',
       });
+      // Seed the user's actual budget on a fresh vault, so the app arrives
+      // already knowing their plan rather than presenting empty caps they'd
+      // have to re-enter from a document they already wrote.
+      await applyPersonalPlan(get());
     },
 
     async unlock(pin) {
@@ -727,10 +738,13 @@ export const useStore = create<TallyStore>((set, get) => {
       const categories = get().categories.length > 0 ? get().categories : buildDefaultCategories();
       const seeds = generateDemoTxns(categories);
       await get().addTxns(seeds);
+      // Sourced from src/personal/plan.ts, same as DEFAULT_SETTINGS above —
+      // the demo data is tuned to this exact income/savings/payday (see
+      // src/data/demoData.ts), so the settings it implies must match.
       await get().updateSettings({
-        monthlyIncomeCents: 620_000,
-        savingsTargetCents: 40_000,
-        paydayDayOfMonth: 15,
+        monthlyIncomeCents: PLAN_DEFAULTS.monthlyIncomeCents,
+        savingsTargetCents: PLAN_DEFAULTS.savingsTargetCents,
+        paydayDayOfMonth: PLAN_DEFAULTS.paydayDayOfMonth,
       });
     },
   };
@@ -824,6 +838,8 @@ export async function setupPassphrase(passphrase: string): Promise<void> {
     hydrated: true,
     lockState: 'unlocked',
   });
+  // Same as setupPin: a fresh vault arrives already carrying the user's plan.
+  await applyPersonalPlan(useStore.getState());
 }
 
 /**

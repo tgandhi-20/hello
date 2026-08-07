@@ -56,15 +56,15 @@ export function SourcePicker({ onText, disabled }: SourcePickerProps) {
         onDrop={onDrop}
         className={[
           'flex min-h-[160px] cursor-pointer flex-col items-center justify-center gap-3 border-2 border-dashed text-center',
-          dragOver ? 'border-accent bg-[var(--accent-tint-12)]' : '',
+          dragOver ? 'border-accent bg-accent-tint' : '',
         ].join(' ')}
       >
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2">
           <Upload size={24} className="text-accent" aria-hidden="true" />
         </div>
         <div>
-          <p className="text-md font-medium text-text-1">Drop a CSV file here</p>
-          <p className="mt-1 text-sm text-text-2">or tap to choose one from your phone</p>
+          <p className="text-md font-medium text-ink-1">Drop a CSV file here</p>
+          <p className="mt-1 text-sm text-ink-2">or tap to choose one from your phone</p>
         </div>
         <input
           ref={inputRef}

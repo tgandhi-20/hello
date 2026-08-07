@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
-import { Sheet, Button, Select, Switch, CategoryIcon, ConfirmDialog, formatMoney } from '@/ui';
+import { Sheet, Button, Input, Select, Switch, CategoryIcon, ConfirmDialog, formatMoney } from '@/ui';
 import type { AccountId, Category, Txn } from '@/types';
 import { bufferToCents, centsToBuffer } from '@/features/log';
 import { CategoryPickerSheet } from './CategoryPickerSheet';
@@ -73,15 +73,15 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-border bg-surface-2 px-4"
+            className="flex min-h-[56px] items-center gap-3 rounded-card bg-surface-2 px-4"
           >
             <CategoryIcon icon={category?.icon ?? 'Circle'} colorToken={category?.colorToken ?? 'cat-1'} size="sm" />
-            <span className="flex-1 text-left text-md text-text-1">{category?.label ?? 'Uncategorised'}</span>
-            <span className="text-xs text-text-3">Change</span>
+            <span className="flex-1 text-left text-md text-ink-1">{category?.label ?? 'Uncategorised'}</span>
+            <span className="text-xs text-ink-3">Change</span>
           </button>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-text-2">Amount</span>
+            <span className="mb-1 block text-sm text-ink-2">Amount</span>
             <input
               type="text"
               inputMode="decimal"
@@ -90,22 +90,15 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
                 const cleaned = e.target.value.replace(/[^0-9.]/g, '');
                 setAmountBuf(cleaned);
               }}
-              className="h-12 w-full rounded-2xl border border-border bg-surface-2 px-4 text-md tabular-nums text-text-1 outline-none focus:border-accent"
+              className="h-12 w-full rounded-control border border-hairline bg-surface-2 px-4 text-md tabular-nums text-ink-1 outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-text-3">
-              {isIncome ? 'Income' : 'Spend'} · {formatMoney(bufferToCents(amountBuf))}
+            <span className="mt-1 block text-xs text-ink-3">
+              {isIncome ? 'Income' : 'Spend'} ·{' '}
+              <span className="money text-ink-3">{formatMoney(bufferToCents(amountBuf))}</span>
             </span>
           </label>
 
-          <label className="block">
-            <span className="mb-1 block text-sm text-text-2">Date</span>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-border bg-surface-2 px-4 text-md text-text-1 outline-none focus:border-accent"
-            />
-          </label>
+          <Input type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} />
 
           <Select
             label="Account"
@@ -114,25 +107,22 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
             onChange={(e) => setAccount(e.target.value as AccountId)}
           />
 
-          <label className="block">
-            <span className="mb-1 block text-sm text-text-2">Note</span>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Optional"
-              className="h-12 w-full rounded-2xl border border-border bg-surface-2 px-4 text-md text-text-1 placeholder:text-text-3 outline-none focus:border-accent"
-            />
-          </label>
+          <Input
+            type="text"
+            label="Note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Optional"
+          />
 
-          <div className="flex flex-col gap-1 rounded-2xl border border-border bg-surface-2 px-4 py-3">
+          <div className="flex flex-col gap-1 rounded-card bg-surface-2 px-4 py-3">
             <div className="flex items-center justify-between gap-3">
-              <label htmlFor="txn-excluded" className="text-sm text-text-1">
+              <label htmlFor="txn-excluded" className="text-sm text-ink-1">
                 Exclude from budgets &amp; insights
               </label>
               <Switch id="txn-excluded" checked={excluded} onChange={setExcluded} />
             </div>
-            <p className="text-xs text-text-3">
+            <p className="text-xs text-ink-3">
               Use for transfers between your own accounts or reimbursed expenses. Excluded transactions still
               appear in your history, but never count toward spend, budgets or Safe-to-Spend.
             </p>
@@ -154,6 +144,9 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
         open={confirmDeleteOpen}
         title="Delete this transaction?"
         body={`${category?.label ?? 'Uncategorised'} · ${formatMoney(Math.abs(txn.amountCents))} on ${txn.date}`}
+        /* Money in this dialog stays plain text — ConfirmDialog's `body` prop is a
+           string, not JSX, so it can't carry the `.money` span; the amount is still
+           tabular via the global body rule. */
         destructive
         confirmLabel="Delete"
         onConfirm={() => {

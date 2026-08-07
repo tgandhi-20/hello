@@ -224,7 +224,7 @@ export function ChangeUnlockSheet({ open, onClose, onChanged }: ChangeUnlockShee
           currentConfig.mode === 'pin' ? (
             <div className="flex flex-col items-center gap-5">
               <PinDots length={currentConfig.pinLength} filled={currentPin.length} />
-              {error ? <p className="text-center text-sm text-danger">{error}</p> : null}
+              {error ? <p className="text-center text-sm text-negative">{error}</p> : null}
               <Keypad onDigit={onCurrentDigit} onBackspace={onCurrentBackspace} disabled={busy} />
             </div>
           ) : (
@@ -238,7 +238,7 @@ export function ChangeUnlockSheet({ open, onClose, onChanged }: ChangeUnlockShee
                 autoFocus
                 disabled={busy}
               />
-              {error ? <p className="text-center text-sm text-danger">{error}</p> : null}
+              {error ? <p className="text-center text-sm text-negative">{error}</p> : null}
               <Button
                 variant="primary"
                 fullWidth
@@ -262,7 +262,7 @@ export function ChangeUnlockSheet({ open, onClose, onChanged }: ChangeUnlockShee
               truth={PIN_TRUTH}
             >
               {newMode === 'pin' ? (
-                <div className="mt-3 border-t border-border pt-3">
+                <div className="mt-3 border-t border-hairline pt-3">
                   <PinLengthStepper value={newPinLength} onChange={setNewPinLength} disabled={busy} />
                 </div>
               ) : null}
@@ -285,9 +285,9 @@ export function ChangeUnlockSheet({ open, onClose, onChanged }: ChangeUnlockShee
           <div className="flex flex-col items-center gap-5">
             <PinDots length={newPinLength} filled={pin.length} />
             {warning && step === 'new-confirm' ? (
-              <p className="text-center text-xs text-warning">{warning} You can still use it.</p>
+              <p className="text-center text-xs text-caution">{warning} You can still use it.</p>
             ) : null}
-            {error ? <p className="text-center text-sm text-danger">{error}</p> : null}
+            {error ? <p className="text-center text-sm text-negative">{error}</p> : null}
             <Keypad onDigit={onNewDigit} onBackspace={onNewBackspace} disabled={busy} />
           </div>
         ) : null}
@@ -302,7 +302,7 @@ export function ChangeUnlockSheet({ open, onClose, onChanged }: ChangeUnlockShee
               disabled={busy}
               showStrength={step === 'new-enter'}
             />
-            {error ? <p className="text-center text-sm text-danger">{error}</p> : null}
+            {error ? <p className="text-center text-sm text-negative">{error}</p> : null}
             <Button
               variant="primary"
               fullWidth

@@ -12,6 +12,9 @@ import { CategoryBreakdownCard } from './CategoryBreakdownCard';
 import { TrendCard } from './TrendCard';
 import { RecentTransactionsCard } from './RecentTransactionsCard';
 import { UpcomingBillsCard } from './UpcomingBillsCard';
+import { FoodWeekCard } from '@/features/food';
+import { DepositGoalCard } from '@/features/goal';
+import { RoutineCard } from '@/features/routine';
 
 function DashboardSkeleton() {
   return (
@@ -90,6 +93,9 @@ export function DashboardScreen() {
 
   return (
     <div className="flex flex-col gap-4 px-4 py-6">
+      <FoodWeekCard txns={txns} categories={categories} />
+      <DepositGoalCard />
+      <RoutineCard />
       <SafeToSpendCard result={safeToSpend} />
       <BudgetProgressCard spentCents={spentCents} budgetCents={budgetCents} />
       <CategoryBreakdownCard txns={monthTxns} categories={categories} />

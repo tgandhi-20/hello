@@ -22,10 +22,13 @@ export interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+// A toast is a floating element (DESIGN.md §4) — elevation comes from shadow, not a
+// border, for the default case. success/danger genuinely earn a thin semantic border:
+// it's state information, not decoration.
 const VARIANT_CLASSES: Record<ToastVariant, string> = {
-  default: 'border-border',
+  default: 'border-transparent',
   success: 'border-positive',
-  danger: 'border-danger',
+  danger: 'border-negative',
 };
 
 /**
@@ -81,8 +84,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             role="status"
             className={[
               'pointer-events-auto w-full max-w-sm flex items-center justify-between gap-3',
-              'rounded-2xl border bg-surface-2 px-4 py-3 text-text-1 text-sm shadow-lg',
-              'transition-[transform,opacity] duration-200 ease-out',
+              'rounded-card border bg-surface-3 px-4 py-3 text-ink-1 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)]',
+              'transition-[transform,opacity] duration-180 ease-standard',
               VARIANT_CLASSES[t.variant ?? 'default'],
             ].join(' ')}
           >

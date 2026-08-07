@@ -46,21 +46,21 @@ export function TrendCard({ txns, month = currentMonth() }: TrendCardProps) {
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <TrendingUp size={18} strokeWidth={1.75} className="text-text-2" aria-hidden="true" />
-        <h2 className="text-md font-semibold text-text-1">Spend trend</h2>
+        <TrendingUp size={18} strokeWidth={1.75} className="text-ink-2" aria-hidden="true" />
+        <h2 className="text-md font-semibold text-ink-1">Spend trend</h2>
       </div>
       <Sparkline
         data={thisMonth}
         compareData={lastMonth}
         ariaLabel={`Month-to-date spend: ${formatMoney(thisTotal)} so far, vs ${formatMoney(lastTotal)} at the same point last month.`}
       />
-      <p className="flex items-center gap-1.5 text-sm text-text-2">
-        <span className="tabular-nums font-medium text-text-1">{formatMoney(thisTotal)}</span>
+      <p className="flex items-center gap-1.5 text-sm text-ink-2">
+        <span className="money text-ink-1">{formatMoney(thisTotal)}</span>
         <span>month to date</span>
         {hasComparison ? (
-          <span className="tabular-nums ml-auto inline-flex items-center gap-1">
+          <span className="money ml-auto inline-flex items-center gap-1 text-ink-2">
             {deltaCents > 0 ? (
-              <ArrowUp size={14} className="text-danger" aria-hidden="true" />
+              <ArrowUp size={14} className="text-negative" aria-hidden="true" />
             ) : deltaCents < 0 ? (
               <ArrowDown size={14} className="text-positive" aria-hidden="true" />
             ) : null}

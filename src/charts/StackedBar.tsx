@@ -71,15 +71,15 @@ export function StackedBar({
               y1={-1}
               x2={m.at * VB_W}
               y2={9}
-              stroke={tokenVar('text-1')}
+              stroke={tokenVar('ink-3')}
               strokeWidth={0.6}
               strokeDasharray="1.2 1.2"
-              opacity={0.6}
+              opacity={0.8}
             />
           ))}
         </svg>
         {referenceMarks.length > 0 ? (
-          <div className="relative mt-1 h-4 text-[10px] text-text-3" aria-hidden="true">
+          <div className="label relative mt-1 h-4" aria-hidden="true">
             {referenceMarks.map((m) => (
               <span key={m.label} className="absolute -translate-x-1/2" style={{ left: `${m.at * 100}%` }}>
                 {m.label}
@@ -89,15 +89,15 @@ export function StackedBar({
         ) : null}
         <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
           {segments.map((s) => (
-            <li key={s.id} className="flex items-center gap-1.5 text-xs text-text-2">
+            <li key={s.id} className="flex items-center gap-1.5 text-xs text-ink-2">
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: tokenVar(s.colorToken, 'accent') }}
                 aria-hidden="true"
               />
               <span>{s.label}</span>
-              <span className="tabular-nums text-text-1">{formatValue(s.value)}</span>
-              <span className="text-text-3">({formatPercent(safeDiv(s.value, total, 0))})</span>
+              <span className="money text-xs text-ink-1">{formatValue(s.value)}</span>
+              <span className="text-ink-3">({formatPercent(safeDiv(s.value, total, 0))})</span>
             </li>
           ))}
         </ul>

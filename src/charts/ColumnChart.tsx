@@ -31,7 +31,7 @@ export function ColumnChart({ data, formatValue = (v) => String(v), height = 120
   return (
     <ChartEnter className={className}>
       <svg viewBox={`0 0 ${VB_W} ${VB_H}`} width="100%" height={height} preserveAspectRatio="none" role="img" aria-label={ariaLabel}>
-        <line x1={0} y1={BASE_Y} x2={VB_W} y2={BASE_Y} stroke={tokenVar('border')} strokeWidth={0.5} />
+        <line x1={0} y1={BASE_Y} x2={VB_W} y2={BASE_Y} stroke={tokenVar('hairline')} strokeWidth={0.5} />
         {isEmpty
           ? null
           : data.map((d, i) => {
@@ -54,7 +54,7 @@ export function ColumnChart({ data, formatValue = (v) => String(v), height = 120
                     y={BASE_Y + 5.5}
                     fontSize={4.5}
                     textAnchor="middle"
-                    fill="var(--text-3)"
+                    fill="var(--ink-3)"
                   >
                     {d.label}
                   </text>

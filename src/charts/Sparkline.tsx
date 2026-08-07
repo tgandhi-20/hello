@@ -79,7 +79,7 @@ export function Sparkline({
               y1={VB_H / 2}
               x2={VB_W}
               y2={VB_H / 2}
-              stroke={tokenVar('border')}
+              stroke={tokenVar('hairline')}
               strokeWidth={1}
               strokeDasharray="3 3"
             />
@@ -89,7 +89,7 @@ export function Sparkline({
                 <polyline
                   points={buildPoints(compareData as number[], min, span)}
                   fill="none"
-                  stroke={tokenVar('text-3')}
+                  stroke={tokenVar('ink-3')}
                   strokeWidth={1.25}
                   strokeOpacity={0.6}
                   strokeDasharray="3 2"
@@ -111,7 +111,7 @@ export function Sparkline({
           )}
         </svg>
         {hasCompare && !isEmpty ? (
-          <div className="flex items-center gap-3 text-[11px] text-text-2" aria-hidden="true">
+          <div className="label flex items-center gap-3" aria-hidden="true">
             <span className="inline-flex items-center gap-1.5">
               <span
                 className="inline-block h-[3px] w-3 shrink-0 rounded-pill"
@@ -119,11 +119,11 @@ export function Sparkline({
               />
               {seriesLabel}
             </span>
-            <span className="inline-flex items-center gap-1.5 text-text-3">
+            <span className="inline-flex items-center gap-1.5 text-ink-3">
               <span
                 className="inline-block h-[2px] w-3 shrink-0 rounded-pill opacity-70"
                 style={{
-                  backgroundImage: `repeating-linear-gradient(90deg, ${tokenVar('text-3')} 0 3px, transparent 3px 5px)`,
+                  backgroundImage: `repeating-linear-gradient(90deg, ${tokenVar('ink-3')} 0 3px, transparent 3px 5px)`,
                 }}
               />
               {compareLabel}

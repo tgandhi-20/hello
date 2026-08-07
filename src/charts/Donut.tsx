@@ -119,14 +119,14 @@ export function Donut({
         <figcaption className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 text-center">
           {centerLabel ? (
             <span
-              className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-text-2"
+              className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-ink-2"
               style={{ fontSize: labelFontPx, maxWidth: captionMaxWidthPx, lineHeight: 1.2 }}
             >
               {centerLabel}
             </span>
           ) : null}
           <span
-            className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-semibold tabular-nums text-text-1"
+            className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-semibold tabular-nums text-ink-1"
             style={{ fontSize: valueFontPx, maxWidth: captionMaxWidthPx, lineHeight: 1.2 }}
           >
             {centerValue ?? formatValue(total)}

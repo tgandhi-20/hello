@@ -19,7 +19,7 @@ export function PinDots({ length, filled }: PinDotsProps) {
           key={i}
           className={[
             'h-3.5 w-3.5 rounded-full border transition-colors duration-150',
-            i < filled ? 'border-accent bg-accent' : 'border-border bg-transparent',
+            i < filled ? 'border-accent bg-accent' : 'border-hairline bg-transparent',
           ].join(' ')}
         />
       ))}
@@ -55,7 +55,7 @@ export function Keypad({ onDigit, onBackspace, disabled }: KeypadProps) {
             aria-label={isBack ? 'Delete digit' : `Digit ${k}`}
             className={[
               'flex h-16 min-h-[48px] items-center justify-center rounded-2xl',
-              'bg-surface-1 border border-border text-xl font-semibold text-text-1',
+              'bg-surface-1 border border-hairline text-xl font-semibold text-ink-1',
               'transition-[transform,background-color] duration-150 active:scale-[0.96] active:bg-surface-2',
               'disabled:opacity-40 disabled:active:scale-100',
             ].join(' ')}
@@ -107,17 +107,17 @@ export function PinLengthStepper({ value, onChange, disabled }: PinLengthStepper
         disabled={disabled || value <= MIN_PIN_LENGTH}
         onClick={() => onChange(Math.max(MIN_PIN_LENGTH, value - 1))}
         aria-label="Fewer digits"
-        className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-1 text-text-1 active:bg-surface-2 disabled:opacity-30"
+        className="flex h-12 w-12 items-center justify-center rounded-full border border-hairline bg-surface-1 text-ink-1 active:bg-surface-2 disabled:opacity-30"
       >
         <Minus size={18} aria-hidden="true" />
       </button>
-      <span className="min-w-[6rem] text-center text-sm text-text-2 tabular-nums">{value} digits</span>
+      <span className="min-w-[6rem] text-center text-sm text-ink-2 tabular-nums">{value} digits</span>
       <button
         type="button"
         disabled={disabled || value >= MAX_PIN_LENGTH}
         onClick={() => onChange(Math.min(MAX_PIN_LENGTH, value + 1))}
         aria-label="More digits"
-        className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-1 text-text-1 active:bg-surface-2 disabled:opacity-30"
+        className="flex h-12 w-12 items-center justify-center rounded-full border border-hairline bg-surface-1 text-ink-1 active:bg-surface-2 disabled:opacity-30"
       >
         <Plus size={18} aria-hidden="true" />
       </button>

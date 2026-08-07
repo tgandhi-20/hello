@@ -28,8 +28,8 @@ export interface PassphraseFieldProps {
 
 function strengthBarClass(filled: boolean, score: number): string {
   if (!filled) return 'bg-surface-2';
-  if (score <= 1) return 'bg-danger';
-  if (score === 2) return 'bg-warning';
+  if (score <= 1) return 'bg-negative';
+  if (score === 2) return 'bg-caution';
   return 'bg-positive';
 }
 
@@ -72,9 +72,9 @@ export function PassphraseField({
             if (e.key === 'Enter' && onSubmit) onSubmit();
           }}
           className={[
-            'h-14 w-full rounded-2xl border bg-surface-2 px-4 pr-14 text-lg text-text-1',
-            'placeholder:text-text-3 outline-none transition-colors duration-200',
-            'border-border focus:border-accent disabled:opacity-60',
+            'h-14 w-full rounded-2xl border bg-surface-2 px-4 pr-14 text-lg text-ink-1',
+            'placeholder:text-ink-3 outline-none transition-colors duration-200',
+            'border-hairline focus:border-accent disabled:opacity-60',
           ].join(' ')}
         />
         <button
@@ -83,7 +83,7 @@ export function PassphraseField({
           disabled={disabled}
           aria-label={reveal ? 'Hide passphrase' : 'Show passphrase'}
           aria-pressed={reveal}
-          className="absolute right-1 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full text-text-2 transition-colors duration-150 active:bg-surface-1 disabled:opacity-40"
+          className="absolute right-1 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full text-ink-2 transition-colors duration-150 active:bg-surface-1 disabled:opacity-40"
         >
           {reveal ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
         </button>
@@ -101,7 +101,7 @@ export function PassphraseField({
               />
             ))}
           </div>
-          <p className="mt-1 text-xs text-text-3">
+          <p className="mt-1 text-xs text-ink-3">
             {strength.label}
             {strength.hint ? ` — ${strength.hint}` : ''}
           </p>

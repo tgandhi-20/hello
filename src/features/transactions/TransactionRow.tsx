@@ -74,11 +74,11 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
   return (
     <div className="relative overflow-hidden">
       <div className="absolute inset-0 flex items-stretch justify-between">
-        <div className="flex w-1/2 items-center gap-2 bg-accent px-4 text-white">
+        <div className="flex w-1/2 items-center gap-2 bg-accent px-4 text-ink-on-accent">
           <Tag size={18} aria-hidden="true" />
           <span className="text-sm font-medium">Re-categorise</span>
         </div>
-        <div className="flex w-1/2 items-center justify-end gap-2 bg-danger px-4 text-white">
+        <div className="flex w-1/2 items-center justify-end gap-2 bg-negative px-4 text-ink-on-accent">
           <span className="text-sm font-medium">Delete</span>
           <Trash2 size={18} aria-hidden="true" />
         </div>
@@ -109,24 +109,19 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
         <CategoryIcon icon={category?.icon ?? 'Circle'} colorToken={category?.colorToken ?? 'cat-1'} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="truncate text-md text-text-1">{txn.merchant || txn.description}</p>
+            <p className="truncate text-md text-ink-1">{txn.merchant || txn.description}</p>
             {txn.excluded ? (
-              <span className="shrink-0 rounded-pill border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-text-3">
+              <span className="shrink-0 rounded-pill border border-hairline px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-3">
                 Excluded
               </span>
             ) : null}
           </div>
-          <p className="truncate text-xs text-text-3">
+          <p className="truncate text-xs text-ink-3">
             {category?.label ?? 'Uncategorised'}
             {txn.note ? ` · ${txn.note}` : ''}
           </p>
         </div>
-        <span
-          className={[
-            'shrink-0 text-md font-medium tabular-nums',
-            isIncome ? 'text-positive' : 'text-text-1',
-          ].join(' ')}
-        >
+        <span className={['money shrink-0 text-md', isIncome ? 'text-positive' : 'text-ink-1'].join(' ')}>
           {isIncome ? formatMoney(-txn.amountCents, { showSign: true }) : formatMoney(txn.amountCents)}
         </span>
       </div>

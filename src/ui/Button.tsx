@@ -9,17 +9,20 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   fullWidth?: boolean;
 }
 
+// Filled variants (primary/danger) sit on the accent/negative token colours and use
+// --ink-on-accent for their glyph — measured 5.7-5.9:1, well clear of AA, where plain
+// --ink-1 would only clear large-text AA on these particular fills (DESIGN.md §3).
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-white active:bg-accent-pressed disabled:opacity-40',
+  primary: 'bg-accent text-ink-on-accent active:bg-accent-press disabled:opacity-40',
   ghost:
-    'bg-transparent text-text-1 border border-border active:bg-surface-2 disabled:opacity-40',
-  danger: 'bg-danger text-white active:brightness-90 disabled:opacity-40',
+    'bg-transparent text-ink-1 border border-hairline active:bg-surface-2 disabled:opacity-40',
+  danger: 'bg-negative text-ink-on-accent active:brightness-90 disabled:opacity-40',
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
   // min-h-12 (48px) satisfies the 48x48 touch target minimum on every size.
-  md: 'h-12 px-4 text-md rounded-2xl',
-  lg: 'h-14 px-6 text-lg rounded-2xl',
+  md: 'h-12 px-4 text-md rounded-control',
+  lg: 'h-14 px-6 text-lg rounded-control',
   icon: 'h-12 w-12 rounded-full',
 };
 
@@ -36,7 +39,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
       ref={ref}
       className={[
         'inline-flex items-center justify-center gap-2 font-medium select-none',
-        'transition-[transform,background-color,opacity] duration-200 ease-out active:scale-[0.97]',
+        'transition-[transform,background-color,opacity] duration-180 ease-standard active:scale-[0.97]',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
         'disabled:pointer-events-none',
         VARIANT_CLASSES[variant],

@@ -65,13 +65,13 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
       aria-modal="true"
       aria-label={title}
     >
-      <div className="absolute inset-0 bg-[var(--overlay-scrim)] transition-opacity duration-200" onClick={onClose} />
+      <div className="absolute inset-0 bg-[var(--overlay-scrim)] transition-opacity duration-180" onClick={onClose} />
       <div
         ref={sheetRef}
-        className="relative w-full max-w-lg bg-surface-1 border-t border-border rounded-t-sheet overflow-hidden"
+        className="relative w-full max-w-lg bg-surface-3 rounded-t-sheet overflow-hidden shadow-[0_-8px_24px_rgba(0,0,0,0.4)]"
         style={{
           transform: `translateY(${dragY}px)`,
-          transition: dragging ? 'none' : 'transform 200ms var(--ease-standard)',
+          transition: dragging ? 'none' : 'transform 180ms var(--ease-standard)',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
@@ -82,18 +82,18 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
         >
-          <div className="h-1.5 w-10 rounded-pill bg-surface-2" />
+          <div className="h-1.5 w-10 rounded-pill bg-hairline" />
         </div>
 
         {title ? (
           <div className="px-5 pb-2">
-            <h2 className="text-lg font-semibold text-text-1">{title}</h2>
+            <h2 className="title">{title}</h2>
           </div>
         ) : null}
 
         <div className="px-5 pb-4 max-h-[70vh] overflow-y-auto scroll-container">{children}</div>
 
-        {footer ? <div className="px-5 pt-2 pb-5 border-t border-border">{footer}</div> : null}
+        {footer ? <div className="px-5 pt-2 pb-5 border-t border-hairline">{footer}</div> : null}
       </div>
     </div>
   );

@@ -9,11 +9,13 @@ export interface ProgressBarProps {
   label?: string;
 }
 
+// `warning`/`danger` are retained prop names (frozen API) but paint with the v2
+// `caution`/`negative` semantic tokens.
 const TONE_CLASSES: Record<NonNullable<ProgressBarProps['tone']>, string> = {
   accent: 'bg-accent',
   positive: 'bg-positive',
-  warning: 'bg-warning',
-  danger: 'bg-danger',
+  warning: 'bg-caution',
+  danger: 'bg-negative',
 };
 
 /** Thin horizontal progress meter, e.g. category budget usage. */
@@ -29,7 +31,7 @@ export function ProgressBar({ value, tone = 'accent', className = '', label }: P
       className={['h-2 w-full overflow-hidden rounded-pill bg-surface-2', className].join(' ')}
     >
       <div
-        className={['h-full rounded-pill transition-[width] duration-200 ease-out', TONE_CLASSES[tone]].join(' ')}
+        className={['h-full rounded-pill transition-[width] duration-180 ease-standard', TONE_CLASSES[tone]].join(' ')}
         style={{ width: `${pct}%` }}
       />
     </div>

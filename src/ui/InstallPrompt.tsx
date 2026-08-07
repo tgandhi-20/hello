@@ -65,16 +65,16 @@ export function InstallPrompt({ className = '', onResolved }: InstallPromptProps
   return (
     <div
       className={[
-        'flex items-center gap-3 rounded-card border border-border bg-surface-1 p-4',
+        'flex items-center gap-3 rounded-card bg-surface-1 p-4',
         className,
       ].join(' ')}
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--accent-tint-12)]">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent-tint">
         <Download size={20} className="text-accent" aria-hidden="true" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-text-1">Install Tally</p>
-        <p className="text-xs text-text-2">Add it to your home screen — works fully offline.</p>
+        <p className="text-sm font-semibold text-ink-1">Install Tally</p>
+        <p className="text-xs text-ink-2">Add it to your home screen — works fully offline.</p>
       </div>
       <Button size="md" onClick={install} className="shrink-0">
         Install
@@ -83,7 +83,7 @@ export function InstallPrompt({ className = '', onResolved }: InstallPromptProps
         type="button"
         aria-label="Dismiss"
         onClick={() => setDismissed(true)}
-        className="flex h-12 w-12 shrink-0 items-center justify-center text-text-3"
+        className="flex h-12 w-12 shrink-0 items-center justify-center text-ink-3"
       >
         <X size={18} aria-hidden="true" />
       </button>
