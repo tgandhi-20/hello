@@ -112,7 +112,10 @@ function main(): void {
     check('Amex 4-month history: note is a non-empty, honest explanation', cycle.note.length > 20);
 
     // Due-date arithmetic across a year boundary, using the inferred cycle.
-    const decWindow = currentCycleWindow(cycle, '2026-12-20');
+    // Today is early-mid December, before that month's own close (14th) —
+    // so the currently-open cycle closes in December and its PAYMENT falls
+    // in January, crossing the year boundary.
+    const decWindow = currentCycleWindow(cycle, '2026-12-10');
     check('Cycle window exists once dueDay/closingDay are known', decWindow !== null);
     if (decWindow) {
       eq('Dec->Jan: close date lands in December (14th)', decWindow.cycleCloseDate, '2026-12-14');
@@ -240,17 +243,19 @@ function main(): void {
     ];
 
     const amexCycle = inferCycle([], 'amex', { override: { closingDay: 20, dueDay: 15, setAt: 0 } });
-    const currentBalances = {
-      amex: computeCurrentCycleBalance([], [], 'amex', amexCycle, today),
-    };
-    // Force a known projected total for the very next due date, independent of the empty txns above.
-    currentBalances.amex = { ...currentBalances.amex, projectedTotalCents: 113100 };
+
+    // One actual, already-posted Amex charge dated inside the statement that
+    // closed 20 Jul 2026 — the statement due 15 Aug, the very next due date
+    // in this calendar. As of "today" (1 Aug), that statement is fully
+    // closed, so its due-date amount should be the exact real sum, not a
+    // projection.
+    const amexTxns: Txn[] = [mkTxn({ date: '2026-07-01', amountCents: 113_100, account: 'amex' })];
 
     const summary = buildCashflowCalendar(
+      amexTxns,
       recurring,
       { paydayDayOfMonth: 15, monthlyIncomeCents: 645_700, savingsTargetCents: 350_000, transferToSavingsDayOfMonth: 16 },
       { amex: amexCycle },
-      currentBalances,
       { today, horizonDays: 60 }
     );
 
@@ -268,14 +273,40 @@ function main(): void {
 
     const cardPayments = summary.events.filter((e) => e.kind === 'card-payment');
     eq('Cashflow: 2 Amex due dates fall within the 60-day horizon', cardPayments.length, 2);
+
     const firstDue = cardPayments.find((e) => e.date === '2026-08-15');
     check('Cashflow: first Amex due date found', !!firstDue);
-    eq('Cashflow: first due date uses the real projected-cycle total', firstDue?.amountCents, 113100);
-    eq('Cashflow: first due date is basis projected-cycle', firstDue?.amountBasis, 'projected-cycle');
+    eq('Cashflow: first due date is for the ALREADY-CLOSED statement -> the exact actual total', firstDue?.amountCents, 113_100);
+    eq('Cashflow: first due date is honestly labelled actual-closed, not a projection', firstDue?.amountBasis, 'actual-closed');
+
     const secondDue = cardPayments.find((e) => e.date === '2026-09-15');
     check('Cashflow: second Amex due date found', !!secondDue);
-    eq('Cashflow: second (further-out) due date falls back to the typical-monthly estimate', secondDue?.amountCents, 1450);
-    eq('Cashflow: second due date is honestly labelled an estimate, not a real projection', secondDue?.amountBasis, 'typical-monthly-estimate');
+    // This is the statement that's CURRENTLY open (20 Jul -> 20 Aug) as of
+    // "today" 1 Aug — the same window `computeCurrentCycleBalance` reports.
+    // No actual charges and no linked recurring series fall inside it in
+    // this fixture (Netflix's 24 Aug next-due lands in the FOLLOWING
+    // statement), so it's honestly 0 rather than fabricated.
+    eq('Cashflow: second due date is the currently-open statement, honestly 0 so far', secondDue?.amountCents, 0);
+    eq('Cashflow: second due date is labelled projected-cycle (the open statement), not an estimate', secondDue?.amountBasis, 'projected-cycle');
+
+    // A third, further-out due date (only reachable with a longer horizon)
+    // is for a statement that HASN'T started accumulating at all yet as of
+    // today — this is where the honest fallback estimate applies.
+    const longerSummary = buildCashflowCalendar(
+      amexTxns,
+      recurring,
+      { paydayDayOfMonth: 15, monthlyIncomeCents: 0, savingsTargetCents: 0 },
+      { amex: amexCycle },
+      { today, horizonDays: 90 }
+    );
+    const thirdDue = longerSummary.events.find((e) => e.kind === 'card-payment' && e.date === '2026-10-15');
+    check('Cashflow: a third, further-out due date exists with a longer horizon', !!thirdDue);
+    eq(
+      'Cashflow: further-out due date falls back to the typical-monthly estimate (its statement has not started yet)',
+      thirdDue?.amountCents,
+      1450
+    );
+    eq('Cashflow: further-out due date is honestly labelled an estimate, not a real projection', thirdDue?.amountBasis, 'typical-monthly-estimate');
 
     const salaryEvents = summary.events.filter((e) => e.kind === 'income');
     check('Cashflow: at least one salary event on/after the 15th', salaryEvents.some((e) => e.date === '2026-08-15'));
@@ -306,9 +337,9 @@ function main(): void {
       mkSeries({ id: 'huge', merchant: 'Something huge', amountCents: 1_000_000, cadence: 'weekly', nextDue: '2026-08-01' }),
     ];
     const squeezed = buildCashflowCalendar(
+      [],
       heavySpend,
       { paydayDayOfMonth: 15, monthlyIncomeCents: 0, savingsTargetCents: 0 },
-      {},
       {},
       { today: '2026-08-01', horizonDays: 14, startingBalanceCents: 0 }
     );
@@ -317,8 +348,8 @@ function main(): void {
 
     const comfortable = buildCashflowCalendar(
       [],
+      [],
       { paydayDayOfMonth: 15, monthlyIncomeCents: 645_700, savingsTargetCents: 0 },
-      {},
       {},
       { today: '2026-08-01', horizonDays: 14, startingBalanceCents: 0 }
     );
