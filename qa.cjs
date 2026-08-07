@@ -306,7 +306,37 @@ async function tapPinDigits(page, pin) {
     report.smallTargets['#/log(add-tab-categorygrid)'] = targets.filter((t) => t.w < 48 || t.h < 48);
   } catch (e) { report.notes.push('Measure quickadd targets error: ' + e.message); }
 
-  // ================= PHASE 6: quick-add tap-count + timing test =================
+  // ================= PHASE 6a: ABSOLUTE fastest path (accept the pre-filled "usual" amount) =================
+  try {
+    await page.goto(BASE + '#/', { waitUntil: 'load' });
+    await page.waitForTimeout(400);
+    let fastTaps = 0;
+    const tf0 = Date.now();
+    const fab = page.locator('a[aria-label="Quick add"]').first();
+    await fab.tap(); fastTaps++;
+    await page.waitForTimeout(250);
+    const catBtn = page.locator('[role="group"][aria-label="Categories"] button').first();
+    const catLabel = await catBtn.innerText().catch(() => '?');
+    await catBtn.tap(); fastTaps++;
+    await page.waitForTimeout(250);
+    const prefilledAmount = await page.evaluate(() => {
+      const el = document.querySelector('.tabular-nums.text-text-1');
+      return el ? el.textContent : null;
+    });
+    const saveBtn0 = page.locator('button', { hasText: /^Save/ }).first();
+    const saveExists = await saveBtn0.count();
+    if (saveExists) {
+      await saveBtn0.tap(); fastTaps++;
+    }
+    const fastElapsed = Date.now() - tf0;
+    await page.waitForTimeout(500);
+    await shot(page, '29-quickadd-fastest-path-result.png');
+    report.quickAddFastestPath = { taps: fastTaps, elapsedMs: fastElapsed, category: catLabel, prefilledAmountShown: prefilledAmount, note: 'Taps FAB -> first category tile (with its pre-filled "usual" amount) -> Save. No digit entry.' };
+  } catch (e) {
+    report.notes.push('Fastest-path quick-add error: ' + e.message);
+  }
+
+  // ================= PHASE 6b: realistic path — enter a FRESH/specific amount =================
   try {
     await page.goto(BASE + '#/', { waitUntil: 'load' });
     await page.waitForTimeout(400);
@@ -323,8 +353,29 @@ async function tapPinDigits(page, pin) {
     await page.waitForTimeout(250);
     await shot(page, '31-quickadd-keypad.png');
 
-    for (const d of ['5', '0', '0']) {
-      const digitBtn = page.locator('button', { hasText: new RegExp(`^${d}$`) }).first();
+    // The category tile pre-fills the buffer with the "usual" amount for that category
+    // (real behaviour, not a bug) — clear it first so we can type a specific new amount,
+    // same as a user overriding the suggestion would have to.
+    const bufferBefore = await page.evaluate(() => {
+      const el = document.querySelector('.tabular-nums.text-text-1');
+      return el ? el.textContent : null;
+    });
+    report.notes.push('Quick-add buffer pre-filled with: ' + bufferBefore);
+    let cleared = false;
+    for (let i = 0; i < 10 && !cleared; i++) {
+      const cur = await page.evaluate(() => {
+        const el = document.querySelector('.tabular-nums.text-text-1');
+        return el ? el.textContent : null;
+      });
+      if (cur === '$0.00') { cleared = true; break; }
+      const backspaceBtn = page.locator('button[aria-label="Backspace"]').first();
+      await backspaceBtn.tap(); tapCount++;
+      await page.waitForTimeout(60);
+    }
+
+    for (const d of ['5', '.', '0', '0']) {
+      const label = d === '.' ? 'Decimal point' : `Digit ${d}`;
+      const digitBtn = page.locator(`button[aria-label="${label}"]`).first();
       await digitBtn.tap(); tapCount++;
       await page.waitForTimeout(90);
     }
@@ -335,7 +386,7 @@ async function tapPinDigits(page, pin) {
     const elapsed = Date.now() - t0;
     await page.waitForTimeout(500);
     await shot(page, '33-quickadd-after-save.png');
-    report.quickAdd = { tapCount, elapsedMs: elapsed };
+    report.quickAdd = { tapCount, elapsedMs: elapsed, note: 'Includes backspace taps to clear the pre-filled "usual" amount before entering 5.00 fresh.' };
 
     await page.goto(BASE + '#/log', { waitUntil: 'load' });
     await page.waitForTimeout(500);
