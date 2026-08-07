@@ -43,9 +43,16 @@ function dailyTotals(txns: Txn[]): Map<DateStr, Cents> {
 
 /** Consecutive no-spend days ending on `date`, walking backwards. */
 function streakEndingAt(totals: Map<DateStr, Cents>, date: DateStr, earliestDate: DateStr | null): number {
+  // No transaction history means there is no date to walk back to. Without this
+  // guard `!earliestDate` keeps the loop condition permanently true and, with an
+  // empty totals map, nothing ever breaks it — the app hangs. This is reachable
+  // on a brand-new install, and also whenever every transaction is excluded.
+  // A streak measured against no history is meaningless, so report none.
+  if (!earliestDate) return 0;
+
   let streak = 0;
   let cursor = date;
-  while (!earliestDate || cursor >= earliestDate) {
+  while (cursor >= earliestDate) {
     const total = totals.get(cursor) ?? 0;
     if (total > 0) break; // spend > 0 breaks the streak; a pure-income day is still "no spend"
     streak++;
