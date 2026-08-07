@@ -14,7 +14,7 @@ import { detectStructure, type StructuralLayout, type ColumnRole } from './colum
 import { detectBankFormat, type BankFormat, type FormatDetection } from './detect';
 import { analyseSignConvention, applySignConvention, rawSignedCentsForRow, type SignAnalysis } from './sign';
 import { tryParseDate } from './dates';
-import { computeTxnHash } from './hash';
+import { computeTxnHash, dedupeGroupKey } from './hash';
 
 export interface CsvAnalysis {
   rawCsv: RawCsv;
@@ -119,7 +119,11 @@ export async function buildImportPreview(
   const { account, detectedFormat, signInverted, rules, categories, existingHashes, onProgress } = options;
   const warnings: string[] = [...layout.warnings];
   const rows: Txn[] = [];
-  const seenInBatch = new Set<string>();
+  // Per (date, amount, description, account) occurrence counter — see
+  // `@/data/dedupe`'s doc comment. This is what lets two genuinely distinct
+  // same-day identical rows (two coffees) hash differently instead of one
+  // silently vanishing as a false "duplicate" of the other.
+  const occurrenceCounts = new Map<string, number>();
   let duplicateCount = 0;
   let invalidCount = 0;
 
@@ -143,12 +147,15 @@ export async function buildImportPreview(
 
     const amountCents = applySignConvention(rawSigned, signInverted);
     const { merchant, categoryId } = categorizeDescription(rawDescription, rules, categories);
-    const hash = await computeTxnHash(dateStr, amountCents, rawDescription, account);
 
-    if (existingHashes.has(hash) || seenInBatch.has(hash)) {
+    const groupKey = dedupeGroupKey({ date: dateStr, amountCents, description: rawDescription, account });
+    const occurrence = occurrenceCounts.get(groupKey) ?? 0;
+    occurrenceCounts.set(groupKey, occurrence + 1);
+    const hash = await computeTxnHash(dateStr, amountCents, rawDescription, account, occurrence);
+
+    if (existingHashes.has(hash)) {
       duplicateCount++;
     } else {
-      seenInBatch.add(hash);
       const now = Date.now();
       rows.push({
         id: genId(),

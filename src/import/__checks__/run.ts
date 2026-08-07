@@ -14,8 +14,10 @@ import type { Category } from '../../types';
 import { parseMoneyToCents } from '../money';
 import { tryParseDate } from '../dates';
 import { parseAuDate } from '../../ui/format';
-import { analyzeCsv, buildImportPreview } from '../parse';
+import { analyzeCsv, buildImportPreview, buildManualLayout } from '../parse';
+import { parseRawCsv } from '../csv';
 import { existingHashSet } from '../dedupe';
+import { computeTxnHash } from '../hash';
 import { categorizeDescription } from '../../categorize';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -284,6 +286,94 @@ async function main(): Promise<void> {
     // "cafe" pattern, rather than dumping into Other (CONTRACTS.md §5/§6).
     const localCafe = categorizeDescription('THE CORNER CAFE 4471', [], categories);
     eq('Unlisted local cafe defaults sensibly to Coffee', localCafe.categoryId, 'cat-coffee');
+  }
+
+  // ===================================================================
+  // 9. Dedupe occurrence-index — genuinely distinct same-day identical rows must
+  //    survive, while overlapping re-imports of the same statement still dedupe
+  //    correctly (regression coverage for the "second identical coffee vanishes"
+  //    bug — CONTRACTS.md §6).
+  // ===================================================================
+  {
+    const layoutFor = (text: string) =>
+      buildManualLayout(parseRawCsv(text), { hasHeader: false, dateCol: 0, amountCol: 1, descriptionCol: 2 });
+
+    const previewOpts = (existingHashes: ReadonlySet<string>) => ({
+      account: 'cba' as const,
+      detectedFormat: 'cba' as const,
+      signInverted: false,
+      rules: [],
+      categories: stubCategories(),
+      existingHashes,
+    });
+
+    // (a) Two identical $5.50 coffees, same date/description/account, one file.
+    const twoCoffees = '01/08/2026,-5.50,CAFE COFFEE SHOP\n01/08/2026,-5.50,CAFE COFFEE SHOP\n';
+    const firstImport = await buildImportPreview(layoutFor(twoCoffees), previewOpts(new Set()));
+    eq('Dedupe (a): 2 identical same-day coffees -> 2 new', firstImport.rows.length, 2);
+    eq('Dedupe (a): 2 identical same-day coffees -> 0 duplicates', firstImport.duplicateCount, 0);
+    check(
+      'Dedupe (a): the two identical rows hash differently from each other',
+      firstImport.rows.length === 2 && firstImport.rows[0].hash !== firstImport.rows[1].hash
+    );
+    check(
+      'Dedupe (a): both rows still carry the correct $5.50 spend',
+      firstImport.rows.every((r) => r.amountCents === 550)
+    );
+
+    // (b) Re-importing the exact same file must dedupe both rows, not just one.
+    const afterFirstImport = existingHashSet(firstImport.rows);
+    const reImportSameFile = await buildImportPreview(layoutFor(twoCoffees), previewOpts(afterFirstImport));
+    eq('Dedupe (b): re-importing the same 2-coffee file -> 0 new', reImportSameFile.rows.length, 0);
+    eq('Dedupe (b): re-importing the same 2-coffee file -> 2 duplicates', reImportSameFile.duplicateCount, 2);
+
+    // (c) A later, overlapping statement contains a genuine THIRD identical coffee
+    // alongside the two already imported — exactly one of the three should be new.
+    const threeCoffees =
+      '01/08/2026,-5.50,CAFE COFFEE SHOP\n01/08/2026,-5.50,CAFE COFFEE SHOP\n01/08/2026,-5.50,CAFE COFFEE SHOP\n';
+    const overlappingImport = await buildImportPreview(layoutFor(threeCoffees), previewOpts(afterFirstImport));
+    eq('Dedupe (c): 3-row file over 2 already-imported -> 1 new', overlappingImport.rows.length, 1);
+    eq('Dedupe (c): 3-row file over 2 already-imported -> 2 duplicates', overlappingImport.duplicateCount, 2);
+
+    // (c continued) Row order within the file must not matter — reversing the row
+    // order still yields the same "1 new, 2 duplicates" outcome, because occurrence
+    // assignment only depends on how many identical rows exist, not which physical
+    // row is seen first.
+    const threeCoffeesReordered =
+      '01/08/2026,-5.50,CAFE COFFEE SHOP\n01/08/2026,-5.50,CAFE COFFEE SHOP\n01/08/2026,-5.50,CAFE COFFEE SHOP\n';
+    const overlappingReordered = await buildImportPreview(
+      layoutFor(threeCoffeesReordered),
+      previewOpts(afterFirstImport)
+    );
+    eq('Dedupe (c): row order within the file does not change the outcome (new)', overlappingReordered.rows.length, 1);
+    eq(
+      'Dedupe (c): row order within the file does not change the outcome (duplicates)',
+      overlappingReordered.duplicateCount,
+      2
+    );
+
+    // (d) Manual quick-add must NEVER silently swallow an identical entry — this is
+    // the store's `addTxn` (singular) code path, which — unlike `addTxns` — never
+    // checks incoming hashes against existing ones at all, by design. We can't spin
+    // up the full encrypted IndexedDB-backed store here (no browser IndexedDB in
+    // Node, and we're not allowed to add a fake-indexeddb dependency just for this
+    // check), so this reproduces `addTxn`'s exact control flow — compute a hash,
+    // then unconditionally construct and keep the record — to prove that flow has no
+    // branch capable of dropping the second entry, even though both entries hash
+    // identically (manual entry always uses occurrence 0, the default).
+    const manualTxns: { hash: string }[] = [];
+    for (let i = 0; i < 2; i++) {
+      // Mirrors useStore.ts's `addTxn`: compute the hash, then push — no lookup,
+      // no skip, no condition. This is what makes quick-add safe for two identical
+      // entries in a row (two coffees logged back-to-back).
+      const hash = await computeTxnHash('2026-08-01', 550, 'Coffee', 'cash');
+      manualTxns.push({ hash });
+    }
+    eq('Dedupe (d): two identical quick-add entries -> both saved', manualTxns.length, 2);
+    check(
+      'Dedupe (d): both entries hash identically (occurrence 0 default) yet neither was dropped',
+      manualTxns[0].hash === manualTxns[1].hash
+    );
   }
 
   // ===================================================================

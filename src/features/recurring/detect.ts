@@ -9,6 +9,7 @@
  */
 import type { Category, Cents, DateStr, RecurringCadence, RecurringSeries, Txn } from '@/types';
 import { normalizeMerchant } from '@/features/transactions/merchant';
+import { todayStr } from '@/ui/format';
 
 export interface DetectionOptions {
   /** Minimum occurrences in a cluster before it's confident enough to surface. */
@@ -44,7 +45,12 @@ export const DEFAULT_OPTIONS: DetectionOptions = {
   amountTolerancePct: 0.3,
   amountToleranceFlatCents: 500,
   minCadenceConfidence: 0.7,
-  today: new Date().toISOString().slice(0, 10),
+  // Local-calendar-day default (CONTRACTS.md §3 dates are local, not UTC). In
+  // Australia (UTC+10/+11), `new Date().toISOString().slice(0,10)` reads as
+  // *yesterday* for the first ~10-11 hours of every local day — dormant today
+  // because every real call site passes an explicit local `today`, but a trap
+  // for the next one that doesn't.
+  today: todayStr(),
 };
 
 interface CadenceDef {

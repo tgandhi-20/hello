@@ -3,6 +3,7 @@ import type { Category } from '@/types';
 import { CategoryIcon, ProgressBar, formatMoney } from '@/ui';
 import { safeDiv, clampRatio } from '@/charts';
 import type { SemanticTone } from '@/charts';
+import { parseDollarsToCents } from '@/features/settings/money';
 
 export interface BudgetRowProps {
   category: Category;
@@ -34,8 +35,9 @@ export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onS
   const remainingPerDay = safeDiv(remainingCents, daysRemaining, 0);
 
   const commit = () => {
-    const dollars = parseFloat(draft);
-    const cents = Number.isFinite(dollars) && dollars > 0 ? Math.round(dollars * 100) : 0;
+    // CONTRACTS.md §3: money parsing is integer string-math, never parseFloat/toFixed.
+    const parsed = parseDollarsToCents(draft);
+    const cents = parsed !== null && parsed > 0 ? parsed : 0;
     setEditing(false);
     if (cents !== limitCents) onSave(cents);
   };

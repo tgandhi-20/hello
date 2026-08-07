@@ -4,6 +4,7 @@
  * verdict (CONTRACTS.md §4).
  */
 import type { Category, Cents, DateStr, HabitStats, Txn } from '@/types';
+import { todayStr } from '@/ui/format';
 
 function parseYMD(d: DateStr): number {
   const [y, m, day] = d.split('-').map(Number);
@@ -92,7 +93,10 @@ export interface HabitStatsOptions {
 }
 
 export function computeHabitStats(txns: Txn[], categories: Category[], options: HabitStatsOptions = {}): HabitStats {
-  const today = options.today ?? new Date().toISOString().slice(0, 10);
+  // Local-calendar-day default (CONTRACTS.md §3 dates are local, not UTC) — see
+  // detect.ts's DEFAULT_OPTIONS.today for why `toISOString()` here would be wrong
+  // for the first ~10-11 hours of every Australian day.
+  const today = options.today ?? todayStr();
   const lunchWeeks = options.lunchWeeks ?? 8;
   const thisMonth = monthOf(today);
   const lastMonth = prevMonth(thisMonth);

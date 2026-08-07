@@ -84,7 +84,10 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
         </div>
       </div>
       <div
-        className="relative flex min-h-[64px] items-center gap-3 bg-bg px-4 py-3 select-none"
+        className={[
+          'relative flex min-h-[64px] items-center gap-3 bg-bg px-4 py-3 select-none',
+          txn.excluded ? 'opacity-50' : '',
+        ].join(' ')}
         style={{
           transform: `translateX(${dragX}px)`,
           transition: dragging ? 'none' : 'transform 200ms var(--ease-standard)',
@@ -100,7 +103,14 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
       >
         <CategoryIcon icon={category?.icon ?? 'Circle'} colorToken={category?.colorToken ?? 'cat-1'} size="sm" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-md text-text-1">{txn.merchant || txn.description}</p>
+          <div className="flex items-center gap-2">
+            <p className="truncate text-md text-text-1">{txn.merchant || txn.description}</p>
+            {txn.excluded ? (
+              <span className="shrink-0 rounded-pill border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-text-3">
+                Excluded
+              </span>
+            ) : null}
+          </div>
           <p className="truncate text-xs text-text-3">
             {category?.label ?? 'Uncategorised'}
             {txn.note ? ` · ${txn.note}` : ''}

@@ -56,7 +56,8 @@ import {
 } from '@/data/db';
 import { buildDefaultCategories, DEFAULT_PINNED_CATEGORY_IDS } from '@/data/defaultCategories';
 import { generateDemoTxns } from '@/data/demoData';
-import { hashTxn } from '@/data/dedupe';
+import { hashTxn, dedupeGroupKey } from '@/data/dedupe';
+import { planCategoryDeletion, resolveFallbackCategoryId } from './categoryDeletion';
 import {
   TALLY_BACKUP_FORMAT,
   TALLY_BACKUP_VERSION,
@@ -397,17 +398,27 @@ export const useStore = create<TallyStore>((set, get) => {
       const toInsert: Txn[] = [];
       let skipped = 0;
 
+      // Per (date, amount, description, account) occurrence counter, scoped to this
+      // batch — see `@/data/dedupe`'s doc comment. Two genuinely distinct rows that
+      // share all four fields (two identical coffees on the same day) get occurrence
+      // 0 and 1 and hash differently, so neither is mistaken for a duplicate of the
+      // other. Re-adding the same batch later reproduces the same occurrence
+      // sequence, so it correctly collides with `existingHashes` and is skipped.
+      const occurrenceCounts = new Map<string, number>();
+
       for (const t of ts) {
         // The frozen §9 type still carries `hash` on this input (it's only
         // omitted on the singular addTxn), but the hash MUST be authoritative
         // dedupe data, not whatever the caller happened to pass — so it is
         // always recomputed here and the incoming value is ignored.
-        const hash = await hashTxn(t.date, t.amountCents, t.description, t.account);
+        const groupKey = dedupeGroupKey(t);
+        const occurrence = occurrenceCounts.get(groupKey) ?? 0;
+        occurrenceCounts.set(groupKey, occurrence + 1);
+        const hash = await hashTxn(t.date, t.amountCents, t.description, t.account, occurrence);
         if (existingHashes.has(hash)) {
           skipped++;
           continue;
         }
-        existingHashes.add(hash);
         toInsert.push({ ...t, hash, id: crypto.randomUUID(), createdAt: now, updatedAt: now });
       }
 
@@ -487,14 +498,50 @@ export const useStore = create<TallyStore>((set, get) => {
     },
 
     async deleteCategory(id) {
-      requireKey();
-      const current = get().categories.find((c) => c.id === id);
+      const key = requireKey();
+      const state = get();
+      const current = state.categories.find((c) => c.id === id);
       if (!current) return;
       if (current.builtin) {
         throw new Error('Built-in categories cannot be deleted.');
       }
-      await deleteRecord('categories', id);
-      set((state) => ({ categories: state.categories.filter((c) => c.id !== id) }));
+
+      // A deleted category must never leave dangling data behind: every transaction
+      // pointed at it gets reassigned to a fallback (never an orphaned categoryId a
+      // screen can't render), and every budget row for it is removed (never an
+      // invisible amount permanently padding "total budgeted" — see
+      // `categoryDeletion.ts`'s doc comment for the bug this fixes).
+      const fallbackId = resolveFallbackCategoryId(state.categories, id);
+      if (!fallbackId) {
+        throw new Error('Cannot delete this category — Tally needs at least one other category to reassign its transactions to.');
+      }
+
+      const now = Date.now();
+      const plan = planCategoryDeletion(state.txns, state.budgets, id, fallbackId, now);
+
+      const budgetDeletes = plan.removedBudgetKeys
+        .map(({ categoryId, month }) => budgetIndex.get(budgetMapKey(categoryId, month)))
+        .filter((budgetId): budgetId is string => Boolean(budgetId));
+
+      await Promise.all([
+        deleteRecord('categories', id),
+        encryptAndPutMany(
+          'txns',
+          key,
+          plan.changedTxns.map((t) => ({ id: t.id, value: t }))
+        ),
+        ...budgetDeletes.map((budgetId) => deleteRecord('budgets', budgetId)),
+      ]);
+
+      for (const { categoryId, month } of plan.removedBudgetKeys) {
+        budgetIndex.delete(budgetMapKey(categoryId, month));
+      }
+
+      set({
+        categories: state.categories.filter((c) => c.id !== id),
+        txns: sortTxns(plan.txns),
+        budgets: plan.budgets,
+      });
     },
 
     async addRule(match, categoryId) {

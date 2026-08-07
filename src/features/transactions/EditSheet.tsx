@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
-import { Sheet, Button, Select, CategoryIcon, ConfirmDialog, formatMoney } from '@/ui';
+import { Sheet, Button, Select, Switch, CategoryIcon, ConfirmDialog, formatMoney } from '@/ui';
 import type { AccountId, Category, Txn } from '@/types';
 import { bufferToCents, centsToBuffer } from '@/features/log';
 import { CategoryPickerSheet } from './CategoryPickerSheet';
@@ -27,6 +27,7 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
   const [date, setDate] = useState('');
   const [account, setAccount] = useState<AccountId>('cash');
   const [note, setNote] = useState('');
+  const [excluded, setExcluded] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
@@ -36,6 +37,7 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
     setDate(txn.date);
     setAccount(txn.account);
     setNote(txn.note ?? '');
+    setExcluded(Boolean(txn.excluded));
   }, [txn]);
 
   if (!txn) return null;
@@ -46,7 +48,7 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
     if (!txn) return;
     const magnitude = bufferToCents(amountBuf);
     const amountCents = isIncome ? -magnitude : magnitude;
-    onSave(txn.id, { amountCents, date, account, note: note.trim() || undefined });
+    onSave(txn.id, { amountCents, date, account, note: note.trim() || undefined, excluded });
     onClose();
   }
 
@@ -122,6 +124,19 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
               className="h-12 w-full rounded-2xl border border-border bg-surface-2 px-4 text-md text-text-1 placeholder:text-text-3 outline-none focus:border-accent"
             />
           </label>
+
+          <div className="flex flex-col gap-1 rounded-2xl border border-border bg-surface-2 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="txn-excluded" className="text-sm text-text-1">
+                Exclude from budgets &amp; insights
+              </label>
+              <Switch id="txn-excluded" checked={excluded} onChange={setExcluded} />
+            </div>
+            <p className="text-xs text-text-3">
+              Use for transfers between your own accounts or reimbursed expenses. Excluded transactions still
+              appear in your history, but never count toward spend, budgets or Safe-to-Spend.
+            </p>
+          </div>
         </div>
       </Sheet>
 

@@ -62,7 +62,12 @@ export function rawSignedCentsForRow(layout: StructuralLayout, row: string[]): C
 
 /** Apply a resolved sign convention to a raw signed amount, producing the app convention. */
 export function applySignConvention(rawSigned: Cents, signInverted: boolean): Cents {
-  return signInverted ? rawSigned : -rawSigned;
+  const result = signInverted ? rawSigned : -rawSigned;
+  // `-0` for a $0.00 row (e.g. `-rawSigned` when rawSigned is `0`): still zero in every
+  // arithmetic sense, but `Object.is(-0, 0)` is false and `-0 < 0` is false too, so a
+  // naive `< 0` income/spend guard downstream lets it through and renders "-$0.00".
+  // Normalise at the source rather than trusting every display site to guard for it.
+  return result === 0 ? 0 : result;
 }
 
 interface BalanceCheckResult {

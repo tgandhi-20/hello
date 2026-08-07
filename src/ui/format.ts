@@ -60,7 +60,11 @@ export interface FormatMoneyOptions {
  * Negative cents render with a leading minus: `formatMoney(-500)` → `"-$5.00"`.
  */
 export function formatMoney(cents: Cents, opts: FormatMoneyOptions = {}): string {
-  const dollars = cents / 100;
+  // Defensive: `-0` can arise from arithmetic upstream (e.g. `-0 * x`, `0 - 0`, a sign
+  // flip on a zero amount). `-0 === 0` is true, so this also catches it without a
+  // special-cased `Object.is` check, and prevents it from ever rendering "-$0.00".
+  const safeCents = cents === 0 ? 0 : cents;
+  const dollars = safeCents / 100;
   const isWhole = Number.isInteger(dollars);
 
   const formatter = new Intl.NumberFormat(LOCALE, {

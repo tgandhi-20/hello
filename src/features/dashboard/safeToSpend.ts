@@ -9,8 +9,20 @@
  * across days remaining") would hold the daily allowance constant all month even as
  * money gets spent, which isn't actually "safe to spend from today" — so this also
  * subtracts discretionary spend already logged this month. Committed recurring bills
- * are excluded from that subtraction (via `recurringId`) so a rent payment already
- * posted isn't counted twice (once as "committed", once as "already spent").
+ * must be excluded from that subtraction so a rent payment already posted isn't
+ * counted twice (once as "committed", once as "already spent").
+ *
+ * `Txn.recurringId` exists in the type but nothing in this codebase ever writes it
+ * (see the fix note below) — so exclusion is derived directly from the *active*
+ * (non-muted) `RecurringSeries[].txnIds`, which is the single source of truth for
+ * "which transactions belong to a committed series" already. This avoids a
+ * denormalised field that has to be kept in sync on every detection pass, edit,
+ * mute, or delete. A *muted* series contributes nothing to `committedCents`
+ * (filtered out below) — its transactions must then fall through into ordinary
+ * `spentSoFarCents`, or that money would never be counted at all. Only txn ids
+ * belonging to a currently-active series are excluded, so every dollar is counted
+ * exactly once: either as "committed" or as "already spent", never both, never
+ * neither.
  *
  * Pure function, no store access — the caller reads `useStore` and passes state in.
  */
@@ -77,12 +89,20 @@ export function computeSafeToSpend({
   const incomeCents = settings.monthlyIncomeCents;
   const incomeUnset = !incomeCents || incomeCents <= 0;
 
-  const committedCents = recurring
-    .filter((r) => !r.muted)
-    .reduce((sum, r) => sum + monthlyEquivalentCents(r), 0);
+  const activeSeries = recurring.filter((r) => !r.muted);
+  const committedCents = activeSeries.reduce((sum, r) => sum + monthlyEquivalentCents(r), 0);
+
+  // Every txn id that belongs to a currently-active (non-muted) series is already
+  // represented in `committedCents` above — exclude it here so it isn't double
+  // counted as ordinary spend too. A muted series' txn ids are deliberately NOT in
+  // this set, so their posted transactions count as normal spend once muted.
+  const committedTxnIds = new Set<string>();
+  for (const series of activeSeries) {
+    for (const txnId of series.txnIds) committedTxnIds.add(txnId);
+  }
 
   const spentSoFarCents = txns
-    .filter((t) => t.date.startsWith(month) && !t.excluded && t.amountCents > 0 && !t.recurringId)
+    .filter((t) => t.date.startsWith(month) && !t.excluded && t.amountCents > 0 && !committedTxnIds.has(t.id))
     .reduce((sum, t) => sum + t.amountCents, 0);
 
   const savingsTargetCents = Math.max(0, settings.savingsTargetCents);

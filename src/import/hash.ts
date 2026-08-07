@@ -1,5 +1,6 @@
 /**
- * Import dedupe hashing (CONTRACTS.md §6): `sha256(date|amountCents|normalisedDescription|account)`.
+ * Import dedupe hashing (CONTRACTS.md §6):
+ * `sha256(date|amountCents|normalisedDescription|account|occurrence)`.
  *
  * This module deliberately contains no hashing logic of its own — it delegates
  * to `@/data/dedupe`, which is the single source of truth.
@@ -16,5 +17,18 @@
  * merchant cleaning is right for *categorisation* (grouping a merchant's
  * transactions together) and wrong for *dedupe*, where over-matching silently
  * drops genuine transactions — a far worse outcome than surfacing a duplicate.
+ *
+ * The trailing `occurrence` index is what lets two genuinely distinct same-day,
+ * same-amount, same-description, same-account rows (two identical coffees) hash
+ * differently instead of colliding — see `@/data/dedupe`'s doc comment for the
+ * full reasoning. `computeTxnHashBatch` is the batch-aware entry point import
+ * preview and `addTxns` both use so occurrence assignment is consistent between
+ * "what the preview promised" and "what actually got written".
  */
-export { hashTxn as computeTxnHash, normalizeDescription } from '@/data/dedupe';
+export {
+  hashTxn as computeTxnHash,
+  hashTxnsBatch as computeTxnHashBatch,
+  normalizeDescription,
+  dedupeGroupKey,
+  type DedupeFields,
+} from '@/data/dedupe';
