@@ -19,8 +19,72 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Tally</title>
+    <style>
+      /*
+       * Universal `prefers-reduced-motion` safety net (CONTRACTS.md §4 / DESIGN.md
+       * §4: "Honour prefers-reduced-motion" everywhere motion is touched). This is a
+       * global floor applied here, in this agent's owned index.html, rather than in
+       * src/styles/** (owned by another agent) — it collapses every animation and
+       * CSS transition duration app-wide for anyone who has asked the OS for reduced
+       * motion, regardless of which component (mine or another agent's) applied the
+       * transition. Anything with a genuinely functional (non-decorative) transition
+       * still completes, just near-instantly, rather than being deleted outright.
+       */
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+
+      /*
+       * `<noscript>` fallback styling. Only ever paints if JS is disabled/blocked —
+       * kept minimal and dependency-free (no Tailwind class names, since the
+       * stylesheet emitted from src/styles/index.css is loaded by the same <link>
+       * either way, but this block doesn't rely on it being present).
+       */
+      .noscript-notice {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 32px 24px;
+        text-align: center;
+        background: #07070a;
+        color: #f4f2ee;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      }
+      .noscript-notice h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+      }
+      .noscript-notice p {
+        max-width: 320px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #a29fa8;
+        margin: 0;
+      }
+    </style>
   </head>
   <body>
+    <noscript>
+      <div class="noscript-notice">
+        <h1>Tally needs JavaScript</h1>
+        <p>
+          Tally decrypts and displays your budget entirely on this device, which requires JavaScript to be
+          enabled. Nothing is sent anywhere — please enable it in your browser to continue.
+        </p>
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/app/main.tsx"></script>
   </body>

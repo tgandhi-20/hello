@@ -83,7 +83,7 @@ export function InstallPrompt({ className = '', onResolved }: InstallPromptProps
         type="button"
         aria-label="Dismiss"
         onClick={() => setDismissed(true)}
-        className="flex h-12 w-12 shrink-0 items-center justify-center text-ink-3"
+        className="flex h-12 w-12 shrink-0 items-center justify-center text-ink-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <X size={18} aria-hidden="true" />
       </button>

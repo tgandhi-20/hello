@@ -37,7 +37,7 @@ export function GoalScreen() {
   const whatIfPresets = useMemo(() => buildWhatIfPresets(), []);
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-6">
+    <div className="flex flex-col gap-6 px-4 py-6">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <Target size={20} strokeWidth={1.75} className="text-accent" aria-hidden="true" />

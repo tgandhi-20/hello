@@ -33,7 +33,7 @@ export function HabitsScreen() {
   }
 
   return (
-    <div className="flex flex-col gap-3 px-4 py-4">
+    <div className="flex flex-col gap-6 px-4 py-6">
       <Card className="flex flex-col gap-3">
         <span className="label flex items-center gap-1.5">
           <Flame size={14} aria-hidden="true" /> No-spend streak

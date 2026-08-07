@@ -11,6 +11,7 @@ import {
   Sparkles,
   Trash2,
   ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import { Card } from '@/ui/Card';
 import { Button } from '@/ui/Button';
@@ -20,6 +21,7 @@ import { Select } from '@/ui/Select';
 import { Switch } from '@/ui/Switch';
 import { ConfirmDialog } from '@/ui/Modal';
 import { useToast } from '@/ui/Toast';
+import { StorageStatus } from '@/ui/storage';
 import { formatMoney, todayStr } from '@/ui/format';
 import { useStore, isBiometricAvailable, disableBiometric, getUnlockConfig } from '@/store/useStore';
 import { DEFAULT_UNLOCK_CONFIG, type UnlockConfig } from '@/security/unlockMode';
@@ -85,6 +87,7 @@ export function SettingsScreen() {
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
   const enableBiometric = useStore((s) => s.enableBiometric);
+  const lock = useStore((s) => s.lock);
   const resetAll = useStore((s) => s.resetAll);
   const loadDemoData = useStore((s) => s.loadDemoData);
   const exportBackup = useStore((s) => s.exportBackup);
@@ -167,7 +170,7 @@ export function SettingsScreen() {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-6">
+    <div className="flex flex-col gap-6 px-4 py-6">
       {/* --- Security --- */}
       <section className="flex flex-col gap-2">
         <p className="label px-1">Security</p>
@@ -227,6 +230,13 @@ export function SettingsScreen() {
             ? 'A PIN protects against someone picking up your unlocked phone. It does not protect against a stolen device with its raw data copied off — switch to a passphrase for that.'
             : 'A passphrase protects against both an unlocked phone and a stolen device with its raw data copied off.'}
         </p>
+        {/* P2: previously the only ways to lock were the 2-minute background timer or a
+            full reload — no on-demand action. Handing the phone to someone else for a
+            second shouldn't require either. */}
+        <Button variant="ghost" fullWidth onClick={() => lock()}>
+          <Lock size={18} aria-hidden="true" />
+          Lock now
+        </Button>
       </section>
 
       {/* --- Money --- */}
@@ -275,6 +285,10 @@ export function SettingsScreen() {
       {/* --- Data --- */}
       <Card>
         <h2 className="mb-3 text-md font-semibold text-ink-1">Your data</h2>
+        {/* There is no server and no backup (CONTRACTS.md §0) — this device's storage
+            grant is the only thing standing between "everything" and "nothing" if
+            Android decides to reclaim space. Calm and factual either way. */}
+        <StorageStatus className="mb-3" />
         <div className="flex flex-col gap-3">
           <Button variant="ghost" fullWidth disabled={exportBusy} onClick={() => void handleExport()}>
             <Download size={18} aria-hidden="true" />

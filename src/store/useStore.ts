@@ -56,9 +56,12 @@ import {
   putEncrypted,
   putManyEncrypted,
   deleteRecord,
+  clearAllData,
   clearEverything,
   type DataStoreName,
 } from '@/data/db';
+import { withVaultLock } from './vaultLock';
+import { decryptBatch, type DecryptBatchResult } from './decryptBatch';
 import { buildDefaultCategories, DEFAULT_PINNED_CATEGORY_IDS } from '@/data/defaultCategories';
 import { generateDemoTxns } from '@/data/demoData';
 import { PLAN_DEFAULTS } from '@/personal/plan';
@@ -68,6 +71,7 @@ import { planCategoryDeletion, resolveFallbackCategoryId } from './categoryDelet
 import {
   TALLY_BACKUP_FORMAT,
   TALLY_BACKUP_VERSION,
+  assertValidBackupPayload,
   type BackupPayload,
   type TallyBackupFile,
 } from '@/data/backup';
@@ -101,6 +105,14 @@ export interface TallyStore {
   rules: Rule[];
   recurring: RecurringSeries[];
   settings: Settings;
+  /**
+   * How many records across all stores failed to decrypt on the most recent
+   * hydrate and were skipped rather than blocking the whole unlock (P0 fix —
+   * see `decryptAllWithIds`'s doc comment). 0 on a clean vault. Not part of
+   * CONTRACTS.md §9's frozen interface, but additive and required to be able
+   * to tell the user honestly that some data was lost instead of hiding it.
+   */
+  skippedRecordCount: number;
 
   // --- lock lifecycle ---
   setupPin(pin: string): Promise<void>;
@@ -156,17 +168,29 @@ async function encryptAndPutMany(
   await putManyEncrypted(storeName, blobs);
 }
 
+/**
+ * Decrypt every record in a store, tolerating individual failures (P0 fix —
+ * see decryptBatch.ts's doc comment for the bug this closes and why the core
+ * logic lives there instead of here: it needs to be node-testable without
+ * IndexedDB/WebCrypto). A vault with 1 bad record out of 3,000 must still
+ * open with 2,999 intact — see `hydrateAll` and LockGate's skipped-record
+ * toast for where the skipped count surfaces to the user.
+ *
+ * Deliberately does not log anything about *why* a record failed (wrong key
+ * vs malformed JSON vs truncated ciphertext) — any such detail risks leaking
+ * something about encrypted financial data into the console (CONTRACTS.md §5).
+ */
 async function decryptAllWithIds<T>(
   storeName: DataStoreName,
   key: CryptoKey
-): Promise<{ id: string; value: T }[]> {
+): Promise<DecryptBatchResult<{ id: string; value: T }>> {
   const records = await getAllEncrypted(storeName);
-  return Promise.all(records.map(async (r) => ({ id: r.id, value: await decryptJSON<T>(key, r.blob) })));
+  return decryptBatch(records, async (r) => ({ id: r.id, value: await decryptJSON<T>(key, r.blob) }));
 }
 
-async function decryptAll<T>(storeName: DataStoreName, key: CryptoKey): Promise<T[]> {
+async function decryptAll<T>(storeName: DataStoreName, key: CryptoKey): Promise<DecryptBatchResult<T>> {
   const withIds = await decryptAllWithIds<T>(storeName, key);
-  return withIds.map((r) => r.value);
+  return { items: withIds.items.map((r) => r.value), skipped: withIds.skipped };
 }
 
 /**
@@ -224,47 +248,10 @@ function budgetMapKey(categoryId: string, month: MonthStr): string {
   return `${categoryId}::${month}`;
 }
 
-/**
- * Validate a decrypted backup payload BEFORE the existing vault is cleared.
- *
- * Decryption succeeding proves only that the file was encrypted with a key
- * derived from the supplied PIN — not that its contents are a usable backup.
- * A restore is the one irreversible operation in an app with no server-side
- * copy, so it must fail before it destroys anything, never halfway through.
- *
- * Throws a message intended to be shown directly to the user.
- */
-function assertValidBackupPayload(payload: unknown): asserts payload is BackupPayload {
-  const bad = (): never => {
-    throw new Error('That backup file is incomplete or corrupted. Your data has not been changed.');
-  };
-
-  if (!payload || typeof payload !== 'object') bad();
-  const p = payload as Record<string, unknown>;
-
-  for (const field of ['txns', 'categories', 'budgets', 'rules', 'recurring'] as const) {
-    if (!Array.isArray(p[field])) bad();
-  }
-  if (!p.settings || typeof p.settings !== 'object' || Array.isArray(p.settings)) bad();
-
-  // Spot-check element shape. A backup whose records are the wrong type would
-  // otherwise restore "successfully" into a vault that renders as broken.
-  const txns = p.txns as unknown[];
-  for (const t of txns) {
-    if (!t || typeof t !== 'object') bad();
-    const r = t as Record<string, unknown>;
-    if (typeof r.id !== 'string' || typeof r.date !== 'string' || typeof r.amountCents !== 'number') {
-      bad();
-    }
-  }
-
-  const categories = p.categories as unknown[];
-  for (const c of categories) {
-    if (!c || typeof c !== 'object') bad();
-    const r = c as Record<string, unknown>;
-    if (typeof r.id !== 'string' || typeof r.label !== 'string') bad();
-  }
-}
+// `assertValidBackupPayload` (validate a decrypted backup BEFORE the existing
+// vault is cleared) now lives in @/data/backup — moved so it's node-testable
+// without pulling in this file's IndexedDB/WebCrypto/WebAuthn dependency
+// graph; see that file's doc comment and src/store/__checks__/run.ts.
 
 // ---------------------------------------------------------------------------
 // The store
@@ -274,9 +261,27 @@ export const useStore = create<TallyStore>((set, get) => {
   // Determine uninitialised vs locked as soon as possible after first render.
   // Always starts as 'locked' optimistically to avoid a first-run flash; if
   // no salt exists yet this flips to 'uninitialised' a tick later.
+  //
+  // P1 fix: this used to be a bare unawaited IIFE with no error handling. If
+  // IndexedDB is missing entirely (some locked-down browsers) or throws on
+  // open (private/incognito mode in several browsers), `getMeta` rejects,
+  // `set()` above never runs, and `lockState` silently stays at its initial
+  // 'locked' default — so the app renders a normal PIN screen for a vault
+  // that structurally cannot exist, and any PIN the user types fails
+  // forever with no explanation. Feature-detect first, and catch the open
+  // itself, so that case gets its own explicit `'unsupported'` state instead
+  // (see LockScreen.tsx's dedicated screen for it).
   void (async () => {
-    const salt = await getMeta<string>('salt');
-    set({ lockState: salt ? 'locked' : 'uninitialised' });
+    if (typeof indexedDB === 'undefined') {
+      set({ lockState: 'unsupported' });
+      return;
+    }
+    try {
+      const salt = await getMeta<string>('salt');
+      set({ lockState: salt ? 'locked' : 'uninitialised' });
+    } catch {
+      set({ lockState: 'unsupported' });
+    }
   })();
 
   async function hydrateAll(key: CryptoKey): Promise<void> {
@@ -289,20 +294,33 @@ export const useStore = create<TallyStore>((set, get) => {
       decryptAll<Settings>('settings', key),
     ]);
 
+    // P0 fix: total records across every store that failed to decrypt and
+    // were skipped rather than failing the whole unlock — see
+    // `decryptAllWithIds`'s doc comment. Surfaced honestly to the user by
+    // LockGate rather than hidden, but never blocks access to the rest.
+    const skippedRecordCount =
+      txns.skipped +
+      categories.skipped +
+      budgetRecords.skipped +
+      rules.skipped +
+      recurring.skipped +
+      settingsArr.skipped;
+
     budgetIndex.clear();
-    for (const rec of budgetRecords) {
+    for (const rec of budgetRecords.items) {
       budgetIndex.set(budgetMapKey(rec.value.categoryId, rec.value.month), rec.id);
     }
 
     set({
-      txns: sortTxns(txns),
-      categories: sortCategories(categories),
-      budgets: budgetRecords.map((r) => r.value),
-      rules,
-      recurring,
-      settings: settingsArr[0] ?? DEFAULT_SETTINGS,
+      txns: sortTxns(txns.items),
+      categories: sortCategories(categories.items),
+      budgets: budgetRecords.items.map((r) => r.value),
+      rules: rules.items,
+      recurring: recurring.items,
+      settings: settingsArr.items[0] ?? DEFAULT_SETTINGS,
       hydrated: true,
       lockState: 'unlocked',
+      skippedRecordCount,
     });
   }
 
@@ -317,6 +335,7 @@ export const useStore = create<TallyStore>((set, get) => {
       rules: [],
       recurring: [],
       settings: DEFAULT_SETTINGS,
+      skippedRecordCount: 0,
     });
   }
 
@@ -329,6 +348,7 @@ export const useStore = create<TallyStore>((set, get) => {
     rules: [],
     recurring: [],
     settings: DEFAULT_SETTINGS,
+    skippedRecordCount: 0,
 
     // --- lock lifecycle -----------------------------------------------
 
@@ -349,6 +369,7 @@ export const useStore = create<TallyStore>((set, get) => {
         settings,
         hydrated: true,
         lockState: 'unlocked',
+        skippedRecordCount: 0,
       });
       // Seed the user's actual budget on a fresh vault, so the app arrives
       // already knowing their plan rather than presenting empty caps they'd
@@ -419,200 +440,229 @@ export const useStore = create<TallyStore>((set, get) => {
 
     // --- mutations -------------------------------------------------------
 
+    // Every mutation below acquires `withVaultLock` before it writes anything
+    // to IndexedDB (P0 fix) — see src/store/vaultLock.ts's doc comment for
+    // why: it's what stops an ordinary write from landing under the old key
+    // mid-way through a PIN rotation or backup restore and being orphaned
+    // when the key pointer flips. Do not call another wrapped store method
+    // from inside one of these bodies — see vaultLock.ts's "NOT REENTRANT" note.
+
     async addTxn(t) {
-      const key = requireKey();
-      const hash = await hashTxn(t.date, t.amountCents, t.description, t.account);
-      const now = Date.now();
-      const txn: Txn = { ...t, id: crypto.randomUUID(), hash, createdAt: now, updatedAt: now };
-      await encryptAndPut('txns', key, txn.id, txn);
-      set((state) => ({ txns: sortTxns([...state.txns, txn]) }));
-      return txn;
+      return withVaultLock(async () => {
+        const key = requireKey();
+        const hash = await hashTxn(t.date, t.amountCents, t.description, t.account);
+        const now = Date.now();
+        const txn: Txn = { ...t, id: crypto.randomUUID(), hash, createdAt: now, updatedAt: now };
+        await encryptAndPut('txns', key, txn.id, txn);
+        set((state) => ({ txns: sortTxns([...state.txns, txn]) }));
+        return txn;
+      });
     },
 
     async addTxns(ts) {
-      const key = requireKey();
-      const existingHashes = new Set(get().txns.map((t) => t.hash));
-      const now = Date.now();
-      const toInsert: Txn[] = [];
-      let skipped = 0;
+      return withVaultLock(async () => {
+        const key = requireKey();
+        const existingHashes = new Set(get().txns.map((t) => t.hash));
+        const now = Date.now();
+        const toInsert: Txn[] = [];
+        let skipped = 0;
 
-      // Per (date, amount, description, account) occurrence counter, scoped to this
-      // batch — see `@/data/dedupe`'s doc comment. Two genuinely distinct rows that
-      // share all four fields (two identical coffees on the same day) get occurrence
-      // 0 and 1 and hash differently, so neither is mistaken for a duplicate of the
-      // other. Re-adding the same batch later reproduces the same occurrence
-      // sequence, so it correctly collides with `existingHashes` and is skipped.
-      const occurrenceCounts = new Map<string, number>();
+        // Per (date, amount, description, account) occurrence counter, scoped to this
+        // batch — see `@/data/dedupe`'s doc comment. Two genuinely distinct rows that
+        // share all four fields (two identical coffees on the same day) get occurrence
+        // 0 and 1 and hash differently, so neither is mistaken for a duplicate of the
+        // other. Re-adding the same batch later reproduces the same occurrence
+        // sequence, so it correctly collides with `existingHashes` and is skipped.
+        const occurrenceCounts = new Map<string, number>();
 
-      for (const t of ts) {
-        // The frozen §9 type still carries `hash` on this input (it's only
-        // omitted on the singular addTxn), but the hash MUST be authoritative
-        // dedupe data, not whatever the caller happened to pass — so it is
-        // always recomputed here and the incoming value is ignored.
-        const groupKey = dedupeGroupKey(t);
-        const occurrence = occurrenceCounts.get(groupKey) ?? 0;
-        occurrenceCounts.set(groupKey, occurrence + 1);
-        const hash = await hashTxn(t.date, t.amountCents, t.description, t.account, occurrence);
-        if (existingHashes.has(hash)) {
-          skipped++;
-          continue;
+        for (const t of ts) {
+          // The frozen §9 type still carries `hash` on this input (it's only
+          // omitted on the singular addTxn), but the hash MUST be authoritative
+          // dedupe data, not whatever the caller happened to pass — so it is
+          // always recomputed here and the incoming value is ignored.
+          const groupKey = dedupeGroupKey(t);
+          const occurrence = occurrenceCounts.get(groupKey) ?? 0;
+          occurrenceCounts.set(groupKey, occurrence + 1);
+          const hash = await hashTxn(t.date, t.amountCents, t.description, t.account, occurrence);
+          if (existingHashes.has(hash)) {
+            skipped++;
+            continue;
+          }
+          toInsert.push({ ...t, hash, id: crypto.randomUUID(), createdAt: now, updatedAt: now });
         }
-        toInsert.push({ ...t, hash, id: crypto.randomUUID(), createdAt: now, updatedAt: now });
-      }
 
-      if (toInsert.length > 0) {
-        await encryptAndPutMany(
-          'txns',
-          key,
-          toInsert.map((tx) => ({ id: tx.id, value: tx }))
-        );
-      }
+        if (toInsert.length > 0) {
+          await encryptAndPutMany(
+            'txns',
+            key,
+            toInsert.map((tx) => ({ id: tx.id, value: tx }))
+          );
+        }
 
-      set((state) => ({ txns: sortTxns([...state.txns, ...toInsert]) }));
-      return { added: toInsert.length, skipped };
+        set((state) => ({ txns: sortTxns([...state.txns, ...toInsert]) }));
+        return { added: toInsert.length, skipped };
+      });
     },
 
     async updateTxn(id, patch) {
-      const key = requireKey();
-      const current = get().txns.find((t) => t.id === id);
-      if (!current) return;
+      return withVaultLock(async () => {
+        const key = requireKey();
+        const current = get().txns.find((t) => t.id === id);
+        if (!current) return;
 
-      const merged: Txn = { ...current, ...patch, id: current.id, updatedAt: Date.now() };
-      // Keep the dedupe hash consistent with the fields it's derived from.
-      if (
-        patch.date !== undefined ||
-        patch.amountCents !== undefined ||
-        patch.description !== undefined ||
-        patch.account !== undefined
-      ) {
-        merged.hash = await hashTxn(merged.date, merged.amountCents, merged.description, merged.account);
-      }
+        const merged: Txn = { ...current, ...patch, id: current.id, updatedAt: Date.now() };
+        // Keep the dedupe hash consistent with the fields it's derived from.
+        if (
+          patch.date !== undefined ||
+          patch.amountCents !== undefined ||
+          patch.description !== undefined ||
+          patch.account !== undefined
+        ) {
+          merged.hash = await hashTxn(merged.date, merged.amountCents, merged.description, merged.account);
+        }
 
-      await encryptAndPut('txns', key, id, merged);
-      set((state) => ({ txns: sortTxns(state.txns.map((t) => (t.id === id ? merged : t))) }));
+        await encryptAndPut('txns', key, id, merged);
+        set((state) => ({ txns: sortTxns(state.txns.map((t) => (t.id === id ? merged : t))) }));
+      });
     },
 
     async deleteTxn(id) {
-      requireKey();
-      await deleteRecord('txns', id);
-      set((state) => ({ txns: state.txns.filter((t) => t.id !== id) }));
+      return withVaultLock(async () => {
+        requireKey();
+        await deleteRecord('txns', id);
+        set((state) => ({ txns: state.txns.filter((t) => t.id !== id) }));
+      });
     },
 
     async setBudget(categoryId, month, limitCents) {
-      const key = requireKey();
-      const budget: Budget = { categoryId, month, limitCents };
-      const mapKey = budgetMapKey(categoryId, month);
-      let id = budgetIndex.get(mapKey);
-      if (!id) {
-        id = crypto.randomUUID();
-        budgetIndex.set(mapKey, id);
-      }
-      await encryptAndPut('budgets', key, id, budget);
-      set((state) => ({
-        budgets: [
-          ...state.budgets.filter((b) => !(b.categoryId === categoryId && b.month === month)),
-          budget,
-        ],
-      }));
+      return withVaultLock(async () => {
+        const key = requireKey();
+        const budget: Budget = { categoryId, month, limitCents };
+        const mapKey = budgetMapKey(categoryId, month);
+        let id = budgetIndex.get(mapKey);
+        if (!id) {
+          id = crypto.randomUUID();
+          budgetIndex.set(mapKey, id);
+        }
+        await encryptAndPut('budgets', key, id, budget);
+        set((state) => ({
+          budgets: [
+            ...state.budgets.filter((b) => !(b.categoryId === categoryId && b.month === month)),
+            budget,
+          ],
+        }));
+      });
     },
 
     async addCategory(c) {
-      const key = requireKey();
-      const category: Category = { ...c, id: crypto.randomUUID() };
-      await encryptAndPut('categories', key, category.id, category);
-      set((state) => ({ categories: sortCategories([...state.categories, category]) }));
-      return category;
+      return withVaultLock(async () => {
+        const key = requireKey();
+        const category: Category = { ...c, id: crypto.randomUUID() };
+        await encryptAndPut('categories', key, category.id, category);
+        set((state) => ({ categories: sortCategories([...state.categories, category]) }));
+        return category;
+      });
     },
 
     async updateCategory(id, patch) {
-      const key = requireKey();
-      const current = get().categories.find((c) => c.id === id);
-      if (!current) return;
-      const updated: Category = { ...current, ...patch, id };
-      await encryptAndPut('categories', key, id, updated);
-      set((state) => ({
-        categories: sortCategories(state.categories.map((c) => (c.id === id ? updated : c))),
-      }));
+      return withVaultLock(async () => {
+        const key = requireKey();
+        const current = get().categories.find((c) => c.id === id);
+        if (!current) return;
+        const updated: Category = { ...current, ...patch, id };
+        await encryptAndPut('categories', key, id, updated);
+        set((state) => ({
+          categories: sortCategories(state.categories.map((c) => (c.id === id ? updated : c))),
+        }));
+      });
     },
 
     async deleteCategory(id) {
-      const key = requireKey();
-      const state = get();
-      const current = state.categories.find((c) => c.id === id);
-      if (!current) return;
-      if (current.builtin) {
-        throw new Error('Built-in categories cannot be deleted.');
-      }
+      return withVaultLock(async () => {
+        const key = requireKey();
+        const state = get();
+        const current = state.categories.find((c) => c.id === id);
+        if (!current) return;
+        if (current.builtin) {
+          throw new Error('Built-in categories cannot be deleted.');
+        }
 
-      // A deleted category must never leave dangling data behind: every transaction
-      // pointed at it gets reassigned to a fallback (never an orphaned categoryId a
-      // screen can't render), and every budget row for it is removed (never an
-      // invisible amount permanently padding "total budgeted" — see
-      // `categoryDeletion.ts`'s doc comment for the bug this fixes).
-      const fallbackId = resolveFallbackCategoryId(state.categories, id);
-      if (!fallbackId) {
-        throw new Error('Cannot delete this category — Tally needs at least one other category to reassign its transactions to.');
-      }
+        // A deleted category must never leave dangling data behind: every transaction
+        // pointed at it gets reassigned to a fallback (never an orphaned categoryId a
+        // screen can't render), and every budget row for it is removed (never an
+        // invisible amount permanently padding "total budgeted" — see
+        // `categoryDeletion.ts`'s doc comment for the bug this fixes).
+        const fallbackId = resolveFallbackCategoryId(state.categories, id);
+        if (!fallbackId) {
+          throw new Error('Cannot delete this category — Tally needs at least one other category to reassign its transactions to.');
+        }
 
-      const now = Date.now();
-      const plan = planCategoryDeletion(state.txns, state.budgets, id, fallbackId, now);
+        const now = Date.now();
+        const plan = planCategoryDeletion(state.txns, state.budgets, id, fallbackId, now);
 
-      const budgetDeletes = plan.removedBudgetKeys
-        .map(({ categoryId, month }) => budgetIndex.get(budgetMapKey(categoryId, month)))
-        .filter((budgetId): budgetId is string => Boolean(budgetId));
+        const budgetDeletes = plan.removedBudgetKeys
+          .map(({ categoryId, month }) => budgetIndex.get(budgetMapKey(categoryId, month)))
+          .filter((budgetId): budgetId is string => Boolean(budgetId));
 
-      await Promise.all([
-        deleteRecord('categories', id),
-        encryptAndPutMany(
-          'txns',
-          key,
-          plan.changedTxns.map((t) => ({ id: t.id, value: t }))
-        ),
-        ...budgetDeletes.map((budgetId) => deleteRecord('budgets', budgetId)),
-      ]);
+        await Promise.all([
+          deleteRecord('categories', id),
+          encryptAndPutMany(
+            'txns',
+            key,
+            plan.changedTxns.map((t) => ({ id: t.id, value: t }))
+          ),
+          ...budgetDeletes.map((budgetId) => deleteRecord('budgets', budgetId)),
+        ]);
 
-      for (const { categoryId, month } of plan.removedBudgetKeys) {
-        budgetIndex.delete(budgetMapKey(categoryId, month));
-      }
+        for (const { categoryId, month } of plan.removedBudgetKeys) {
+          budgetIndex.delete(budgetMapKey(categoryId, month));
+        }
 
-      set({
-        categories: state.categories.filter((c) => c.id !== id),
-        txns: sortTxns(plan.txns),
-        budgets: plan.budgets,
+        set({
+          categories: state.categories.filter((c) => c.id !== id),
+          txns: sortTxns(plan.txns),
+          budgets: plan.budgets,
+        });
       });
     },
 
     async addRule(match, categoryId) {
-      const key = requireKey();
-      const rule: Rule = {
-        id: crypto.randomUUID(),
-        match: match.trim().toLowerCase(),
-        categoryId,
-        createdAt: Date.now(),
-      };
-      await encryptAndPut('rules', key, rule.id, rule);
-      set((state) => ({ rules: [...state.rules, rule] }));
+      return withVaultLock(async () => {
+        const key = requireKey();
+        const rule: Rule = {
+          id: crypto.randomUUID(),
+          match: match.trim().toLowerCase(),
+          categoryId,
+          createdAt: Date.now(),
+        };
+        await encryptAndPut('rules', key, rule.id, rule);
+        set((state) => ({ rules: [...state.rules, rule] }));
+      });
     },
 
     async setRecurring(series) {
-      const key = requireKey();
-      const existingIds = new Set(get().recurring.map((r) => r.id));
-      const nextIds = new Set(series.map((r) => r.id));
-      const toDelete = [...existingIds].filter((id) => !nextIds.has(id));
-      await Promise.all(toDelete.map((id) => deleteRecord('recurring', id)));
-      await encryptAndPutMany(
-        'recurring',
-        key,
-        series.map((r) => ({ id: r.id, value: r }))
-      );
-      set({ recurring: series });
+      return withVaultLock(async () => {
+        const key = requireKey();
+        const existingIds = new Set(get().recurring.map((r) => r.id));
+        const nextIds = new Set(series.map((r) => r.id));
+        const toDelete = [...existingIds].filter((id) => !nextIds.has(id));
+        await Promise.all(toDelete.map((id) => deleteRecord('recurring', id)));
+        await encryptAndPutMany(
+          'recurring',
+          key,
+          series.map((r) => ({ id: r.id, value: r }))
+        );
+        set({ recurring: series });
+      });
     },
 
     async updateSettings(patch) {
-      const key = requireKey();
-      const updated: Settings = { ...get().settings, ...patch };
-      await encryptAndPut('settings', key, SETTINGS_ID, updated);
-      set({ settings: updated });
+      return withVaultLock(async () => {
+        const key = requireKey();
+        const updated: Settings = { ...get().settings, ...patch };
+        await encryptAndPut('settings', key, SETTINGS_ID, updated);
+        set({ settings: updated });
+      });
     },
 
     // --- data management ---------------------------------------------
@@ -646,91 +696,135 @@ export const useStore = create<TallyStore>((set, get) => {
       return new Blob([JSON.stringify(file)], { type: 'application/json' });
     },
 
+    /**
+     * Restore a `.tally` backup, replacing this device's entire vault.
+     *
+     * P0 fix — ordering used to be: clear the whole vault (data + meta),
+     * THEN write the meta pointer and the new records. Two problems with
+     * that: (1) it destroyed the existing vault before anything about the
+     * new one was confirmed writable, and (2) even with the vault-wide write
+     * lock now held for this whole call (see vaultLock.ts), a browser crash
+     * or tab kill in the middle left the vault genuinely bricked — `meta`
+     * pointing at a key whose records were only partially written.
+     *
+     * New ordering, mirroring `setUnlockSecret`'s fail-safe shape: validate
+     * the payload, encrypt every record under the new key ENTIRELY IN
+     * MEMORY (nothing on disk touched yet — a throw here leaves the vault
+     * completely untouched), only THEN clear the existing financial data
+     * (not `meta` — see below) and write the new records, verify a sample
+     * reads back correctly, and only as the very last step flip `meta`
+     * (salt/verifier) to the key `unlock()` will trust from now on. An
+     * interruption between the clear and the meta flip leaves an empty vault
+     * still under the OLD PIN — recoverable by re-running the import —
+     * rather than a vault whose meta claims a key that doesn't match what's
+     * actually on disk.
+     */
     async importBackup(file, pin) {
-      const text = await file.text();
-      let parsed: TallyBackupFile;
-      try {
-        parsed = JSON.parse(text) as TallyBackupFile;
-      } catch {
-        throw new Error('That file is not a valid Tally backup.');
-      }
-      if (parsed.format !== TALLY_BACKUP_FORMAT || parsed.version !== TALLY_BACKUP_VERSION) {
-        throw new Error('That file is not a valid Tally backup.');
-      }
+      return withVaultLock(async () => {
+        const text = await file.text();
+        let parsed: TallyBackupFile;
+        try {
+          parsed = JSON.parse(text) as TallyBackupFile;
+        } catch {
+          throw new Error('That file is not a valid Tally backup.');
+        }
+        if (parsed.format !== TALLY_BACKUP_FORMAT || parsed.version !== TALLY_BACKUP_VERSION) {
+          throw new Error('That file is not a valid Tally backup.');
+        }
 
-      const salt = base64ToBuf(parsed.saltB64);
-      const key = await deriveKey(pin, salt);
-      const ok = await checkVerifier(key, parsed.verifier);
-      if (!ok) throw new Error('Incorrect PIN for this backup.');
+        const salt = base64ToBuf(parsed.saltB64);
+        const key = await deriveKey(pin, salt);
+        const ok = await checkVerifier(key, parsed.verifier);
+        if (!ok) throw new Error('Incorrect PIN for this backup.');
 
-      const payload = await decryptJSON<BackupPayload>(key, parsed.payload);
+        const payload = await decryptJSON<BackupPayload>(key, parsed.payload);
 
-      // Validate the DECRYPTED payload before touching the existing vault.
-      //
-      // AES-GCM authentication only proves the ciphertext was produced by
-      // someone holding the key — it says nothing about the plaintext's shape.
-      // Anyone can author a well-formed .tally file with a PIN of their
-      // choosing. If we cleared first and destructured second, a backup with a
-      // missing array would wipe the user's entire financial history and then
-      // throw, and with no backend there is no second copy to restore from.
-      // Validate first, so a bad file fails harmlessly with the vault intact.
-      assertValidBackupPayload(payload);
+        // Validate the DECRYPTED payload before touching the existing vault.
+        //
+        // AES-GCM authentication only proves the ciphertext was produced by
+        // someone holding the key — it says nothing about the plaintext's shape.
+        // Anyone can author a well-formed .tally file with a PIN of their
+        // choosing. If we cleared first and destructured second, a backup with a
+        // missing array would wipe the user's entire financial history and then
+        // throw, and with no backend there is no second copy to restore from.
+        // Validate first, so a bad file fails harmlessly with the vault intact.
+        assertValidBackupPayload(payload);
 
-      // Full restore: this device's local vault becomes an exact copy of the
-      // backup's. A WebAuthn credential is device-specific and cannot be
-      // carried over, so biometric unlock is disabled and must be re-enabled.
-      await clearEverything();
-      await setMeta('salt', parsed.saltB64);
-      await setMeta('verifier', parsed.verifier);
-      setActiveKey(key);
+        // Encrypt everything under the new key up front, in memory only —
+        // the existing vault on disk is not touched by any of this and is
+        // still fully intact if any of it throws.
+        const budgetsWithIds = payload.budgets.map((b) => ({ id: crypto.randomUUID(), value: b }));
+        const [txnBlobs, categoryBlobs, budgetBlobs, ruleBlobs, recurringBlobs, settingsBlob] = await Promise.all([
+          Promise.all(payload.txns.map(async (t) => ({ id: t.id, blob: await encryptJSON(key, t) }))),
+          Promise.all(payload.categories.map(async (c) => ({ id: c.id, blob: await encryptJSON(key, c) }))),
+          Promise.all(budgetsWithIds.map(async (b) => ({ id: b.id, blob: await encryptJSON(key, b.value) }))),
+          Promise.all(payload.rules.map(async (r) => ({ id: r.id, blob: await encryptJSON(key, r) }))),
+          Promise.all(payload.recurring.map(async (r) => ({ id: r.id, blob: await encryptJSON(key, r) }))),
+          encryptJSON(key, { ...payload.settings, biometricEnabled: false }),
+        ]);
 
-      budgetIndex.clear();
-      const budgetsWithIds = payload.budgets.map((b) => ({ id: crypto.randomUUID(), value: b }));
-      for (const rec of budgetsWithIds) {
-        budgetIndex.set(budgetMapKey(rec.value.categoryId, rec.value.month), rec.id);
-      }
+        // Full restore: this device's local vault becomes an exact copy of the
+        // backup's. Only the financial data is cleared here — `meta`
+        // (salt/verifier, and `unlockConfig`) is left alone until the new
+        // records are written and verified, below.
+        await clearAllData();
 
-      await Promise.all([
-        encryptAndPutMany(
-          'txns',
-          key,
-          payload.txns.map((t) => ({ id: t.id, value: t }))
-        ),
-        encryptAndPutMany(
-          'categories',
-          key,
-          payload.categories.map((c) => ({ id: c.id, value: c }))
-        ),
-        encryptAndPutMany('budgets', key, budgetsWithIds),
-        encryptAndPutMany(
-          'rules',
-          key,
-          payload.rules.map((r) => ({ id: r.id, value: r }))
-        ),
-        encryptAndPutMany(
-          'recurring',
-          key,
-          payload.recurring.map((r) => ({ id: r.id, value: r }))
-        ),
-        encryptAndPut('settings', key, SETTINGS_ID, { ...payload.settings, biometricEnabled: false }),
-      ]);
+        await Promise.all([
+          putManyEncrypted('txns', txnBlobs),
+          putManyEncrypted('categories', categoryBlobs),
+          putManyEncrypted('budgets', budgetBlobs),
+          putManyEncrypted('rules', ruleBlobs),
+          putManyEncrypted('recurring', recurringBlobs),
+          putEncrypted('settings', SETTINGS_ID, settingsBlob),
+        ]);
 
-      set({
-        txns: sortTxns(payload.txns),
-        categories: sortCategories(payload.categories),
-        budgets: payload.budgets,
-        rules: payload.rules,
-        recurring: payload.recurring,
-        settings: { ...payload.settings, biometricEnabled: false },
-        hydrated: true,
-        lockState: 'unlocked',
+        // Fail-safe verification: read back what was ACTUALLY committed (not
+        // the in-memory payload) and confirm the new key genuinely decrypts
+        // it before `meta` — the thing `unlock()` trusts — is allowed to move.
+        const verified = await verifyKeyReadsBack(key, {
+          settingsId: SETTINGS_ID,
+          categoryId: payload.categories[0]?.id,
+          txnId: payload.txns[0]?.id,
+        });
+        if (!verified) {
+          throw new Error(
+            'The restore could not be verified and was not completed. This device’s previous data has already been cleared — please try importing the backup again.'
+          );
+        }
+
+        await setMeta('salt', parsed.saltB64);
+        await setMeta('verifier', parsed.verifier);
+        setActiveKey(key);
+        // A WebAuthn credential is device-specific and cannot be carried over
+        // by a backup, so biometric unlock is disabled and must be re-enabled.
+        await deleteMeta('biometricReg');
+        await deleteMeta('biometricWrappedKey');
+
+        budgetIndex.clear();
+        for (const rec of budgetsWithIds) {
+          budgetIndex.set(budgetMapKey(rec.value.categoryId, rec.value.month), rec.id);
+        }
+
+        set({
+          txns: sortTxns(payload.txns),
+          categories: sortCategories(payload.categories),
+          budgets: payload.budgets,
+          rules: payload.rules,
+          recurring: payload.recurring,
+          settings: { ...payload.settings, biometricEnabled: false },
+          hydrated: true,
+          lockState: 'unlocked',
+          skippedRecordCount: 0,
+        });
       });
     },
 
     async resetAll() {
-      await clearEverything();
-      zeroKey();
-      clearDecryptedState('uninitialised');
+      return withVaultLock(async () => {
+        await clearEverything();
+        zeroKey();
+        clearDecryptedState('uninitialised');
+      });
     },
 
     async loadDemoData() {
@@ -837,6 +931,7 @@ export async function setupPassphrase(passphrase: string): Promise<void> {
     settings,
     hydrated: true,
     lockState: 'unlocked',
+    skippedRecordCount: 0,
   });
   // Same as setupPin: a fresh vault arrives already carrying the user's plan.
   await applyPersonalPlan(useStore.getState());
@@ -917,112 +1012,138 @@ export async function setUnlockSecret(
   newSecret: string,
   newConfig: UnlockConfig
 ): Promise<{ ok: boolean; error?: string }> {
-  const saltB64 = await getMeta<string>('salt');
-  const verifierBlob = await getMeta<EncryptedBlob>('verifier');
-  if (!saltB64 || !verifierBlob) return { ok: false, error: 'Vault is not set up yet.' };
+  // P0 fix: the whole operation — including taking the snapshot of what to
+  // re-encrypt — now runs inside the vault-wide write lock (see
+  // vaultLock.ts's doc comment for the bug this closes). Every ordinary
+  // mutation (addTxn, updateTxn, ...) acquires this same lock before it
+  // writes, so none of them can land under the OLD key in the window between
+  // this function's snapshot and its meta-pointer flip below — they simply
+  // queue and run, correctly, under the NEW key once this finishes.
+  return withVaultLock(async () => {
+    const saltB64 = await getMeta<string>('salt');
+    const verifierBlob = await getMeta<EncryptedBlob>('verifier');
+    if (!saltB64 || !verifierBlob) return { ok: false, error: 'Vault is not set up yet.' };
 
-  const oldKey = await deriveKey(currentSecret, base64ToBuf(saltB64));
-  const currentOk = await checkVerifier(oldKey, verifierBlob);
-  if (!currentOk) return { ok: false, error: 'Your current PIN or passphrase is incorrect.' };
+    const oldKey = await deriveKey(currentSecret, base64ToBuf(saltB64));
+    const currentOk = await checkVerifier(oldKey, verifierBlob);
+    if (!currentOk) return { ok: false, error: 'Your current PIN or passphrase is incorrect.' };
 
-  const state = useStore.getState();
-  if (state.lockState !== 'unlocked' || !state.hydrated) {
-    return { ok: false, error: 'Unlock Tally before changing how it unlocks.' };
-  }
+    const state = useStore.getState();
+    if (state.lockState !== 'unlocked' || !state.hydrated) {
+      return { ok: false, error: 'Unlock Tally before changing how it unlocks.' };
+    }
 
-  const newSalt = generateSalt();
-  const newKey = await deriveKey(newSecret, newSalt);
-  const newVerifier = await makeVerifier(newKey);
+    const newSalt = generateSalt();
+    const newKey = await deriveKey(newSecret, newSalt);
+    const newVerifier = await makeVerifier(newKey);
 
-  const budgetRecords: { id: string; value: Budget }[] = [];
-  for (const [mapKey, id] of budgetIndex.entries()) {
-    const sep = mapKey.indexOf('::');
-    const categoryId = mapKey.slice(0, sep);
-    const month = mapKey.slice(sep + 2);
-    const budget = state.budgets.find((b) => b.categoryId === categoryId && b.month === month);
-    if (budget) budgetRecords.push({ id, value: budget });
-  }
+    const budgetRecords: { id: string; value: Budget }[] = [];
+    for (const [mapKey, id] of budgetIndex.entries()) {
+      const sep = mapKey.indexOf('::');
+      const categoryId = mapKey.slice(0, sep);
+      const month = mapKey.slice(sep + 2);
+      const budget = state.budgets.find((b) => b.categoryId === categoryId && b.month === month);
+      if (budget) budgetRecords.push({ id, value: budget });
+    }
 
-  // Re-encrypt every record under the new key. `meta` (salt/verifier/config)
-  // is deliberately NOT touched yet — see the fail-safety note above.
-  await Promise.all([
-    encryptAndPutMany(
-      'txns',
-      newKey,
-      state.txns.map((t) => ({ id: t.id, value: t }))
-    ),
-    encryptAndPutMany(
-      'categories',
-      newKey,
-      state.categories.map((c) => ({ id: c.id, value: c }))
-    ),
-    encryptAndPutMany('budgets', newKey, budgetRecords),
-    encryptAndPutMany(
-      'rules',
-      newKey,
-      state.rules.map((r) => ({ id: r.id, value: r }))
-    ),
-    encryptAndPutMany(
-      'recurring',
-      newKey,
-      state.recurring.map((r) => ({ id: r.id, value: r }))
-    ),
-    encryptAndPut('settings', newKey, SETTINGS_ID, { ...state.settings, biometricEnabled: false }),
-  ]);
+    // Re-encrypt every record under the new key. `meta` (salt/verifier/config)
+    // is deliberately NOT touched yet — see the fail-safety note above.
+    await Promise.all([
+      encryptAndPutMany(
+        'txns',
+        newKey,
+        state.txns.map((t) => ({ id: t.id, value: t }))
+      ),
+      encryptAndPutMany(
+        'categories',
+        newKey,
+        state.categories.map((c) => ({ id: c.id, value: c }))
+      ),
+      encryptAndPutMany('budgets', newKey, budgetRecords),
+      encryptAndPutMany(
+        'rules',
+        newKey,
+        state.rules.map((r) => ({ id: r.id, value: r }))
+      ),
+      encryptAndPutMany(
+        'recurring',
+        newKey,
+        state.recurring.map((r) => ({ id: r.id, value: r }))
+      ),
+      encryptAndPut('settings', newKey, SETTINGS_ID, { ...state.settings, biometricEnabled: false }),
+    ]);
 
-  // Fail-safe verification: read back what was ACTUALLY committed (not the
-  // in-memory values used to write it) from three different stores and
-  // confirm the new key genuinely decrypts them, before the meta pointer
-  // that `unlock()` trusts is allowed to move.
-  const verified = await verifyReencryptedSample(newKey, state);
-  if (!verified) {
-    return {
-      ok: false,
-      error: 'Could not verify the re-encrypted vault. Nothing about how you unlock has changed — try again.',
-    };
-  }
+    // Fail-safe verification: read back what was ACTUALLY committed (not the
+    // in-memory values used to write it) from three different stores and
+    // confirm the new key genuinely decrypts them, before the meta pointer
+    // that `unlock()` trusts is allowed to move.
+    const verified = await verifyKeyReadsBack(newKey, {
+      settingsId: SETTINGS_ID,
+      categoryId: state.categories[0]?.id,
+      txnId: state.txns[0]?.id,
+    });
+    if (!verified) {
+      return {
+        ok: false,
+        error: 'Could not verify the re-encrypted vault. Nothing about how you unlock has changed — try again.',
+      };
+    }
 
-  await setMeta('salt', bufToBase64(newSalt));
-  await setMeta('verifier', newVerifier);
-  await setMeta('unlockConfig', newConfig);
-  // The old biometric wrap targeted a key that no longer exists as the active vault key.
-  await deleteMeta('biometricReg');
-  await deleteMeta('biometricWrappedKey');
+    await setMeta('salt', bufToBase64(newSalt));
+    await setMeta('verifier', newVerifier);
+    await setMeta('unlockConfig', newConfig);
+    // The old biometric wrap targeted a key that no longer exists as the active vault key.
+    await deleteMeta('biometricReg');
+    await deleteMeta('biometricWrappedKey');
 
-  setActiveKey(newKey);
-  useStore.setState({ settings: { ...state.settings, biometricEnabled: false } });
+    setActiveKey(newKey);
+    useStore.setState({ settings: { ...state.settings, biometricEnabled: false } });
 
-  return { ok: true };
+    return { ok: true };
+  });
 }
 
-async function verifyReencryptedSample(newKey: CryptoKey, priorState: TallyStore): Promise<boolean> {
+/**
+ * Fail-safe verification shared by `setUnlockSecret` (PIN/passphrase
+ * rotation) and `importBackup` (restore): read back what was ACTUALLY
+ * committed to IndexedDB (not the in-memory values that were about to be
+ * written) for a small sample spanning three stores, and confirm `key`
+ * genuinely decrypts each one, before the caller is allowed to flip the
+ * `meta` pointer `unlock()` trusts. Settings is always present after setup;
+ * category/txn ids are optional since a fresh vault may have no transactions
+ * yet (and, in principle, could be mid-first-category-creation).
+ */
+async function verifyKeyReadsBack(
+  key: CryptoKey,
+  sample: { settingsId: string; categoryId?: string; txnId?: string }
+): Promise<boolean> {
   try {
     const [settingsRecords, categoryRecords, txnRecords] = await Promise.all([
       getAllEncrypted('settings'),
-      getAllEncrypted('categories'),
-      priorState.txns.length > 0 ? getAllEncrypted('txns') : Promise.resolve([]),
+      sample.categoryId ? getAllEncrypted('categories') : Promise.resolve([]),
+      sample.txnId ? getAllEncrypted('txns') : Promise.resolve([]),
     ]);
 
-    const settingsRecord = settingsRecords.find((r) => r.id === SETTINGS_ID);
+    const settingsRecord = settingsRecords.find((r) => r.id === sample.settingsId);
     if (!settingsRecord) return false;
-    await decryptJSON(newKey, settingsRecord.blob);
+    await decryptJSON(key, settingsRecord.blob);
 
-    if (priorState.categories.length > 0) {
-      const firstCategory = categoryRecords.find((r) => r.id === priorState.categories[0].id);
-      if (!firstCategory) return false;
-      await decryptJSON(newKey, firstCategory.blob);
+    if (sample.categoryId) {
+      const rec = categoryRecords.find((r) => r.id === sample.categoryId);
+      if (!rec) return false;
+      await decryptJSON(key, rec.blob);
     }
 
-    if (priorState.txns.length > 0) {
-      const firstTxn = txnRecords.find((r) => r.id === priorState.txns[0].id);
-      if (!firstTxn) return false;
-      await decryptJSON(newKey, firstTxn.blob);
+    if (sample.txnId) {
+      const rec = txnRecords.find((r) => r.id === sample.txnId);
+      if (!rec) return false;
+      await decryptJSON(key, rec.blob);
     }
 
     return true;
   } catch {
     // AES-GCM auth failure or malformed JSON — the sample did not decrypt
-    // cleanly under the new key. Treated as a failed migration.
+    // cleanly under the new key. Treated as a failed migration/restore.
     return false;
   }
 }

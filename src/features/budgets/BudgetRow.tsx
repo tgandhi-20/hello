@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import type { Category } from '@/types';
 import { CategoryIcon, ProgressBar, formatMoney } from '@/ui';
+import type { ProgressBarProps } from '@/ui';
 import { safeDiv, clampRatio } from '@/charts';
-import type { SemanticTone } from '@/charts';
 import { parseDollarsToCents } from '@/features/settings/money';
+import { MAX_AMOUNT_CENTS, clampAmountCents } from '@/features/log/amountLimits';
 
 export interface BudgetRowProps {
   category: Category;
@@ -13,14 +14,19 @@ export interface BudgetRowProps {
   onSave: (limitCents: number) => void | Promise<void>;
 }
 
-function toneFor(ratio: number): SemanticTone {
+// `ProgressBar`'s `warning`/`danger` prop names are its own frozen API (see its doc
+// comment) — it paints them with the v2 `--caution`/`--negative` tokens internally,
+// so this function targets that prop's naming, not `@/charts`' `SemanticTone`.
+function toneFor(ratio: number): NonNullable<ProgressBarProps['tone']> {
   if (ratio > 1) return 'danger';
   if (ratio >= 0.8) return 'warning';
-  return 'accent';
+  // Under 80% of cap is budget state ("under budget"), not an interactive control — `--positive`
+  // is the token DESIGN.md §2 reserves for exactly this, not `--accent`.
+  return 'positive';
 }
 
 /** One category's monthly cap: progress bar, remaining-per-day, tap-to-edit limit. Never shaming — over
- * budget renders in `--danger` colour but with plain, factual copy, per CONTRACTS.md §4's tone law. */
+ * budget renders in `--negative` colour but with plain, factual copy, per CONTRACTS.md §4's tone law. */
 export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onSave }: BudgetRowProps) {
   const [editing, setEditing] = useState(false);
   // Seeding a plain `<input type="number">` needs a bare "12.34" — not `formatMoney`'s
@@ -37,7 +43,11 @@ export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onS
   const commit = () => {
     // CONTRACTS.md §3: money parsing is integer string-math, never parseFloat/toFixed.
     const parsed = parseDollarsToCents(draft);
-    const cents = parsed !== null && parsed > 0 ? parsed : 0;
+    // P2 fix: this `<input type="number">` had no upper bound, so typing e.g. 30
+    // nines persisted and rendered as a >10^30 cent figure, corrupting the
+    // Budgets aggregate. Clamp to the same ceiling the quick-add keypad already
+    // enforces, so a budget cap can never exceed what any real transaction could.
+    const cents = parsed !== null && parsed > 0 ? clampAmountCents(parsed) : 0;
     setEditing(false);
     if (cents !== limitCents) onSave(cents);
   };
@@ -63,6 +73,7 @@ export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onS
             type="number"
             inputMode="decimal"
             min={0}
+            max={MAX_AMOUNT_CENTS / 100}
             step="0.01"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

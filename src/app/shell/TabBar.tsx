@@ -41,7 +41,7 @@ export function TabBar() {
             to="/log"
             aria-label="Quick add"
             onClick={() => vibrate('tap')}
-            className="flex h-14 w-14 -translate-y-4 items-center justify-center rounded-full bg-accent text-ink-on-accent shadow-lg transition-transform duration-200 active:scale-95"
+            className="flex h-14 w-14 -translate-y-4 items-center justify-center rounded-full bg-accent text-ink-on-accent shadow-lg transition-transform duration-200 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <Plus size={28} strokeWidth={2.25} aria-hidden="true" />
           </NavLink>
@@ -65,6 +65,7 @@ function TabLink({ tab }: { tab: TabDef }) {
       className={({ isActive }) =>
         [
           'flex min-w-[48px] flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium',
+          'focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent',
           isActive ? 'text-accent' : 'text-ink-3',
         ].join(' ')
       }

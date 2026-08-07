@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Button } from './Button';
 
 export interface ModalProps {
@@ -10,6 +10,9 @@ export interface ModalProps {
 
 /** Centred modal for short, focused content. Prefer `Sheet` for anything longer or form-like. */
 export function Modal({ open, onClose, title, children }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -18,6 +21,18 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
+
+  // Move focus into the dialog on open (so keyboard/AT users land somewhere sane
+  // rather than on whatever was behind the overlay), and restore it to whatever was
+  // focused before, on close — the standard dialog focus-management pattern.
+  useEffect(() => {
+    if (!open) return;
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+    return () => {
+      previouslyFocused.current?.focus?.();
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -28,9 +43,11 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       aria-modal="true"
       aria-label={title}
     >
-      <div className="absolute inset-0 bg-[var(--overlay-scrim)]" onClick={onClose} />
+      <div className="absolute inset-0 bg-scrim" onClick={onClose} />
       <div
-        className="relative w-full max-w-sm rounded-sheet bg-surface-2 p-5 shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+        ref={panelRef}
+        tabIndex={-1}
+        className="relative w-full max-w-sm rounded-sheet bg-surface-2 p-5 shadow-[0_8px_24px_rgba(0,0,0,0.4)] outline-none"
       >
         {title ? <h2 className="title mb-2">{title}</h2> : null}
         {children}

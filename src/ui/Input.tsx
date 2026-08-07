@@ -18,8 +18,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
         id={inputId}
         className={[
           'h-12 w-full rounded-control border bg-surface-2 px-4 text-md text-ink-1',
-          'placeholder:text-ink-3 outline-none transition-colors duration-180 ease-standard',
+          'placeholder:text-ink-3 transition-colors duration-180 ease-standard',
           'border-hairline focus:border-accent',
+          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
           error ? 'border-negative' : '',
           className,
         ].join(' ')}

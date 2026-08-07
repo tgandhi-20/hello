@@ -33,6 +33,11 @@ export function ImportBackupSheet({ open, onClose }: ImportBackupSheetProps) {
   }
 
   function handleClose() {
+    // No-op mid-restore — `<Sheet busy>` already suppresses Escape/backdrop/drag,
+    // this is belt-and-braces for any other path that might call onClose directly.
+    // importBackup is itself irreversible and destructive (see useStore.ts), so
+    // this sheet must not be dismissible while it's in flight.
+    if (busy) return;
     reset();
     onClose();
   }
@@ -54,7 +59,7 @@ export function ImportBackupSheet({ open, onClose }: ImportBackupSheetProps) {
   }
 
   return (
-    <Sheet open={open} onClose={handleClose} title="Restore backup">
+    <Sheet open={open} onClose={handleClose} title="Restore backup" busy={busy}>
       <div className="flex flex-col gap-4 py-2">
         <p className="text-sm text-negative">
           This replaces everything currently on this device with the contents of the backup. This

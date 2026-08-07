@@ -2,14 +2,20 @@ import React from 'react';
 import { Delete } from 'lucide-react';
 import { vibrate } from '@/ui/haptics';
 import type { Cents } from '@/types';
+import { MAX_INT_DIGITS, MAX_AMOUNT_CENTS, clampAmountCents } from './amountLimits';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'back'] as const;
 
 /** Digit-string amount buffer, e.g. `"12.5"`. Empty string means "nothing typed yet". */
 export type AmountBuffer = string;
 
-const MAX_INT_DIGITS = 6; // caps entry at $999,999.99 — comfortably above any real txn
 const MAX_DEC_DIGITS = 2;
+
+// `MAX_INT_DIGITS`/`MAX_AMOUNT_CENTS`/`clampAmountCents` now live in
+// ./amountLimits (shared with BudgetRow.tsx and node-testable — see that
+// file's doc comment). Re-exported here so existing imports of this module
+// keep working unchanged.
+export { MAX_AMOUNT_CENTS, clampAmountCents };
 
 /** Append a keypress to an amount buffer, enforcing one decimal point and 2dp max. */
 export function applyKey(buffer: AmountBuffer, key: string): AmountBuffer {
@@ -71,7 +77,7 @@ export function Keypad({ onKey, disabledBackspace }: KeypadProps) {
               aria-label="Backspace"
               disabled={disabledBackspace}
               onClick={() => press('back')}
-              className="flex h-16 items-center justify-center rounded-2xl bg-surface-1 text-ink-1 active:bg-surface-2 disabled:opacity-40 transition-[transform,background-color] duration-200 active:scale-[0.97]"
+              className="flex h-16 items-center justify-center rounded-2xl bg-surface-1 text-ink-1 active:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 transition-[transform,background-color] duration-200 active:scale-[0.97]"
             >
               <Delete size={24} aria-hidden="true" />
             </button>
@@ -83,7 +89,7 @@ export function Keypad({ onKey, disabledBackspace }: KeypadProps) {
             type="button"
             aria-label={key === '.' ? 'Decimal point' : `Digit ${key}`}
             onClick={() => press(key)}
-            className="h-16 rounded-2xl bg-surface-1 text-2xl font-semibold tabular-nums text-ink-1 active:bg-surface-2 transition-[transform,background-color] duration-200 active:scale-[0.97]"
+            className="h-16 rounded-2xl bg-surface-1 text-2xl font-semibold tabular-nums text-ink-1 active:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-[transform,background-color] duration-200 active:scale-[0.97]"
           >
             {key}
           </button>

@@ -8,11 +8,13 @@ import {
   Target,
   CalendarCheck2,
   Flame,
+  CreditCard,
   Settings as SettingsIcon,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ListGroup, ListRow } from '@/ui';
 import { InstallPrompt } from '@/ui/InstallPrompt';
+import { AppVersionTag } from '@/ui/version';
 
 interface LinkDef {
   to: string;
@@ -27,6 +29,7 @@ interface LinkDef {
 const MONEY_LINKS: LinkDef[] = [
   { to: '/transactions', label: 'Transactions', subtitle: 'Every logged and imported entry', icon: Receipt },
   { to: '/budgets', label: 'Budgets', subtitle: 'Category caps vs actual spend', icon: PiggyBank },
+  { to: '/statements', label: 'Statements', subtitle: 'Predicted card balances and due dates', icon: CreditCard },
   { to: '/recurring', label: 'Recurring', subtitle: 'Detected bills and subscriptions', icon: Repeat },
   { to: '/import', label: 'Import statement', subtitle: 'CBA, Amex or Bankwest CSV', icon: Upload },
 ];
@@ -83,6 +86,11 @@ export function MoreScreen() {
         <p className="label px-1">App</p>
         <LinkGroup links={APP_LINKS} />
       </section>
+
+      {/* Unobtrusive build stamp — so a bug report can say which build it's on. */}
+      <p className="px-1 text-center">
+        <AppVersionTag />
+      </p>
     </div>
   );
 }

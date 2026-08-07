@@ -11,7 +11,7 @@ export function Skeleton({ className = '', round = false }: SkeletonProps) {
   return (
     <div
       className={[
-        'animate-pulse bg-surface-2',
+        'animate-pulse motion-reduce:animate-none bg-surface-2',
         round ? 'rounded-full' : 'rounded-lg',
         className,
       ].join(' ')}
