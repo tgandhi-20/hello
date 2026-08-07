@@ -33,7 +33,7 @@ export function RoutineCard(): React.JSX.Element | null {
 
   if (due.length === 0) {
     return (
-      <Card className="flex min-h-[48px] items-center gap-2 py-3 text-text-3">
+      <Card className="flex min-h-[48px] items-center gap-2 py-3 text-ink-3">
         <CheckCircle2 size={16} aria-hidden="true" className="shrink-0" />
         <p className="text-xs">Routine's clear for now — keep logging spending as it happens.</p>
       </Card>
@@ -42,10 +42,10 @@ export function RoutineCard(): React.JSX.Element | null {
 
   return (
     <Card className="flex flex-col gap-3">
-      <h2 className="flex items-center gap-1.5 text-md font-semibold text-text-1">
+      <h2 className="flex items-center gap-1.5 text-md font-semibold text-ink-1">
         <CalendarCheck2 size={16} aria-hidden="true" /> This month's routine
       </h2>
-      <ul className="flex flex-col divide-y divide-border">
+      <ul className="flex flex-col divide-y divide-hairline">
         {due.map((item) => (
           <li key={item.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
             <button
@@ -53,7 +53,7 @@ export function RoutineCard(): React.JSX.Element | null {
               onClick={() => toggleItem(item.id)}
               aria-pressed={item.done}
               aria-label={`Mark "${item.label}" done`}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-text-2 active:bg-surface-2"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
             >
               {item.done ? (
                 <CheckCircle2 size={20} className="text-positive" aria-hidden="true" />
@@ -62,8 +62,8 @@ export function RoutineCard(): React.JSX.Element | null {
               )}
             </button>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm text-text-1">{item.label}</p>
-              <p className={['text-xs', item.overdue ? 'text-danger' : 'text-text-3'].join(' ')}>
+              <p className="truncate text-sm text-ink-1">{item.label}</p>
+              <p className={['text-xs', item.overdue ? 'text-negative' : 'text-ink-3'].join(' ')}>
                 {item.overdue ? `Overdue — was due ${formatRelativeDay(item.dueDate)}` : formatRelativeDay(item.dueDate)}
               </p>
             </div>

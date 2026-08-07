@@ -57,41 +57,54 @@ export function FoodWeekCard({ txns, categories }: FoodWeekCardProps) {
   return (
     <Card className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--accent-tint-12)]">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent-tint">
           <UtensilsCrossed size={20} strokeWidth={1.75} className="text-accent" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-md font-semibold text-text-1">Food this week</h2>
-          <p className="text-sm text-text-2">
+          <p className="label">Food this week</p>
+          <h2 className="text-md font-semibold text-ink-1">
             {weekRangeLabel(stats.weekStart, stats.weekEnd)} · {stats.daysLeft} day{stats.daysLeft === 1 ? '' : 's'}{' '}
             left
-          </p>
+          </h2>
         </div>
       </div>
 
       <div>
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="tabular-nums text-2xl font-semibold text-text-1">{formatMoney(stats.spentCents)}</span>
-          <span className="text-sm text-text-2">this week · {formatMoney(stats.targetCents)} target</span>
+          {/*
+            The hero figure stays neutral ink even when over target.
+
+            Colouring it red contradicted the line directly beneath it ("still
+            tracking, no drama") and, more importantly, CONTRACTS.md §4: this app
+            reports facts, it does not scold. Being $14 over a weekly food target
+            is information, not a failure — and a number that turns red every time
+            the user buys lunch trains them to stop opening the app.
+
+            The supporting line carries the state instead, which is where a reader
+            actually looks for interpretation.
+          */}
+          <span className="money-hero text-2xl text-ink-1">
+            {formatMoney(stats.spentCents)}
+          </span>
+          <span className="text-sm text-ink-2">this week · {formatMoney(stats.targetCents)} target</span>
         </div>
-        <p className="mt-1 text-sm text-text-2">
+        <p className="mt-1 text-sm text-ink-2">
           {over
             ? `${formatMoney(Math.abs(stats.remainingCents))} over this week's target — still tracking, no drama`
             : `${formatMoney(stats.remainingCents)} left this week`}
         </p>
       </div>
 
-      <div className="flex flex-col gap-1 rounded-2xl border border-border bg-surface-2/40 px-3 py-2.5">
+      <div className="flex flex-col gap-1 rounded-card bg-surface-2 px-3 py-2.5">
         {stats.daysElapsed < 7 ? (
-          <p className="text-sm text-text-2">
+          <p className="text-sm text-ink-2">
             On pace for about{' '}
-            <span className="tabular-nums font-medium text-text-1">{formatMoney(stats.projectedWeekTotalCents)}</span>{' '}
-            by Sunday
+            <span className="money text-ink-1">{formatMoney(stats.projectedWeekTotalCents)}</span> by Sunday
           </p>
         ) : (
-          <p className="text-sm text-text-2">Week complete.</p>
+          <p className="text-sm text-ink-2">Week complete.</p>
         )}
-        <p className="text-sm text-text-2">
+        <p className="text-sm text-ink-2">
           {stats.vsLastWeekDeltaCents === 0 ? (
             hadLastWeek ? (
               'Same as last week'
@@ -100,7 +113,7 @@ export function FoodWeekCard({ txns, categories }: FoodWeekCardProps) {
             )
           ) : (
             <>
-              <span className="tabular-nums font-medium text-text-1">{formatMoney(deltaAbs)}</span>{' '}
+              <span className="money text-ink-1">{formatMoney(deltaAbs)}</span>{' '}
               {stats.vsLastWeekDeltaCents > 0 ? 'more' : 'less'} than last week (
               {formatMoney(stats.lastWeek.spentCents)})
             </>
@@ -110,21 +123,21 @@ export function FoodWeekCard({ txns, categories }: FoodWeekCardProps) {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between">
-          <h3 className="text-sm font-medium text-text-1">Groceries vs eating out</h3>
-          <span className="tabular-nums text-sm text-text-2">
+          <h3 className="text-sm font-medium text-ink-1">Groceries vs eating out</h3>
+          <span className="tabular-nums text-sm text-ink-2">
             {formatPercent(stats.groceriesRatio)} · {formatPercent(stats.awayRatio)}
           </span>
         </div>
         <StackedBar segments={splitData} formatValue={(v) => formatMoney(v)} />
       </div>
 
-      <div className="flex items-center gap-2 border-t border-border pt-3 text-sm text-text-2">
-        <CoffeeIcon size={16} strokeWidth={1.75} className="text-text-2" aria-hidden="true" />
+      <div className="flex items-center gap-2 border-t border-hairline pt-3 text-sm text-ink-2">
+        <CoffeeIcon size={16} strokeWidth={1.75} className="text-ink-2" aria-hidden="true" />
         {stats.coffee.count > 0 ? (
           <span>
-            <span className="tabular-nums font-medium text-text-1">{stats.coffee.count}</span> coffee
+            <span className="money text-ink-1">{stats.coffee.count}</span> coffee
             {stats.coffee.count === 1 ? '' : 's'} this week · avg{' '}
-            <span className="tabular-nums font-medium text-text-1">{formatMoney(stats.coffee.avgCents)}</span>
+            <span className="money text-ink-1">{formatMoney(stats.coffee.avgCents)}</span>
           </span>
         ) : (
           <span>No coffee logged this week</span>

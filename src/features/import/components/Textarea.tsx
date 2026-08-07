@@ -16,7 +16,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(fun
   const areaId = id ?? rest.name;
   return (
     <label className="block w-full">
-      {label ? <span className="mb-1 block text-sm text-text-2">{label}</span> : null}
+      {label ? <span className="label mb-1 block">{label}</span> : null}
       <textarea
         ref={ref}
         id={areaId}
@@ -24,8 +24,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(fun
         autoCapitalize="off"
         autoCorrect="off"
         className={[
-          'w-full rounded-2xl border border-border bg-surface-2 px-4 py-3 text-sm text-text-1',
-          'placeholder:text-text-3 outline-none transition-colors duration-200 focus:border-accent',
+          'w-full rounded-control border border-hairline bg-surface-2 px-4 py-3 text-sm text-ink-1',
+          'placeholder:text-ink-3 outline-none transition-colors duration-200 focus:border-accent',
           'font-mono leading-relaxed',
           className,
         ].join(' ')}

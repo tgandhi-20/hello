@@ -123,16 +123,16 @@ export function TransactionsScreen() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-col gap-2 px-4 py-3">
         <label className="relative block">
-          <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-3" aria-hidden="true" />
+          <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" aria-hidden="true" />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search merchant or note"
-            className="h-12 w-full rounded-2xl border border-border bg-surface-2 pl-10 pr-4 text-md text-text-1 placeholder:text-text-3 outline-none focus:border-accent"
+            className="h-12 w-full rounded-control border border-hairline bg-surface-2 pl-10 pr-4 text-md text-ink-1 placeholder:text-ink-3 outline-none focus:border-accent"
           />
         </label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-2">
           <Select
             aria-label="Filter by category"
             options={[{ value: '', label: 'Category' }, ...categories.map((c) => ({ value: c.id, label: c.label }))]}
@@ -166,9 +166,9 @@ export function TransactionsScreen() {
             {visible.map(({ item, top }) => (
               <div key={item.kind === 'header' ? `h-${item.date}` : item.txn.id} style={{ position: 'absolute', top, left: 0, right: 0 }}>
                 {item.kind === 'header' ? (
-                  <div className="flex items-baseline justify-between px-4 py-2 text-xs text-text-3">
+                  <div className="flex items-baseline justify-between px-4 py-2 text-xs text-ink-3">
                     <span>{formatRelativeDay(item.date)}</span>
-                    <span className="tabular-nums">{formatMoney(item.subtotalCents)}</span>
+                    <span className="money text-ink-3">{formatMoney(item.subtotalCents)}</span>
                   </div>
                 ) : (
                   <TransactionRow

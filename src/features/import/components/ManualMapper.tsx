@@ -56,7 +56,7 @@ export function ManualMapper({ rawCsv, onSubmit, onCancel }: ManualMapperProps) 
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <p className="text-sm text-text-2">
+        <p className="text-sm text-ink-2">
           We couldn&apos;t confidently detect the columns in this file. Pick them below by looking at
           the sample rows.
         </p>
@@ -65,7 +65,7 @@ export function ManualMapper({ rawCsv, onSubmit, onCancel }: ManualMapperProps) 
       <Card className="overflow-x-auto">
         <table className="w-full text-xs tabular-nums">
           <thead>
-            <tr className="text-text-3">
+            <tr className="text-ink-3">
               {Array.from({ length: colCount }, (_, i) => (
                 <th key={i} className="whitespace-nowrap px-2 py-1 text-left font-medium">
                   Col {i + 1}
@@ -75,10 +75,10 @@ export function ManualMapper({ rawCsv, onSubmit, onCancel }: ManualMapperProps) 
           </thead>
           <tbody>
             {previewRows.map((row, ri) => (
-              <tr key={ri} className="border-t border-border">
+              <tr key={ri} className="border-t border-hairline">
                 {Array.from({ length: colCount }, (_, i) => (
-                  <td key={i} className="max-w-[120px] truncate whitespace-nowrap px-2 py-1 text-text-1">
-                    {row[i] || <span className="text-text-3">—</span>}
+                  <td key={i} className="max-w-[120px] truncate whitespace-nowrap px-2 py-1 text-ink-1">
+                    {row[i] || <span className="text-ink-3">—</span>}
                   </td>
                 ))}
               </tr>
@@ -98,7 +98,7 @@ export function ManualMapper({ rawCsv, onSubmit, onCancel }: ManualMapperProps) 
       />
 
       <div>
-        <span className="mb-1 block text-sm text-text-2">Amount columns</span>
+        <span className="label mb-1 block">Amount columns</span>
         <SegmentedControl
           value={amountMode}
           onChange={setAmountMode}

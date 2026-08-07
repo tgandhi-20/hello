@@ -50,13 +50,13 @@ const RISK_NOTES: RiskNote[] = [
 export function RiskNotes(): React.JSX.Element {
   return (
     <Card className="flex flex-col gap-4">
-      <h2 className="flex items-center gap-1.5 text-md font-semibold text-text-1">
+      <h2 className="flex items-center gap-1.5 text-md font-semibold text-ink-1">
         <Info size={16} aria-hidden="true" /> Worth knowing
       </h2>
       {RISK_NOTES.map((note) => (
         <div key={note.title} className="flex flex-col gap-1">
-          <p className="text-sm font-medium text-text-1">{note.title}</p>
-          <p className="text-sm text-text-2">{note.body}</p>
+          <p className="text-sm font-medium text-ink-1">{note.title}</p>
+          <p className="text-sm text-ink-2">{note.body}</p>
         </div>
       ))}
     </Card>

@@ -7,6 +7,7 @@ import { SegmentedControl } from '@/ui/SegmentedControl';
 import { Chip } from '@/ui/Chip';
 import { Skeleton } from '@/ui/Skeleton';
 import { ProgressBar } from '@/ui/ProgressBar';
+import { ListGroup, ListRow } from '@/ui';
 import { formatMoney, formatDate } from '@/ui/format';
 import type { AccountId, ImportPreview } from '@/types';
 import type { BankFormat } from '@/import';
@@ -92,7 +93,7 @@ export function PreviewSheet({
         <div className="flex items-center gap-2">
           <Chip tone="accent">{FORMAT_LABEL[detectedFormat]}</Chip>
           {detectedFormat !== 'generic' ? (
-            <span className="text-xs text-text-3">{Math.round(detectionConfidence * 100)}% confident</span>
+            <span className="text-xs text-ink-3">{Math.round(detectionConfidence * 100)}% confident</span>
           ) : null}
           <button type="button" onClick={onRemap} className="ml-auto min-h-[48px] text-sm font-medium text-accent">
             Remap columns
@@ -107,7 +108,7 @@ export function PreviewSheet({
         />
 
         <div>
-          <span className="mb-1 block text-sm text-text-2">Sign convention</span>
+          <span className="label mb-1 block">Sign convention</span>
           <SegmentedControl
             value={signInverted ? 'amex' : 'standard'}
             onChange={(v) => onSignInvertedChange(v === 'amex')}
@@ -119,9 +120,9 @@ export function PreviewSheet({
         </div>
 
         {preview?.warnings.length ? (
-          <div className="flex flex-col gap-2 rounded-2xl border border-warning bg-surface-1 p-3">
+          <div className="flex flex-col gap-2 rounded-card bg-[color-mix(in_srgb,var(--caution)_12%,transparent)] p-3">
             {preview.warnings.map((w, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs text-warning">
+              <div key={i} className="flex items-start gap-2 text-xs text-caution">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
                 <span>{w}</span>
               </div>
@@ -130,13 +131,13 @@ export function PreviewSheet({
         ) : null}
 
         <div className="flex items-center gap-2 text-sm">
-          <span className="font-semibold text-text-1">{newCount} new</span>
-          <span className="text-text-3">·</span>
-          <span className="text-text-2">{dupCount} duplicate{dupCount === 1 ? '' : 's'} skipped</span>
+          <span className="font-semibold text-ink-1">{newCount} new</span>
+          <span className="text-ink-3">·</span>
+          <span className="text-ink-2">{dupCount} duplicate{dupCount === 1 ? '' : 's'} skipped</span>
         </div>
 
         <div>
-          <span className="mb-2 block text-sm text-text-2">Sample — exactly as it will appear</span>
+          <span className="label mb-2 block">Sample — exactly as it will appear</span>
           {loading ? (
             <div className="flex flex-col gap-2">
               {progress && progress.total > 0 ? (
@@ -147,29 +148,29 @@ export function PreviewSheet({
               ))}
             </div>
           ) : sample.length === 0 ? (
-            <p className="text-sm text-text-3">No new rows to show.</p>
+            <p className="text-sm text-ink-3">No new rows to show.</p>
           ) : (
-            <ul className="flex flex-col divide-y divide-border rounded-2xl border border-border bg-surface-1">
+            <ListGroup>
               {sample.map((row) => {
                 const isSpend = row.amountCents > 0;
                 return (
-                  <li key={row.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-text-1">{row.merchant}</p>
-                      <p className="text-xs text-text-3">{formatDate(row.date, 'short')}</p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-sm font-semibold tabular-nums text-text-1">
-                        {formatMoney(Math.abs(row.amountCents))}
-                      </p>
-                      <p className={['text-xs', isSpend ? 'text-text-2' : 'text-positive'].join(' ')}>
-                        {isSpend ? '— spend' : '— income'}
-                      </p>
-                    </div>
-                  </li>
+                  <ListRow
+                    key={row.id}
+                    as="div"
+                    title={row.merchant}
+                    subtitle={formatDate(row.date, 'short')}
+                    trailing={
+                      <div className="text-right">
+                        <p className="money text-sm text-ink-1">{formatMoney(Math.abs(row.amountCents))}</p>
+                        <p className={['text-xs', isSpend ? 'text-ink-2' : 'text-positive'].join(' ')}>
+                          {isSpend ? '— spend' : '— income'}
+                        </p>
+                      </div>
+                    }
+                  />
                 );
               })}
-            </ul>
+            </ListGroup>
           )}
         </div>
       </div>

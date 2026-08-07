@@ -7,18 +7,18 @@ import { resolveMonthlyItems, resolveDailyItem } from './items';
 import { useRoutineChecklist } from './useRoutineChecklist';
 import type { ResolvedMonthlyRoutineItem } from './types';
 
-function statusLabel(item: ResolvedMonthlyRoutineItem, today: string): { text: string; tone: 'positive' | 'danger' | 'accent' | 'text-2' } {
+function statusLabel(item: ResolvedMonthlyRoutineItem, today: string): { text: string; tone: 'positive' | 'negative' | 'accent' | 'muted' } {
   if (item.done) return { text: 'Done', tone: 'positive' };
-  if (item.overdue) return { text: `Overdue — was due ${formatDate(item.dueDate, 'long')}`, tone: 'danger' };
+  if (item.overdue) return { text: `Overdue — was due ${formatDate(item.dueDate, 'long')}`, tone: 'negative' };
   if (item.dueDate === today) return { text: 'Due today', tone: 'accent' };
-  return { text: `Due ${formatDate(item.dueDate, 'long')}`, tone: 'text-2' };
+  return { text: `Due ${formatDate(item.dueDate, 'long')}`, tone: 'muted' };
 }
 
 const TONE_CLASSES: Record<string, string> = {
   positive: 'text-positive',
-  danger: 'text-danger',
+  negative: 'text-negative',
   accent: 'text-accent',
-  'text-2': 'text-text-2',
+  muted: 'text-ink-2',
 };
 
 /**
@@ -39,44 +39,46 @@ export function ChecklistSection(): React.JSX.Element | null {
 
   return (
     <Card className="flex flex-col gap-3">
-      <h2 className="text-md font-semibold text-text-1">This month's routine</h2>
-      <ul className="flex flex-col divide-y divide-border">
+      <h2 className="text-md font-semibold text-ink-1">This month's routine</h2>
+      <ul className="flex flex-col divide-y divide-hairline">
         {items.map((item) => {
           const status = statusLabel(item, today);
           return (
-            <li key={item.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-              <button
-                type="button"
-                onClick={() => toggleItem(item.id)}
-                aria-pressed={item.done}
-                aria-label={`Mark "${item.label}" done`}
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-text-2 active:bg-surface-2"
-              >
-                {item.done ? (
-                  <CheckCircle2 size={22} className="text-positive" aria-hidden="true" />
-                ) : (
-                  <Circle size={22} aria-hidden="true" />
-                )}
-              </button>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-text-1">{item.label}</p>
-                <p className="truncate text-xs text-text-3">{item.detail}</p>
+            <li key={item.id} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => toggleItem(item.id)}
+                  aria-pressed={item.done}
+                  aria-label={`Mark "${item.label}" done`}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
+                >
+                  {item.done ? (
+                    <CheckCircle2 size={22} className="text-positive" aria-hidden="true" />
+                  ) : (
+                    <Circle size={22} aria-hidden="true" />
+                  )}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-ink-1">{item.label}</p>
+                  <p className="truncate text-xs text-ink-3">{item.detail}</p>
+                </div>
               </div>
-              <span className={['shrink-0 text-right text-xs font-medium', TONE_CLASSES[status.tone]].join(' ')}>
+              <p className={['pl-[60px] text-xs font-medium', TONE_CLASSES[status.tone]].join(' ')}>
                 {status.text}
-              </span>
+              </p>
             </li>
           );
         })}
       </ul>
 
-      <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface-2 px-3 py-3">
+      <div className="flex items-center gap-3 rounded-card bg-surface-2 px-3 py-3">
         <button
           type="button"
           onClick={toggleLoggedToday}
           aria-pressed={daily.done}
           aria-label="Mark today's spending as logged"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-text-2 active:bg-surface-1"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-1"
         >
           {daily.done ? (
             <CheckCircle2 size={22} className="text-positive" aria-hidden="true" />
@@ -85,8 +87,8 @@ export function ChecklistSection(): React.JSX.Element | null {
           )}
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-text-1">Log spending — daily</p>
-          <p className="text-xs text-text-3">{daily.detail}</p>
+          <p className="text-sm text-ink-1">Log spending — daily</p>
+          <p className="text-xs text-ink-3">{daily.detail}</p>
         </div>
       </div>
     </Card>

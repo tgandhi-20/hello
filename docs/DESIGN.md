@@ -174,9 +174,15 @@ Honour `prefers-reduced-motion`.
   `text-2xs` in `--ink-3`. No gradients, no glow.
 - **Tab bar** — `--surface-1`, hairline top edge, active item `--accent`, inactive
   `--ink-3`. FAB `--accent` with `--ink-on-accent` glyph.
-- **Over-budget state** — the *number* turns `--negative`. The card does not turn
-  red, does not gain a red border, does not gain a warning icon. Per CONTRACTS §4
-  this app never scolds.
+- **Over-budget state** — the card does not turn red, does not gain a red border,
+  does not gain a warning icon. Per CONTRACTS §4 this app never scolds.
+  **Hero figures stay `--ink-1` even when over target.** An earlier version of this
+  spec turned them `--negative`, which put a red number directly above the words
+  "still tracking, no drama" — the visual and the copy saying opposite things. A
+  figure that goes red every time the user buys lunch teaches them to stop opening
+  the app. The *supporting line* carries the state, which is where a reader looks
+  for interpretation anyway. `--negative` is for genuinely negative quantities
+  (a loss, a shortfall) and destructive actions — not for exceeding a soft target.
 
 ---
 

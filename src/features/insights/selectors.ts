@@ -95,7 +95,7 @@ export function biggestMovers(
       return {
         categoryId: id,
         label: cat?.label ?? 'Uncategorised',
-        colorToken: cat?.colorToken ?? 'text-3',
+        colorToken: cat?.colorToken ?? 'ink-3',
         thisCents,
         lastCents,
         deltaCents: thisCents - lastCents,

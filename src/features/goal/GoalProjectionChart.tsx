@@ -109,7 +109,7 @@ export function GoalProjectionChart({
                   cx={xFor(m.index)}
                   cy={yFor(series[m.index])}
                   r={1.8}
-                  fill={tokenVar('warning')}
+                  fill={tokenVar('caution')}
                   stroke={tokenVar('bg')}
                   strokeWidth={0.5}
                 />
@@ -121,14 +121,14 @@ export function GoalProjectionChart({
               y1={VB_H / 2}
               x2={VB_W - PAD_X}
               y2={VB_H / 2}
-              stroke={tokenVar('border')}
+              stroke={tokenVar('hairline')}
               strokeWidth={1}
               strokeDasharray="3 3"
             />
           )}
         </svg>
         {showLegend && hasData ? (
-          <div className="flex flex-wrap items-center gap-3 text-[11px] text-text-2" aria-hidden="true">
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-ink-2" aria-hidden="true">
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block h-[3px] w-3 shrink-0 rounded-pill bg-accent" />
               Projected balance
@@ -144,7 +144,7 @@ export function GoalProjectionChart({
             </span>
             {oneOffMarkers.length > 0 ? (
               <span className="inline-flex items-center gap-1.5">
-                <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
+                <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-caution" />
                 Planned one-off
               </span>
             ) : null}

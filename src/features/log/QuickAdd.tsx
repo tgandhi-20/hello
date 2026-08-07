@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronDown, ChevronUp, StickyNote } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { Button, CategoryIcon, EmptyState, Select, SegmentedControl, formatMoney, formatRelativeDay, todayStr, addDays, useToast, vibrate, TOAST_RESERVE_BOTTOM } from '@/ui';
+import { Button, CategoryIcon, EmptyState, Input, Select, SegmentedControl, formatMoney, formatRelativeDay, todayStr, addDays, useToast, vibrate, TOAST_RESERVE_BOTTOM } from '@/ui';
 import type { AccountId, Category, DateStr } from '@/types';
 import { CategoryGrid } from './CategoryTile';
 import { Keypad, applyKey, bufferToCents, centsToBuffer } from './Keypad';
@@ -126,7 +126,7 @@ export function QuickAdd() {
       <button
         type="button"
         onClick={backToGrid}
-        className="mb-3 flex min-h-[48px] items-center gap-2 self-start text-sm font-medium text-text-2 active:text-text-1"
+        className="mb-3 flex min-h-[48px] items-center gap-2 self-start text-sm font-medium text-ink-2 active:text-ink-1"
       >
         <ChevronLeft size={20} aria-hidden="true" />
         Change category
@@ -135,25 +135,23 @@ export function QuickAdd() {
       <div className="mb-4 flex items-center gap-3">
         <CategoryIcon icon={selected.icon} colorToken={selected.colorToken} size="lg" />
         <div className="min-w-0">
-          <p className="truncate text-lg font-semibold text-text-1">{selected.label}</p>
+          <p className="truncate text-lg font-semibold text-ink-1">{selected.label}</p>
           {suggestion != null ? (
-            <p className="text-sm text-text-2">Usual: {formatMoney(suggestion)}</p>
+            <p className="text-sm text-ink-2">Usual: {formatMoney(suggestion)}</p>
           ) : (
-            <p className="text-sm text-text-2">First time logging this one</p>
+            <p className="text-sm text-ink-2">First time logging this one</p>
           )}
         </div>
       </div>
 
       <div className="mb-4 flex items-baseline justify-center">
-        <span className="text-2xl font-semibold tabular-nums text-text-1">
-          {buffer ? formatMoney(cents) : '$0.00'}
-        </span>
+        <span className="money-hero text-2xl text-ink-1">{buffer ? formatMoney(cents) : '$0.00'}</span>
       </div>
 
       <button
         type="button"
         onClick={() => setDetailsOpen((v) => !v)}
-        className="mb-2 flex min-h-[48px] items-center justify-center gap-1 text-sm font-medium text-text-2 active:text-text-1"
+        className="mb-2 flex min-h-[48px] items-center justify-center gap-1 text-sm font-medium text-ink-2 active:text-ink-1"
       >
         {detailsOpen ? 'Hide details' : 'Note, date, account'}
         {detailsOpen ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
@@ -171,15 +169,14 @@ export function QuickAdd() {
             onChange={(v) => setDateChoice(v as DateChoice)}
           />
           {dateChoice === 'pick' ? (
-            <input
+            <Input
               type="date"
               value={customDate}
               max={todayStr()}
               onChange={(e) => setCustomDate(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-border bg-surface-2 px-4 text-md text-text-1 outline-none focus:border-accent"
             />
           ) : (
-            <p className="text-xs text-text-3">{formatRelativeDay(effectiveDate)}</p>
+            <p className="text-xs text-ink-3">{formatRelativeDay(effectiveDate)}</p>
           )}
           <Select
             label="Account"
@@ -187,12 +184,11 @@ export function QuickAdd() {
             value={effectiveAccount}
             onChange={(e) => setAccount(e.target.value as AccountId)}
           />
-          <input
+          <Input
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Add a note (optional)"
-            className="h-12 w-full rounded-2xl border border-border bg-surface-2 px-4 text-md text-text-1 placeholder:text-text-3 outline-none focus:border-accent"
           />
         </div>
       ) : null}
@@ -200,7 +196,7 @@ export function QuickAdd() {
       <div className="mt-auto flex flex-col gap-3">
         <Keypad onKey={(k) => setBuffer((b) => applyKey(b, k))} disabledBackspace={!buffer} />
         <Button size="lg" fullWidth disabled={cents <= 0 || saving} onClick={() => void save()}>
-          {cents > 0 ? `Save ${formatMoney(cents)}` : 'Enter an amount'}
+          {cents > 0 ? <>Save <span className="money">{formatMoney(cents)}</span></> : 'Enter an amount'}
         </Button>
       </div>
     </div>

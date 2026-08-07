@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Copy, Wallet, Wand2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { Button, Card, EmptyState, formatMoney, useToast } from '@/ui';
+import { Button, Card, EmptyState, ListGroup, formatMoney, useToast } from '@/ui';
 import { currentMonth, daysRemainingInMonth, monthLabel, nextMonth, prevMonth } from '../insights/monthMath';
 import { spendByCategoryLocal } from '../insights/selectors';
 import { suggestBudgetsFromHistory } from './suggest';
@@ -93,37 +93,38 @@ export function BudgetsScreen() {
           type="button"
           aria-label="Previous month"
           onClick={() => setMonth(prevMonth(month))}
-          className="flex h-12 w-12 items-center justify-center rounded-full text-text-2 active:bg-surface-2"
+          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
         >
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
-        <h1 className="text-md font-semibold text-text-1">{monthLabel(month)}</h1>
+        <h1 className="text-md font-semibold text-ink-1">{monthLabel(month)}</h1>
         <button
           type="button"
           aria-label="Next month"
           onClick={() => setMonth(nextMonth(month))}
-          className="flex h-12 w-12 items-center justify-center rounded-full text-text-2 active:bg-surface-2"
+          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
         >
           <ChevronRight size={20} aria-hidden="true" />
         </button>
       </div>
 
-      <Card className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-text-2">Spent vs budgeted this month</p>
-          {totalBudget > 0 ? (
-            <p className="tabular-nums text-lg font-semibold text-text-1">
-              {formatMoney(totalSpent)} <span className="text-text-3">of</span> {formatMoney(totalBudget)}
+      <Card className="flex flex-col gap-1">
+        <span className="label">Spent vs budgeted this month</span>
+        {totalBudget > 0 ? (
+          <p className="text-xl text-ink-1">
+            <span className="money-hero">{formatMoney(totalSpent)}</span>{' '}
+            <span className="text-sm text-ink-3">of</span>{' '}
+            <span className="money-hero">{formatMoney(totalBudget)}</span>
+          </p>
+        ) : (
+          <>
+            <p className="text-xl text-ink-1">
+              <span className="money-hero">{formatMoney(totalSpent)}</span>{' '}
+              <span className="text-sm text-ink-3">spent</span>
             </p>
-          ) : (
-            <>
-              <p className="tabular-nums text-lg font-semibold text-text-1">
-                {formatMoney(totalSpent)} <span className="text-text-3">spent</span>
-              </p>
-              <p className="text-sm text-text-3">No budgets set yet — try Suggest budgets below.</p>
-            </>
-          )}
-        </div>
+            <p className="text-sm text-ink-3">No budgets set yet — try Suggest budgets below.</p>
+          </>
+        )}
       </Card>
 
       <div className="flex gap-3">
@@ -135,7 +136,7 @@ export function BudgetsScreen() {
         </Button>
       </div>
 
-      <Card className="flex flex-col divide-y divide-border">
+      <ListGroup className="p-4">
         {sortedCategories.map((cat) => (
           <BudgetRow
             key={cat.id}
@@ -146,7 +147,7 @@ export function BudgetsScreen() {
             onSave={(cents) => setBudget(cat.id, month, cents)}
           />
         ))}
-      </Card>
+      </ListGroup>
     </div>
   );
 }

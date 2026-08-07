@@ -25,7 +25,7 @@ export function UpcomingBillsCard({ recurring, categories, withinDays = 14 }: Up
 
   return (
     <Card className="flex flex-col gap-3">
-      <h2 className="text-md font-semibold text-text-1">Upcoming bills</h2>
+      <h2 className="text-md font-semibold text-ink-1">Upcoming bills</h2>
       {upcoming.length === 0 ? (
         <EmptyState
           icon={CalendarClock}
@@ -34,19 +34,17 @@ export function UpcomingBillsCard({ recurring, categories, withinDays = 14 }: Up
           className="py-6"
         />
       ) : (
-        <ul className="flex flex-col divide-y divide-border">
+        <ul className="flex flex-col divide-y divide-hairline">
           {upcoming.map((r) => {
             const cat = catMap.get(r.categoryId);
             return (
               <li key={r.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                <CategoryIcon icon={cat?.icon ?? 'Repeat'} colorToken={cat?.colorToken ?? 'text-3'} size="sm" />
+                <CategoryIcon icon={cat?.icon ?? 'Repeat'} colorToken={cat?.colorToken ?? 'ink-3'} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-text-1">{r.merchant}</p>
-                  <p className="text-xs text-text-3">Due {formatRelativeDay(r.nextDue)}</p>
+                  <p className="truncate text-sm text-ink-1">{r.merchant}</p>
+                  <p className="text-xs text-ink-3">Due {formatRelativeDay(r.nextDue)}</p>
                 </div>
-                <span className="tabular-nums shrink-0 text-sm font-medium text-text-1">
-                  {formatMoney(r.amountCents)}
-                </span>
+                <span className="money shrink-0 text-sm text-ink-1">{formatMoney(r.amountCents)}</span>
               </li>
             );
           })}

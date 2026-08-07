@@ -16,7 +16,7 @@ export function RecentTransactionsCard({ txns, categories, limit = 5 }: RecentTr
 
   return (
     <Card className="flex flex-col gap-3">
-      <h2 className="text-md font-semibold text-text-1">Recent</h2>
+      <h2 className="text-md font-semibold text-ink-1">Recent</h2>
       {recent.length === 0 ? (
         <EmptyState
           icon={Receipt}
@@ -25,24 +25,20 @@ export function RecentTransactionsCard({ txns, categories, limit = 5 }: RecentTr
           className="py-6"
         />
       ) : (
-        <ul className="flex flex-col divide-y divide-border">
+        <ul className="flex flex-col divide-y divide-hairline">
           {recent.map((t) => {
             const cat = catMap.get(t.categoryId);
             const income = t.amountCents < 0;
             return (
               <li key={t.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                <CategoryIcon icon={cat?.icon ?? 'Circle'} colorToken={cat?.colorToken ?? 'text-3'} size="sm" />
+                <CategoryIcon icon={cat?.icon ?? 'Circle'} colorToken={cat?.colorToken ?? 'ink-3'} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-text-1">{t.merchant || t.description}</p>
-                  <p className="text-xs text-text-3">
+                  <p className="truncate text-sm text-ink-1">{t.merchant || t.description}</p>
+                  <p className="text-xs text-ink-3">
                     {cat?.label ?? 'Uncategorised'} · {formatRelativeDay(t.date)}
                   </p>
                 </div>
-                <span
-                  className={['tabular-nums shrink-0 text-sm font-medium', income ? 'text-positive' : 'text-text-1'].join(
-                    ' '
-                  )}
-                >
+                <span className={['money shrink-0 text-sm', income ? 'text-positive' : 'text-ink-1'].join(' ')}>
                   {formatMoney(t.amountCents < 0 ? -t.amountCents : t.amountCents, { showSign: income })}
                 </span>
               </li>
@@ -51,7 +47,7 @@ export function RecentTransactionsCard({ txns, categories, limit = 5 }: RecentTr
         </ul>
       )}
       {txns.length > limit ? (
-        <p className="text-xs text-text-3">+{txns.length - limit} more this month</p>
+        <p className="text-xs text-ink-3">+{txns.length - limit} more this month</p>
       ) : null}
     </Card>
   );

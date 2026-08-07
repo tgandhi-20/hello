@@ -80,7 +80,7 @@ export function BalanceEditor({ balanceCents, isUserEntered, onSave, onReset }: 
         }
       >
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-text-2">
+          <p className="text-sm text-ink-2">
             Tally can't see your Bankwest balance — it only knows what's been logged or imported. Enter what
             the account actually shows and Tally will track progress from there instead of its own estimate
             ({formatMoney(balanceCents)} right now).

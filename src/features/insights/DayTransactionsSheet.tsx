@@ -20,22 +20,18 @@ export function DayTransactionsSheet({ day, txns, categories, onClose }: DayTran
       {dayTxns.length === 0 ? (
         <EmptyState icon={Receipt} headline="Nothing logged this day" className="py-6" />
       ) : (
-        <ul className="flex flex-col divide-y divide-border">
+        <ul className="flex flex-col divide-y divide-hairline">
           {dayTxns.map((t) => {
             const cat = catMap.get(t.categoryId);
             const income = t.amountCents < 0;
             return (
               <li key={t.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <CategoryIcon icon={cat?.icon ?? 'Circle'} colorToken={cat?.colorToken ?? 'text-3'} size="sm" />
+                <CategoryIcon icon={cat?.icon ?? 'Circle'} colorToken={cat?.colorToken ?? 'ink-3'} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-text-1">{t.merchant || t.description}</p>
-                  <p className="text-xs text-text-3">{cat?.label ?? 'Uncategorised'}</p>
+                  <p className="truncate text-sm text-ink-1">{t.merchant || t.description}</p>
+                  <p className="text-xs text-ink-3">{cat?.label ?? 'Uncategorised'}</p>
                 </div>
-                <span
-                  className={['tabular-nums shrink-0 text-sm font-medium', income ? 'text-positive' : 'text-text-1'].join(
-                    ' '
-                  )}
-                >
+                <span className={['money shrink-0 text-sm', income ? 'text-positive' : 'text-ink-1'].join(' ')}>
                   {formatMoney(t.amountCents < 0 ? -t.amountCents : t.amountCents, { showSign: income })}
                 </span>
               </li>

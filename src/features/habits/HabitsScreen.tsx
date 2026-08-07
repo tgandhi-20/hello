@@ -35,48 +35,44 @@ export function HabitsScreen() {
   return (
     <div className="flex flex-col gap-3 px-4 py-4">
       <Card className="flex flex-col gap-3">
-        <div className="flex items-center gap-2 text-text-2">
-          <Flame size={16} aria-hidden="true" />
-          <span className="text-sm font-medium">No-spend streak</span>
-        </div>
+        <span className="label flex items-center gap-1.5">
+          <Flame size={14} aria-hidden="true" /> No-spend streak
+        </span>
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-2xl font-semibold tabular-nums text-text-1">{stats.noSpendStreak}</p>
-            <p className="text-xs text-text-3">
+            <p className="money-hero text-2xl text-ink-1">{stats.noSpendStreak}</p>
+            <p className="text-xs text-ink-3">
               {stats.noSpendStreak === 1 ? 'day' : 'days'} in a row · best {stats.bestNoSpendStreak}
             </p>
           </div>
           <Sparkline values={spendSeries.map((d) => d.cents)} colorToken="accent" className="max-w-[45%]" />
         </div>
-        <p className="text-xs text-text-3">A broken streak is just a fact — it resets, it doesn't judge.</p>
+        <p className="text-xs text-ink-3">A broken streak is just a fact — it resets, it doesn't judge.</p>
       </Card>
 
       <Card className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-text-2">
-          <Coffee size={16} aria-hidden="true" />
-          <span className="text-sm font-medium">Coffee</span>
-        </div>
-        <p className="text-2xl font-semibold tabular-nums text-text-1">{formatMoney(stats.coffeeSpendCents)}</p>
-        <p className="text-xs text-text-3">spent this month · {stats.coffeesThisMonth} coffees</p>
-        <p className="text-xs text-text-2">{coffeeDeltaLabel(stats.coffeesThisMonth, stats.coffeesLastMonth)}</p>
+        <span className="label flex items-center gap-1.5">
+          <Coffee size={14} aria-hidden="true" /> Coffee
+        </span>
+        <p className="money-hero text-2xl text-ink-1">{formatMoney(stats.coffeeSpendCents)}</p>
+        <p className="text-xs text-ink-3">spent this month · {stats.coffeesThisMonth} coffees</p>
+        <p className="text-xs text-ink-2">{coffeeDeltaLabel(stats.coffeesThisMonth, stats.coffeesLastMonth)}</p>
       </Card>
 
       <Card className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-text-2">
-          <Soup size={16} aria-hidden="true" />
-          <span className="text-sm font-medium">Lunch habit</span>
-        </div>
-        <p className="text-2xl font-semibold tabular-nums text-text-1">{formatMoney(stats.lunchSpendPerWeekCents)}</p>
-        <p className="text-xs text-text-3">average per week, last 8 weeks</p>
+        <span className="label flex items-center gap-1.5">
+          <Soup size={14} aria-hidden="true" /> Lunch habit
+        </span>
+        <p className="money-hero text-2xl text-ink-1">{formatMoney(stats.lunchSpendPerWeekCents)}</p>
+        <p className="text-xs text-ink-3">average per week, last 8 weeks</p>
       </Card>
 
       <Card className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-text-2">
-          <UtensilsCrossed size={16} aria-hidden="true" />
-          <span className="text-sm font-medium">Dining out</span>
-        </div>
-        <p className="text-2xl font-semibold tabular-nums text-text-1">{formatMoney(stats.diningOutThisMonthCents)}</p>
-        <p className="text-xs text-text-3">spent this month</p>
+        <span className="label flex items-center gap-1.5">
+          <UtensilsCrossed size={14} aria-hidden="true" /> Dining out
+        </span>
+        <p className="money-hero text-2xl text-ink-1">{formatMoney(stats.diningOutThisMonthCents)}</p>
+        <p className="text-xs text-ink-3">spent this month</p>
       </Card>
     </div>
   );

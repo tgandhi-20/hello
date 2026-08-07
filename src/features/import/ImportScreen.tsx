@@ -184,8 +184,8 @@ export function ImportScreen() {
     return (
       <div className="px-4 py-6">
         <Card className="flex flex-col items-center gap-3 text-center">
-          <AlertTriangle size={28} className="text-danger" aria-hidden="true" />
-          <p className="text-sm text-text-1">{errorMessage}</p>
+          <AlertTriangle size={28} className="text-negative" aria-hidden="true" />
+          <p className="text-sm text-ink-1">{errorMessage}</p>
           <Button onClick={reset}>Try again</Button>
         </Card>
       </div>

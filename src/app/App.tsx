@@ -10,6 +10,11 @@ import { MoreScreen } from './screens/MoreScreen';
 import { ImportScreen } from './screens/ImportScreen';
 import { BudgetsScreen } from './screens/BudgetsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { GoalScreen } from './screens/GoalScreen';
+import { RoutineScreen } from './screens/RoutineScreen';
+import { RecurringScreen } from './screens/RecurringScreen';
+import { HabitsScreen } from './screens/HabitsScreen';
+import { TransactionsScreen } from './screens/TransactionsScreen';
 
 /**
  * HashRouter is deliberate (CONTRACTS.md §1): bulletproof on a GitHub Pages subpath and
@@ -35,6 +40,11 @@ export function App() {
               <Route path="/import" element={<ImportScreen />} />
               <Route path="/budgets" element={<BudgetsScreen />} />
               <Route path="/settings" element={<SettingsScreen />} />
+              <Route path="/goal" element={<GoalScreen />} />
+              <Route path="/routine" element={<RoutineScreen />} />
+              <Route path="/recurring" element={<RecurringScreen />} />
+              <Route path="/habits" element={<HabitsScreen />} />
+              <Route path="/transactions" element={<TransactionsScreen />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>

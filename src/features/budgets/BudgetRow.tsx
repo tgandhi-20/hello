@@ -47,13 +47,14 @@ export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onS
       <div className="flex items-center gap-3">
         <CategoryIcon icon={category.icon} colorToken={category.colorToken} size="sm" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm text-text-1">{category.label}</p>
+          <p className="truncate text-sm text-ink-1">{category.label}</p>
           {hasLimit ? (
-            <p className="tabular-nums text-xs text-text-2">
-              {formatMoney(spentCents)} of {formatMoney(limitCents)}
+            <p className="text-xs text-ink-2">
+              <span className="money">{formatMoney(spentCents)}</span> of{' '}
+              <span className="money">{formatMoney(limitCents)}</span>
             </p>
           ) : (
-            <p className="text-xs text-text-3">No cap set</p>
+            <p className="text-xs text-ink-3">No cap set</p>
           )}
         </div>
         {editing ? (
@@ -70,13 +71,13 @@ export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onS
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
             }}
             aria-label={`Monthly cap for ${category.label}`}
-            className="h-12 w-24 shrink-0 rounded-2xl border border-border bg-surface-2 px-3 text-right text-sm text-text-1 outline-none focus:border-accent"
+            className="h-12 w-24 shrink-0 rounded-control border border-hairline bg-surface-2 px-3 text-right text-sm text-ink-1 outline-none focus:border-accent"
           />
         ) : (
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="min-h-[48px] shrink-0 rounded-2xl border border-border px-3 text-sm font-medium text-accent active:bg-surface-2"
+            className="min-h-[48px] shrink-0 rounded-pill bg-surface-2 px-3 text-sm font-medium text-accent active:bg-accent-tint"
           >
             {hasLimit ? 'Edit' : 'Set cap'}
           </button>
@@ -86,10 +87,18 @@ export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onS
       {hasLimit ? (
         <>
           <ProgressBar value={ratio} tone={tone} label={`${category.label} budget usage`} />
-          <p className="text-xs text-text-2">
-            {remainingCents >= 0
-              ? `${formatMoney(Math.max(0, Math.round(remainingPerDay)))}/day left`
-              : `${formatMoney(Math.abs(remainingCents))} over this cap`}
+          <p className="text-xs text-ink-2">
+            {remainingCents >= 0 ? (
+              <>
+                <span className="money text-ink-2">{formatMoney(Math.max(0, Math.round(remainingPerDay)))}</span>
+                /day left
+              </>
+            ) : (
+              <>
+                <span className="money text-negative">{formatMoney(Math.abs(remainingCents))}</span> over this
+                cap
+              </>
+            )}
           </p>
         </>
       ) : null}

@@ -43,10 +43,10 @@ export function DepositGoalCard() {
     <Card className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-tint-12)]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-tint">
             <Target size={18} strokeWidth={1.75} className="text-accent" aria-hidden="true" />
           </div>
-          <span className="text-sm font-medium text-text-2">Deposit goal</span>
+          <span className="label">Deposit goal</span>
         </div>
         <Chip tone={onTrack ? 'positive' : 'neutral'} className="pointer-events-none min-h-0 px-3 py-1 text-xs">
           <span className="inline-flex items-center gap-1">
@@ -55,19 +55,19 @@ export function DepositGoalCard() {
             ) : (
               <TrendingDown size={13} strokeWidth={2} aria-hidden="true" />
             )}
-            {onTrack ? 'On track' : `${formatMoney(behindCents)} behind plan`}
+            {onTrack ? 'On track' : <><span className="money">{formatMoney(behindCents)}</span> behind plan</>}
           </span>
         </Chip>
       </div>
 
       <div className="flex flex-col gap-1">
         <div className="flex items-baseline gap-2">
-          <span className="tabular-nums text-2xl font-semibold text-text-1">
-            {formatMoney(balanceState.balanceCents)}
+          <span className="money-hero text-2xl text-ink-1">{formatMoney(balanceState.balanceCents)}</span>
+          <span className="text-sm text-ink-2">
+            of <span className="money text-ink-2">{formatMoney(projection.targetCents)}</span>
           </span>
-          <span className="text-sm text-text-2">of {formatMoney(projection.targetCents)}</span>
         </div>
-        <span className="text-xs text-text-3">
+        <span className="text-xs text-ink-3">
           {balanceState.isUserEntered ? 'Balance you entered' : "Estimated from the plan — not observed"}
         </span>
       </div>
@@ -78,7 +78,7 @@ export function DepositGoalCard() {
         label={`${Math.round(progressRatio * 100)}% of deposit target`}
       />
 
-      <p className="text-sm text-text-2">
+      <p className="text-sm text-ink-2">
         {daysLeft} day{daysLeft === 1 ? '' : 's'} ({monthsLeft} month{monthsLeft === 1 ? '' : 's'}) until
         settlement, 30 October 2027.
       </p>
@@ -86,12 +86,14 @@ export function DepositGoalCard() {
       <GoalProjectionChart points={projection.points} targetCents={projection.targetCents} height={110} />
 
       {nextWarning ? (
-        <div className="flex items-start gap-2 rounded-2xl border border-warning/40 bg-[color-mix(in_srgb,var(--warning)_12%,transparent)] p-3 text-xs text-text-2">
-          <AlertTriangle size={16} strokeWidth={1.75} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+        <div className="flex items-start gap-2 rounded-card bg-[color-mix(in_srgb,var(--caution)_12%,transparent)] p-3 text-xs text-ink-2">
+          <AlertTriangle size={16} strokeWidth={1.75} className="mt-0.5 shrink-0 text-caution" aria-hidden="true" />
           <span>
-            {nextWarning.month} withdrawals ({formatMoney(nextWarning.withdrawalsCents)}) outpace deposits (
-            {formatMoney(nextWarning.depositsCents)}) — worth confirming the bonus-rate condition with
-            Bankwest before then. See the goal screen for details.
+            {nextWarning.month} withdrawals (
+            <span className="money text-ink-2">{formatMoney(nextWarning.withdrawalsCents)}</span>) outpace
+            deposits (<span className="money text-ink-2">{formatMoney(nextWarning.depositsCents)}</span>) —
+            worth confirming the bonus-rate condition with Bankwest before then. See the goal screen for
+            details.
           </span>
         </div>
       ) : null}

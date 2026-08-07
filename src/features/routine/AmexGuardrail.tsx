@@ -37,11 +37,11 @@ export function AmexGuardrail(): React.JSX.Element | null {
 
   return (
     <Card className="flex flex-col gap-3">
-      <h2 className="flex items-center gap-1.5 text-md font-semibold text-text-1">
+      <h2 className="flex items-center gap-1.5 text-md font-semibold text-ink-1">
         <CreditCard size={16} aria-hidden="true" /> Amex — never carry a balance
       </h2>
 
-      <p className="text-sm text-text-2">
+      <p className="text-sm text-ink-2">
         Amex charges {AMEX_INTEREST_RATE_PCT}% on a carried balance. Any interest paid there
         outweighs everything this plan earns in savings interest — paying it in full every
         cycle is the whole rule.
@@ -52,18 +52,18 @@ export function AmexGuardrail(): React.JSX.Element | null {
           <CheckCircle2 size={16} aria-hidden="true" /> Paid in full for this cycle.
         </div>
       ) : (
-        <div className={['rounded-2xl border px-3 py-3', overdue ? 'border-danger' : 'border-border bg-surface-2'].join(' ')}>
-          <p className={['text-sm font-medium', overdue ? 'text-danger' : 'text-text-1'].join(' ')}>
+        <div className="rounded-card bg-surface-2 px-3 py-3">
+          <p className={['text-sm font-medium', overdue ? 'text-negative' : 'text-ink-1'].join(' ')}>
             {overdue ? `Statement was due ${formatDate(dueDate, 'long')}` : `Statement due ${formatDate(dueDate, 'long')}`}
           </p>
-          <p className="mt-1 text-xs text-text-3">
+          <p className="mt-1 text-xs text-ink-3">
             Also part of the first-Saturday review ({formatDate(firstSaturday, 'long')}) — export the
             statement, check it against budget, then pay it off here.
           </p>
         </div>
       )}
 
-      <p className="text-xs text-text-3">
+      <p className="text-xs text-ink-3">
         Tally can see Amex transactions once they're imported, not the card's live balance —
         this is a reminder to pay in full, not a confirmation that it happened.
       </p>
@@ -109,7 +109,7 @@ export function AmexGuardrail(): React.JSX.Element | null {
             setDraftDueDay(String(dueDay));
             setEditingDueDay(true);
           }}
-          className="min-h-[48px] self-start text-xs text-text-3 underline decoration-dotted underline-offset-4"
+          className="min-h-[48px] self-start text-xs text-ink-3 underline decoration-dotted underline-offset-4"
         >
           Due on the {dueDay}
           {ordinalSuffix(dueDay)} — not always August 11th. Change it

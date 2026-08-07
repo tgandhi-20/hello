@@ -56,7 +56,7 @@ export function ImportBackupSheet({ open, onClose }: ImportBackupSheetProps) {
   return (
     <Sheet open={open} onClose={handleClose} title="Restore backup">
       <div className="flex flex-col gap-4 py-2">
-        <p className="text-sm text-danger">
+        <p className="text-sm text-negative">
           This replaces everything currently on this device with the contents of the backup. This
           cannot be undone.
         </p>
@@ -77,10 +77,10 @@ export function ImportBackupSheet({ open, onClose }: ImportBackupSheetProps) {
           </>
         ) : (
           <>
-            <p className="text-center text-sm text-text-2">
-              Selected: <span className="text-text-1">{file.name}</span>
+            <p className="text-center text-sm text-ink-2">
+              Selected: <span className="text-ink-1">{file.name}</span>
             </p>
-            <p className="text-center text-sm text-text-2">
+            <p className="text-center text-sm text-ink-2">
               Enter the PIN or passphrase that backup was made with.
             </p>
             <div className="flex flex-col gap-4 py-2">
@@ -92,7 +92,7 @@ export function ImportBackupSheet({ open, onClose }: ImportBackupSheetProps) {
                 autoFocus
                 disabled={busy}
               />
-              {error ? <p className="text-center text-sm text-danger">{error}</p> : null}
+              {error ? <p className="text-center text-sm text-negative">{error}</p> : null}
               <Button variant="primary" fullWidth disabled={busy || pin.length === 0} onClick={() => void handleComplete()}>
                 Restore
               </Button>
