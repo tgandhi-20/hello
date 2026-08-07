@@ -13,6 +13,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { ListGroup, ListRow } from '@/ui';
 import { InstallPrompt } from '@/ui/InstallPrompt';
+import { AppVersionTag } from '@/ui/version';
 
 interface LinkDef {
   to: string;
@@ -83,6 +84,11 @@ export function MoreScreen() {
         <p className="label px-1">App</p>
         <LinkGroup links={APP_LINKS} />
       </section>
+
+      {/* Unobtrusive build stamp — so a bug report can say which build it's on. */}
+      <p className="px-1 text-center">
+        <AppVersionTag />
+      </p>
     </div>
   );
 }

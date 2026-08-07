@@ -31,6 +31,7 @@ export function Chip({
       className={[
         'inline-flex min-h-[48px] items-center rounded-pill border px-4 text-sm font-medium',
         'transition-colors duration-180 ease-standard',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
         selected ? 'bg-accent-tint border-accent text-accent' : TONE_CLASSES[tone],
         className,
       ].join(' ')}

@@ -37,6 +37,19 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  // Move focus into the sheet on open, restore it to whatever was focused before on
+  // close — same rationale as Modal (see its comment): otherwise a keyboard/AT user's
+  // focus is left on a trigger control now hidden under the scrim.
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
+    sheetRef.current?.focus();
+    return () => {
+      previouslyFocused.current?.focus?.();
+    };
+  }, [open]);
+
   if (!open) return null;
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -68,7 +81,8 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
       <div className="absolute inset-0 bg-[var(--overlay-scrim)] transition-opacity duration-180" onClick={onClose} />
       <div
         ref={sheetRef}
-        className="relative w-full max-w-lg bg-surface-3 rounded-t-sheet overflow-hidden shadow-[0_-8px_24px_rgba(0,0,0,0.4)]"
+        tabIndex={-1}
+        className="relative w-full max-w-lg bg-surface-3 rounded-t-sheet overflow-hidden shadow-[0_-8px_24px_rgba(0,0,0,0.4)] outline-none"
         style={{
           transform: `translateY(${dragY}px)`,
           transition: dragging ? 'none' : 'transform 180ms var(--ease-standard)',

@@ -16,3 +16,7 @@ export * from './CategoryIcon';
 export * from './InstallPrompt';
 export * from './format';
 export * from './haptics';
+export * from './ErrorBoundary';
+export * from './storage';
+export * from './UpdateAvailable';
+export * from './version';

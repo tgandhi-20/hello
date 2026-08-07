@@ -33,6 +33,10 @@ export function Switch({ checked, onChange, label, disabled, id }: SwitchProps) 
         <span
           className={[
             'pointer-events-none absolute inset-0 rounded-pill border border-hairline transition-colors duration-180 ease-standard',
+            // The real <input> is visually hidden (opacity-0) but stays the focusable
+            // element — `peer-focus-visible:` mirrors its keyboard focus onto this
+            // visible track so keyboard users still get a clear focus ring.
+            'peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent',
             checked ? 'bg-accent' : 'bg-surface-2',
           ].join(' ')}
         />

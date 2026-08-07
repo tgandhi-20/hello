@@ -79,7 +79,15 @@ export const ListRow = React.forwardRef<HTMLButtonElement, ListRowProps>(functio
   }
 
   return (
-    <button ref={ref} type="button" className={[rowClassName, 'active:bg-surface-2'].join(' ')} {...rest}>
+    <button
+      ref={ref}
+      type="button"
+      className={[
+        rowClassName,
+        'active:bg-surface-2 focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent',
+      ].join(' ')}
+      {...rest}
+    >
       {content}
     </button>
   );

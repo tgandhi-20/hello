@@ -35,6 +35,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(opt.value)}
             className={[
               'flex-1 min-h-[48px] rounded-control px-3 text-sm font-medium transition-colors duration-180 ease-standard',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
               active ? 'bg-accent text-ink-on-accent' : 'text-ink-2 active:bg-surface-2',
             ].join(' ')}
           >

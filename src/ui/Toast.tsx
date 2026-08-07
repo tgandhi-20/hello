@@ -82,6 +82,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={t.id}
             role="status"
+            aria-live="polite"
+            aria-atomic="true"
             className={[
               'pointer-events-auto w-full max-w-sm flex items-center justify-between gap-3',
               'rounded-card border bg-surface-3 px-4 py-3 text-ink-1 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)]',
@@ -93,7 +95,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             {t.actionLabel ? (
               <button
                 type="button"
-                className="shrink-0 min-h-[48px] px-2 font-semibold text-accent"
+                className="shrink-0 min-h-[48px] px-2 font-semibold text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 onClick={() => {
                   t.onAction?.();
                   dismiss(t.id);

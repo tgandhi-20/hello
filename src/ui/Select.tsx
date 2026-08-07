@@ -29,7 +29,8 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function 
             // ellipsis) in favour of an explicit chevron + `pr-9` gutter sized for it, and
             // `truncate` guarantees the selected value always ellipsises instead of clipping.
             'h-12 w-full appearance-none truncate rounded-control border border-hairline bg-surface-2 py-0 pl-4 pr-9 text-md text-ink-1',
-            'outline-none transition-colors duration-180 ease-standard focus:border-accent',
+            'transition-colors duration-180 ease-standard focus:border-accent',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
             className,
           ].join(' ')}
           {...rest}
