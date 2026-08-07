@@ -62,6 +62,7 @@ import {
 import { buildDefaultCategories, DEFAULT_PINNED_CATEGORY_IDS } from '@/data/defaultCategories';
 import { generateDemoTxns } from '@/data/demoData';
 import { PLAN_DEFAULTS } from '@/personal/plan';
+import { applyPersonalPlan } from '@/personal/applyPersonalPlan';
 import { hashTxn, dedupeGroupKey } from '@/data/dedupe';
 import { planCategoryDeletion, resolveFallbackCategoryId } from './categoryDeletion';
 import {
@@ -349,6 +350,10 @@ export const useStore = create<TallyStore>((set, get) => {
         hydrated: true,
         lockState: 'unlocked',
       });
+      // Seed the user's actual budget on a fresh vault, so the app arrives
+      // already knowing their plan rather than presenting empty caps they'd
+      // have to re-enter from a document they already wrote.
+      await applyPersonalPlan(get());
     },
 
     async unlock(pin) {
@@ -833,6 +838,8 @@ export async function setupPassphrase(passphrase: string): Promise<void> {
     hydrated: true,
     lockState: 'unlocked',
   });
+  // Same as setupPin: a fresh vault arrives already carrying the user's plan.
+  await applyPersonalPlan(useStore.getState());
 }
 
 /**
