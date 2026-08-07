@@ -178,6 +178,48 @@ function budgetMapKey(categoryId: string, month: MonthStr): string {
   return `${categoryId}::${month}`;
 }
 
+/**
+ * Validate a decrypted backup payload BEFORE the existing vault is cleared.
+ *
+ * Decryption succeeding proves only that the file was encrypted with a key
+ * derived from the supplied PIN — not that its contents are a usable backup.
+ * A restore is the one irreversible operation in an app with no server-side
+ * copy, so it must fail before it destroys anything, never halfway through.
+ *
+ * Throws a message intended to be shown directly to the user.
+ */
+function assertValidBackupPayload(payload: unknown): asserts payload is BackupPayload {
+  const bad = (): never => {
+    throw new Error('That backup file is incomplete or corrupted. Your data has not been changed.');
+  };
+
+  if (!payload || typeof payload !== 'object') bad();
+  const p = payload as Record<string, unknown>;
+
+  for (const field of ['txns', 'categories', 'budgets', 'rules', 'recurring'] as const) {
+    if (!Array.isArray(p[field])) bad();
+  }
+  if (!p.settings || typeof p.settings !== 'object' || Array.isArray(p.settings)) bad();
+
+  // Spot-check element shape. A backup whose records are the wrong type would
+  // otherwise restore "successfully" into a vault that renders as broken.
+  const txns = p.txns as unknown[];
+  for (const t of txns) {
+    if (!t || typeof t !== 'object') bad();
+    const r = t as Record<string, unknown>;
+    if (typeof r.id !== 'string' || typeof r.date !== 'string' || typeof r.amountCents !== 'number') {
+      bad();
+    }
+  }
+
+  const categories = p.categories as unknown[];
+  for (const c of categories) {
+    if (!c || typeof c !== 'object') bad();
+    const r = c as Record<string, unknown>;
+    if (typeof r.id !== 'string' || typeof r.label !== 'string') bad();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // The store
 // ---------------------------------------------------------------------------
@@ -537,6 +579,17 @@ export const useStore = create<TallyStore>((set, get) => {
       if (!ok) throw new Error('Incorrect PIN for this backup.');
 
       const payload = await decryptJSON<BackupPayload>(key, parsed.payload);
+
+      // Validate the DECRYPTED payload before touching the existing vault.
+      //
+      // AES-GCM authentication only proves the ciphertext was produced by
+      // someone holding the key — it says nothing about the plaintext's shape.
+      // Anyone can author a well-formed .tally file with a PIN of their
+      // choosing. If we cleared first and destructured second, a backup with a
+      // missing array would wipe the user's entire financial history and then
+      // throw, and with no backend there is no second copy to restore from.
+      // Validate first, so a bad file fails harmlessly with the vault intact.
+      assertValidBackupPayload(payload);
 
       // Full restore: this device's local vault becomes an exact copy of the
       // backup's. A WebAuthn credential is device-specific and cannot be
