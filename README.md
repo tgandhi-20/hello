@@ -6,6 +6,13 @@ banking (AUD, `en-AU`, day-first dates) and two ways of getting money into it: f
 manual logging (coffee, lunch, the small stuff) and importing CSV statements from
 CBA, Bankwest, or Amex.
 
+**This build is personalised.** The default categories, monthly caps, income
+figures, and the deposit-goal deadline baked into the app are one specific
+person's actual budget and savings plan (see `docs/PERSONAL.md`), not generic
+placeholders. If you're not that person, treat the numbers you see as an
+example of what the app can track, not a template to trust — you'd want to
+replace `src/personal/plan.ts` with your own figures before relying on it.
+
 There is no backend. No account, no sync, no analytics, and no network request ever
 carries financial data. Everything — every transaction, category, budget, and
 setting — lives encrypted in the browser's IndexedDB, on the one device it was
@@ -15,7 +22,7 @@ entered on.
 
 This is the important part, and it doesn't require a computer or an app store.
 
-1. Open the deployed URL in **Chrome on Android**.
+1. Open **https://tgandhi-20.github.io/hello/** in **Chrome on Android**.
 2. Chrome will usually show an **"Install app"** banner or icon in the address bar.
    If it doesn't, open Chrome's **⋮ menu → Add to Home screen**.
 3. Confirm the install. Tally now has its own icon on your home screen and opens
@@ -66,9 +73,27 @@ signal.
   transactions.
 - **Recurring & subscription radar** — detects repeating charges (rent,
   subscriptions, bills) by merchant, amount, and interval, shows what's coming
-  due, and flags when a subscription has quietly gotten more expensive.
+  due, totals the monthly subscription load, and flags a series that has
+  quietly gotten more expensive (price-increase detection) by comparing its
+  latest charge against its own history.
 - **Habits & streaks** — no-spend-day streaks, coffee/lunch/dining spend trends,
   framed as facts rather than guilt.
+- **Food-per-week tracking** — the app's central lever (see `docs/PERSONAL.md`):
+  groceries + eating-out + lunch + coffee, tracked weekly rather than monthly
+  because a monthly view hides slippage until the month is already over. Shows
+  the groceries-vs-eating-out split, not just a total.
+- **Deposit-goal projection** — a running projection of accessible cash toward
+  a savings deadline, modelling planned one-off costs and a savings account's
+  bonus-rate deposit/withdrawal condition (see "the October trap" in
+  `docs/PERSONAL.md` §6) so a big planned withdrawal doesn't silently cost a
+  month of bonus interest.
+- **Statement-cycle prediction** — learns each card's closing and due dates
+  from CSV import history (or a manual override), shows what the current
+  statement is building up to before it posts, and projects a 60-day cashflow
+  calendar of upcoming bills, card payments, salary and the savings transfer.
+- **Monthly routine** — carries the recurring checklist (salary lands,
+  transfer to savings, confirm the balance closed higher, export and reconcile
+  statements) so the user doesn't have to remember it.
 - **Safe to Spend** — one number on the dashboard: income minus committed
   spending (rent, bills, recurring) minus your savings target, divided across
   the days left in the month.
@@ -115,14 +140,26 @@ npm run typecheck   # tsc --noEmit only
 npm run preview     # serve the built dist/ locally
 ```
 
-There's no test framework installed. Instead there are three plain,
-node-runnable check scripts, each with its own fixtures, run with
-[`tsx`](https://github.com/privatenumber/tsx) via `npx`:
+There's no test framework installed. Instead there are eight plain,
+node-runnable check scripts, each with its own fixtures and no shared
+runner, run with [`tsx`](https://github.com/privatenumber/tsx) via `npx`:
 
 ```bash
-npx tsx src/import/__checks__/run.ts              # CSV parsing, sign inference, dedupe
+npx tsx src/import/__checks__/run.ts               # CSV parsing, sign inference, dedupe
 npx tsx src/store/__checks__/run.ts                # store-adjacent pure logic
 npx tsx src/features/dashboard/__checks__/run.ts   # Safe-to-Spend regression checks
+npx tsx src/features/goal/__checks__/run.ts        # deposit-goal projection, bonus-rate guard
+npx tsx src/features/routine/__checks__/run.ts     # monthly routine / checklist logic
+npx tsx src/features/food/__checks__/run.ts        # food-per-week tracker, weekly conversion
+npx tsx src/features/statements/__checks__/run.ts  # statement-cycle inference, cashflow calendar
+npx tsx src/personal/__checks__/run.ts             # the frozen personal plan's own arithmetic
+```
+
+`npm run check` runs `typecheck` and all eight of the above in sequence — one
+command to validate the whole repo before you trust a change:
+
+```bash
+npm run check
 ```
 
 ### Deploying
@@ -139,13 +176,15 @@ Pages path.
 src/
   app/            App shell, routing (HashRouter), top-level layout
   ui/             Shared UI primitives, formatting (formatMoney, formatDate)
-  styles/         Design tokens (AMOLED-first palette, CSS custom properties)
+  styles/         Design tokens (design system v2 — tonal surfaces, CSS custom properties)
   security/       PIN/passphrase unlock, WebCrypto (AES-GCM, PBKDF2), biometric (WebAuthn PRF)
   data/           IndexedDB access, encrypted backup (.tally) format, demo data
   store/          zustand store — the only way features touch data or crypto
   import/         CSV parsing, structural column detection, sign inference, dedupe
   categorize/     Merchant → category matching, user-taught rules
   charts/         Hand-rolled inline SVG charts (no chart library)
+  personal/       The frozen personal plan (docs/PERSONAL.md) as typed data — the
+                   single source every feature imports income/category/goal figures from
   features/
     log/          Quick-add screen and keypad
     transactions/ Transaction list, edit, categorize
@@ -156,11 +195,19 @@ src/
     insights/     Calendar heatmap and day drill-down
     dashboard/    Safe-to-Spend and the home dashboard
     settings/     PIN/passphrase change, biometric toggle, backup export/import
+    food/         Weekly food-group tracker (groceries vs eating-out split)
+    goal/         Deposit-goal projection and the bonus-rate withdrawal guard
+    routine/      The monthly routine checklist
+    statements/   Per-card statement-cycle prediction and the 60-day cashflow calendar
 ```
 
-`docs/CONTRACTS.md` is the authoritative architecture document — stack choices,
-the security contract, bank CSV handling rules, the design system, and the
-store API are all specified there in more detail than this file covers.
+`docs/CONTRACTS.md`, `docs/DESIGN.md`, and `docs/PERSONAL.md` are the
+authoritative specs. `CONTRACTS.md` covers stack choices, module ownership,
+the security contract, bank CSV handling rules, and the frozen store API.
+`DESIGN.md` is the design system (supersedes `CONTRACTS.md` §4 where they
+disagree). `PERSONAL.md` is the frozen source of every income, category-cap,
+and goal figure the app uses — features import from `src/personal/plan.ts`,
+never re-type a number from that document.
 
 ## A note on money
 

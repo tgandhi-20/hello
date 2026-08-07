@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowDownCircle, ArrowUpCircle, CalendarClock, CreditCard, Repeat, TrendingDown } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { Card, EmptyState, formatDate, formatMoney } from '@/ui';
+import { Card, EmptyState, ListGroup, ListRow, formatDate, formatMoney } from '@/ui';
 import type { CashflowEventWithBalance, CashflowSummary } from './upcoming';
 
 const KIND_ICON: Record<CashflowEventWithBalance['kind'], LucideIcon> = {
@@ -44,8 +44,8 @@ export function UpcomingCalendarSection({ cashflow }: UpcomingCalendarSectionPro
   }
 
   return (
-    <Card className="flex flex-col gap-3">
-      <h2 className="flex items-center gap-1.5 text-md font-semibold text-ink-1">
+    <section className="flex flex-col gap-2">
+      <h2 className="flex items-center gap-1.5 px-1 text-sm font-semibold text-ink-2">
         <CalendarClock size={16} aria-hidden="true" /> Next 60 days
       </h2>
 
@@ -61,26 +61,30 @@ export function UpcomingCalendarSection({ cashflow }: UpcomingCalendarSectionPro
         </div>
       ) : null}
 
-      <ul className="flex flex-col divide-y divide-hairline">
+      <ListGroup>
         {cashflow.events.map((event) => {
           const Icon = KIND_ICON[event.kind];
           const cashIn = event.amountCents < 0;
           return (
-            <li key={event.sourceId} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-2">
-                <Icon size={14} aria-hidden="true" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-ink-1">{event.label}</p>
-                <p className="text-xs text-ink-3">{eventCaption(event)}</p>
-              </div>
-              <span className={['money shrink-0 text-sm', cashIn ? 'text-positive' : 'text-ink-1'].join(' ')}>
-                {event.amountCents === 0 ? '—' : formatMoney(-event.amountCents, { showSign: true })}
-              </span>
-            </li>
+            <ListRow
+              key={event.sourceId}
+              as="div"
+              leading={
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-2">
+                  <Icon size={14} aria-hidden="true" />
+                </span>
+              }
+              title={event.label}
+              subtitle={eventCaption(event)}
+              trailing={
+                <span className={['money', cashIn ? 'text-positive' : 'text-ink-1'].join(' ')}>
+                  {event.amountCents === 0 ? '—' : formatMoney(-event.amountCents, { showSign: true })}
+                </span>
+              }
+            />
           );
         })}
-      </ul>
-    </Card>
+      </ListGroup>
+    </section>
   );
 }
