@@ -70,7 +70,14 @@ export function FoodTodaySection({ txns, categories }: FoodTodaySectionProps) {
           : `${formatMoney(stats.remainingCents)} left this week`}
       </p>
 
-      <StackedBar segments={splitData} formatValue={(v) => formatMoney(v)} height={10} />
+      {/* Labelled, and separated from the progress bar above it. Two unlabelled bars
+          stacked directly on top of each other read as one confusing double meter —
+          the first answers "how much of the target is gone", this one answers
+          "how much of that was cooking versus buying", which is the actual lever. */}
+      <div className="mt-1 flex flex-col gap-1.5 border-t border-hairline pt-3">
+        <span className="text-2xs uppercase tracking-wide text-ink-3">Groceries vs eating out</span>
+        <StackedBar segments={splitData} formatValue={(v) => formatMoney(v)} height={10} />
+      </div>
     </Card>
   );
 }

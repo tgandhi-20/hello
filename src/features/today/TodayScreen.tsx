@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { Button, EmptyState, Skeleton, useToast } from '@/ui';
+import { Button, EmptyState, Skeleton, useToast, TOAST_RESERVE_BOTTOM } from '@/ui';
 import { useRoutineChecklist } from '@/features/routine';
 import { computeSafeToSpend } from './safeToSpend';
 import { buildComingUp } from './comingUp';
@@ -116,7 +116,11 @@ export function TodayScreen() {
   if (txns.length === 0 && !hasSetup) return <NewInstallEmptyState />;
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6">
+    // Reserve the toast's footprint. Today ends with the goal row and the
+    // "Needs you" section, and a toast fires on almost every action that lands
+    // the user back here — so without this the two things the screen exists to
+    // surface are exactly what gets covered.
+    <div className="flex flex-col gap-6 px-4 py-6" style={{ paddingBottom: TOAST_RESERVE_BOTTOM }}>
       <SafeToSpendSection result={safeToSpend} />
       <FoodTodaySection txns={txns} categories={categories} />
       <ComingUpSection items={comingUp} />
