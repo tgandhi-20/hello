@@ -103,6 +103,22 @@ function buildKnownSubscriptionSeries(asOf: DateStr, existing: RecurringSeries[]
       nextDue: prior?.nextDue ?? nextDue,
       txnIds: prior?.txnIds ?? [],
       muted: prior?.muted ?? false,
+      // CRITICAL: without this, src/features/recurring/useRecurringSync.ts's
+      // mount-time `setRecurring(detectRecurring(txns, recurring))` call wipes
+      // these on the very next render. `detectRecurring` only ever emits a
+      // series either (a) freshly clustered from real transactions, or (b) an
+      // EXISTING series with `confirmed === true`, carried through even with
+      // no matching transactions (see detect.ts's own doc comment, guarantee
+      // 2) — anything else is dropped. A brand-new vault has zero
+      // transactions, so an unconfirmed seeded subscription is clustered by
+      // nothing and vanishes within one render of finishing onboarding. These
+      // four ARE "known truth" per PERSONAL.md §5, not a guess awaiting
+      // confirmation, so `confirmed: true` here is the correct semantics, not
+      // a workaround — it's what makes them durable. A prior EXPLICIT
+      // confirmed=false (extremely unlikely, but respected if present) is
+      // still honoured via `??`.
+      confirmed: prior?.confirmed ?? true,
+      confirmedAt: prior?.confirmedAt ?? Date.now(),
     };
     return series;
   });

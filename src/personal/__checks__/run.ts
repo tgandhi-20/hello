@@ -231,6 +231,13 @@ async function main(): Promise<void> {
       'Every seeded series lands in cat-subscriptions',
       store.recurring.every((r) => r.categoryId === 'cat-subscriptions')
     );
+    check(
+      'REGRESSION GUARD: every seeded series is confirmed:true — without this, ' +
+        "src/features/recurring/useRecurringSync.ts's mount-time re-detection wipes an " +
+        'unconfirmed, txn-less series on a fresh vault (zero transactions to cluster from), ' +
+        "so the four subscriptions would silently vanish right after onboarding finishes",
+      store.recurring.every((r) => r.confirmed === true)
+    );
 
     // Capture identity (ids) after the first run, then re-run for the SAME
     // month with different `asOf` — idempotency means: same counts, same

@@ -559,16 +559,36 @@ export function LockGate({ children }: { children: React.ReactNode }) {
     );
   }, [hydrated, skippedRecordCount, show]);
 
+  // First-run onboarding (DESIGN-V3.md §5 deliverable 1, src/features/onboarding/):
+  // once a fresh vault is unlocked and hydrated, ask the setup questions before
+  // the rest of the app is reachable. This is the one integration point
+  // onboarding structurally needs (every route mounts inside this gate) — see
+  // the report for why it's here rather than in src/app/**.
+  //
+  // Deliberately snapshotted into LOCAL state, evaluated ONCE per unlock,
+  // rather than derived live from `onboardingCompletedAt` on every render: the
+  // flow's own "you're set up" screen writes that field (so a re-run from
+  // Settings, or an interrupted first run, is never re-asked) BEFORE its final
+  // "Go to Tally" tap — if this gate switched away from OnboardingFlow the
+  // instant that field changed, the flow would unmount itself mid-summary,
+  // never letting the user actually see it. `showOnboarding` only flips back
+  // to `null` (re-armed) when the vault leaves the unlocked state, so a later
+  // reset-and-redo-setup still gets asked again on its own fresh unlock.
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (lockState !== 'unlocked') {
+      setShowOnboarding(null);
+      return;
+    }
+    if (hydrated && showOnboarding === null) {
+      setShowOnboarding(!onboardingCompletedAt);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lockState, hydrated]);
+
   if (lockState === 'unlocked') {
-    // First-run onboarding (DESIGN-V3.md §5 deliverable 1, src/features/onboarding/):
-    // once a fresh vault is unlocked and hydrated, ask the setup questions before
-    // the rest of the app is reachable. `onboardingCompletedAt` is set the instant
-    // the flow finishes OR is explicitly skipped, so this never shows twice
-    // uninvited — re-running it lives in Settings instead. This is the one
-    // integration point onboarding structurally needs (every route mounts inside
-    // this gate) — see the report for why it's here rather than in src/app/**.
-    if (hydrated && !onboardingCompletedAt) {
-      return <OnboardingFlow variant="first-run" onDone={() => {}} />;
+    if (showOnboarding) {
+      return <OnboardingFlow variant="first-run" onDone={() => setShowOnboarding(false)} />;
     }
     return <>{children}</>;
   }

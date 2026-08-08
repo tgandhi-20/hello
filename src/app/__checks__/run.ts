@@ -204,10 +204,14 @@ async function main(): Promise<void> {
       const tabBarText = readFileSync(tabBarPath, 'utf8');
       const appTsxText = readFileSync(appTsxPath2, 'utf8');
 
-      // 5 tab-bar destinations: Today, Spending, quick-add (FAB), Plan, More.
-      for (const dest of ["to: '/'", "to: '/spending'", "to: '/log'", "to: '/plan'", "to: '/more'"]) {
+      // 5 tab-bar destinations: Today, Spending, Plan, More are entries in the `TABS`
+      // array literal (`to: '/…'`); the centre FAB is a standalone `<NavLink to="/log">`
+      // rather than a TABS entry (it's visually a FAB, not a text+icon tab), so it's
+      // checked with the JSX-attribute form instead.
+      for (const dest of ["to: '/'", "to: '/spending'", "to: '/plan'", "to: '/more'"]) {
         check(`TabBar.tsx routes to ${dest}`, tabBarText.includes(dest));
       }
+      check('TabBar.tsx FAB routes to /log (quick-add)', tabBarText.includes('to="/log"'));
 
       // Today mounted at '/'.
       check("App.tsx mounts TodayScreen at '/'", /path="\/"\s*element=\{<TodayScreen/.test(appTsxText));
