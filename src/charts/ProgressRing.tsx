@@ -41,7 +41,7 @@ export function ProgressRing({
         style={{ width: size, maxWidth: '100%', aspectRatio: '1 / 1' }}
       >
         <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke={tokenVar('surface-2')} strokeWidth={thickness} />
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke={tokenVar('surface-sunk')} strokeWidth={thickness} />
           <circle
             cx={cx}
             cy={cy}

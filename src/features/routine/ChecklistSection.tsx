@@ -7,17 +7,19 @@ import { resolveMonthlyItems, resolveDailyItem } from './items';
 import { useRoutineChecklist } from './useRoutineChecklist';
 import type { ResolvedMonthlyRoutineItem } from './types';
 
-function statusLabel(item: ResolvedMonthlyRoutineItem, today: string): { text: string; tone: 'positive' | 'negative' | 'accent' | 'muted' } {
-  if (item.done) return { text: 'Done', tone: 'positive' };
-  if (item.overdue) return { text: `Overdue — was due ${formatDate(item.dueDate, 'long')}`, tone: 'negative' };
-  if (item.dueDate === today) return { text: 'Due today', tone: 'accent' };
+// No `--positive` token in v3 (DESIGN-V3.md §1) — "done" reads as full-strength ink,
+// the absence of anything left to warn about, not a second green.
+function statusLabel(item: ResolvedMonthlyRoutineItem, today: string): { text: string; tone: 'done' | 'overdue' | 'today' | 'muted' } {
+  if (item.done) return { text: 'Done', tone: 'done' };
+  if (item.overdue) return { text: `Overdue — was due ${formatDate(item.dueDate, 'long')}`, tone: 'overdue' };
+  if (item.dueDate === today) return { text: 'Due today', tone: 'today' };
   return { text: `Due ${formatDate(item.dueDate, 'long')}`, tone: 'muted' };
 }
 
 const TONE_CLASSES: Record<string, string> = {
-  positive: 'text-positive',
-  negative: 'text-negative',
-  accent: 'text-accent',
+  done: 'text-ink-1',
+  overdue: 'text-critical',
+  today: 'text-accent',
   muted: 'text-ink-2',
 };
 
@@ -51,10 +53,10 @@ export function ChecklistSection(): React.JSX.Element | null {
                   onClick={() => toggleItem(item.id)}
                   aria-pressed={item.done}
                   aria-label={`Mark "${item.label}" done`}
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-sunk"
                 >
                   {item.done ? (
-                    <CheckCircle2 size={22} className="text-positive" aria-hidden="true" />
+                    <CheckCircle2 size={22} className="text-ink-1" aria-hidden="true" />
                   ) : (
                     <Circle size={22} aria-hidden="true" />
                   )}
@@ -72,16 +74,16 @@ export function ChecklistSection(): React.JSX.Element | null {
         })}
       </ul>
 
-      <div className="flex items-center gap-3 rounded-card bg-surface-2 px-3 py-3">
+      <div className="flex items-center gap-3 rounded-card bg-surface-sunk px-3 py-3">
         <button
           type="button"
           onClick={toggleLoggedToday}
           aria-pressed={daily.done}
           aria-label="Mark today's spending as logged"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-1"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface"
         >
           {daily.done ? (
-            <CheckCircle2 size={22} className="text-positive" aria-hidden="true" />
+            <CheckCircle2 size={22} className="text-ink-1" aria-hidden="true" />
           ) : (
             <Coffee size={22} aria-hidden="true" />
           )}

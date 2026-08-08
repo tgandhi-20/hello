@@ -32,7 +32,7 @@ export function ModeOptionCard({ icon, title, badge, selected, onSelect, truth, 
       aria-pressed={selected}
       className={[
         'w-full cursor-pointer rounded-2xl border p-4 text-left transition-colors duration-150',
-        selected ? 'border-accent bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]' : 'border-hairline bg-surface-1',
+        selected ? 'border-accent bg-accent-tint' : 'border-hairline bg-surface',
       ].join(' ')}
     >
       <div className="flex items-center gap-3">
@@ -47,7 +47,7 @@ export function ModeOptionCard({ icon, title, badge, selected, onSelect, truth, 
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="text-md font-semibold text-ink-1">{title}</span>
-            <span className="rounded-pill bg-surface-2 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-3">
+            <span className="rounded-pill bg-surface-sunk px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-3">
               {badge}
             </span>
           </div>

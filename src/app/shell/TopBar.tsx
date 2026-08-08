@@ -19,7 +19,7 @@ export const TopBar = React.forwardRef<HTMLHeadingElement, TopBarProps>(function
 ) {
   return (
     <header
-      className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-hairline bg-bg px-4"
+      className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-hairline bg-ground px-4"
       style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(56px + env(safe-area-inset-top))' }}
     >
       <h1 ref={ref} tabIndex={-1} className="truncate text-lg font-semibold text-ink-1 outline-none">

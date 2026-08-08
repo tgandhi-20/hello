@@ -23,9 +23,14 @@ const ICON_SIZE: Record<NonNullable<CategoryIconProps['size']>, number> = {
 };
 
 /**
- * Renders a lucide icon in `--cat-N` on a 12%-alpha well of that same hue
- * (DESIGN.md §5) — not a fully saturated filled circle. The well is a quiet
- * tint, not a badge; the icon glyph itself carries the colour.
+ * Renders a lucide icon in `--cat-N` on a 16%-alpha well of that same hue,
+ * mixed toward `--surface` (DESIGN-V3.md §1/§4: "tinted well of the
+ * category's own hue") — not a fully saturated filled circle. On a white
+ * card a fully-transparent-mixed tint reads as almost invisible, so this
+ * mixes toward the card's own white rather than transparent; the well stays
+ * a quiet tint (never as strong as the glyph itself, which carries the
+ * colour at full strength and is the thing DESIGN-V3.md's swatch contrast
+ * figures were measured against).
  */
 export function CategoryIcon({ icon, colorToken, size = 'md', className = '' }: CategoryIconProps) {
   const IconComponent = ICONS[icon] ?? FALLBACK_ICON;
@@ -38,7 +43,7 @@ export function CategoryIcon({ icon, colorToken, size = 'md', className = '' }: 
       style={{
         width: dimension,
         height: dimension,
-        backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
+        backgroundColor: `color-mix(in srgb, ${color} 16%, var(--surface))`,
       }}
       aria-hidden="true"
     >

@@ -23,13 +23,20 @@ export interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-// A toast is a floating element (DESIGN.md §4) — elevation comes from shadow, not a
-// border, for the default case. success/danger genuinely earn a thin semantic border:
-// it's state information, not decoration.
+// A toast is a floating element (DESIGN-V3.md §1) — elevation comes from shadow,
+// never a border on the same element ("Never a border and a shadow on the same
+// element" is one of DESIGN-V3.md §1's non-negotiables, not a suggestion). This
+// used to carry state via a `border-accent`/`border-critical` ring alongside
+// `shadow-elevated`, which was exactly that violation — visible on every single
+// quick-add save and import, i.e. the app's single most frequent piece of chrome.
+// success/danger still earn to read as state, not decoration, so state is carried
+// by a background tint instead (the same tint tokens icon wells and selected rows
+// already use), never a drawn line. No second "positive" green in v3 (DESIGN-V3.md
+// §1), so `success` uses `--accent-tint` — the app's one green, at low strength.
 const VARIANT_CLASSES: Record<ToastVariant, string> = {
-  default: 'border-transparent',
-  success: 'border-positive',
-  danger: 'border-negative',
+  default: 'bg-surface',
+  success: 'bg-accent-tint',
+  danger: 'bg-critical-tint',
 };
 
 /**
@@ -106,7 +113,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             aria-atomic="true"
             className={[
               'pointer-events-auto w-full max-w-sm flex items-center justify-between gap-3',
-              'rounded-card border bg-surface-3 px-4 py-3 text-ink-1 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)]',
+              'rounded-card px-4 py-3 text-ink-1 text-sm shadow-elevated',
               'transition-[transform,opacity] duration-180 ease-standard',
               VARIANT_CLASSES[t.variant ?? 'default'],
             ].join(' ')}

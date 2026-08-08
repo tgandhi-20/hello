@@ -43,12 +43,12 @@ export default defineConfig({
         short_name: 'Tally',
         description: 'A private, offline-first budget tracker.',
         display: 'standalone',
-        // Matches --bg in src/styles/tokens.css (design system v2,
-        // docs/DESIGN.md) — was the v1 pure #000000, which made the
-        // standalone splash/status-bar colour disagree with every surface
-        // the app actually paints.
-        background_color: '#07070A',
-        theme_color: '#07070A',
+        // Matches --ground in src/styles/tokens.css (design system v3,
+        // docs/DESIGN-V3.md) — light theme now, so the standalone
+        // splash/status-bar colour agrees with the page's own background
+        // instead of the old v2 true-black AMOLED ground.
+        background_color: '#F4F6F8',
+        theme_color: '#F4F6F8',
         orientation: 'portrait',
         start_url: '.',
         scope: '.',

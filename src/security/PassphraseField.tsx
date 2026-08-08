@@ -26,11 +26,14 @@ export interface PassphraseFieldProps {
   'aria-label'?: string;
 }
 
+// No "positive" token in v3 (DESIGN-V3.md §1) — a strong passphrase reads as the
+// absence of warning, so the top of the scale is solid neutral ink rather than a
+// second green competing with the accent.
 function strengthBarClass(filled: boolean, score: number): string {
-  if (!filled) return 'bg-surface-2';
-  if (score <= 1) return 'bg-negative';
+  if (!filled) return 'bg-surface-sunk';
+  if (score <= 1) return 'bg-critical';
   if (score === 2) return 'bg-caution';
-  return 'bg-positive';
+  return 'bg-ink-1';
 }
 
 export function PassphraseField({
@@ -72,7 +75,7 @@ export function PassphraseField({
             if (e.key === 'Enter' && onSubmit) onSubmit();
           }}
           className={[
-            'h-14 w-full rounded-2xl border bg-surface-2 px-4 pr-14 text-lg text-ink-1',
+            'h-14 w-full rounded-2xl border bg-surface-sunk px-4 pr-14 text-lg text-ink-1',
             'placeholder:text-ink-3 outline-none transition-colors duration-200',
             'border-hairline focus:border-accent disabled:opacity-60',
           ].join(' ')}
@@ -83,7 +86,7 @@ export function PassphraseField({
           disabled={disabled}
           aria-label={reveal ? 'Hide passphrase' : 'Show passphrase'}
           aria-pressed={reveal}
-          className="absolute right-1 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full text-ink-2 transition-colors duration-150 active:bg-surface-1 disabled:opacity-40"
+          className="absolute right-1 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full text-ink-2 transition-colors duration-150 active:bg-surface disabled:opacity-40"
         >
           {reveal ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
         </button>

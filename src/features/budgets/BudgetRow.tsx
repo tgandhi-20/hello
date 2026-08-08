@@ -15,18 +15,19 @@ export interface BudgetRowProps {
 }
 
 // `ProgressBar`'s `warning`/`danger` prop names are its own frozen API (see its doc
-// comment) — it paints them with the v2 `--caution`/`--negative` tokens internally,
+// comment) — it paints them with the v3 `--caution`/`--critical` tokens internally,
 // so this function targets that prop's naming, not `@/charts`' `SemanticTone`.
 function toneFor(ratio: number): NonNullable<ProgressBarProps['tone']> {
   if (ratio > 1) return 'danger';
   if (ratio >= 0.8) return 'warning';
-  // Under 80% of cap is budget state ("under budget"), not an interactive control — `--positive`
-  // is the token DESIGN.md §2 reserves for exactly this, not `--accent`.
-  return 'positive';
+  // DESIGN-V3.md §1: there is no `--positive` token — a second green would collide with
+  // the accent, and on-track reads as the absence of warning. `ProgressBar`'s own default
+  // ("accent, or semantic warning/danger for budget-over states") is exactly that baseline.
+  return 'accent';
 }
 
 /** One category's monthly cap: progress bar, remaining-per-day, tap-to-edit limit. Never shaming — over
- * budget renders in `--negative` colour but with plain, factual copy, per CONTRACTS.md §4's tone law. */
+ * budget renders in `--critical` colour but with plain, factual copy, per CONTRACTS.md §4's tone law. */
 export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onSave }: BudgetRowProps) {
   const [editing, setEditing] = useState(false);
   // Seeding a plain `<input type="number">` needs a bare "12.34" — not `formatMoney`'s
@@ -82,13 +83,13 @@ export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onS
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
             }}
             aria-label={`Monthly cap for ${category.label}`}
-            className="h-12 w-24 shrink-0 rounded-control border border-hairline bg-surface-2 px-3 text-right text-sm text-ink-1 outline-none focus:border-accent"
+            className="h-12 w-24 shrink-0 rounded-control border border-hairline bg-surface-sunk px-3 text-right text-sm text-ink-1 outline-none focus:border-accent"
           />
         ) : (
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="min-h-[48px] shrink-0 rounded-pill bg-surface-2 px-3 text-sm font-medium text-accent active:bg-accent-tint"
+            className="min-h-[48px] shrink-0 rounded-pill bg-surface-sunk px-3 text-sm font-medium text-accent active:bg-accent-tint"
           >
             {hasLimit ? 'Edit' : 'Set cap'}
           </button>
@@ -106,7 +107,7 @@ export function BudgetRow({ category, limitCents, spentCents, daysRemaining, onS
               </>
             ) : (
               <>
-                <span className="money text-negative">{formatMoney(Math.abs(remainingCents))}</span> over this
+                <span className="money text-critical">{formatMoney(Math.abs(remainingCents))}</span> over this
                 cap
               </>
             )}

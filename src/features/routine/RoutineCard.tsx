@@ -53,17 +53,19 @@ export function RoutineCard(): React.JSX.Element | null {
               onClick={() => toggleItem(item.id)}
               aria-pressed={item.done}
               aria-label={`Mark "${item.label}" done`}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-sunk"
             >
+              {/* No `--positive` token in v3 — "done" is carried by the filled check shape
+                  plus full-strength ink, not a second green (DESIGN-V3.md §1). */}
               {item.done ? (
-                <CheckCircle2 size={20} className="text-positive" aria-hidden="true" />
+                <CheckCircle2 size={20} className="text-ink-1" aria-hidden="true" />
               ) : (
                 <Circle size={20} aria-hidden="true" />
               )}
             </button>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm text-ink-1">{item.label}</p>
-              <p className={['text-xs', item.overdue ? 'text-negative' : 'text-ink-3'].join(' ')}>
+              <p className={['text-xs', item.overdue ? 'text-critical' : 'text-ink-3'].join(' ')}>
                 {item.overdue ? `Overdue — was due ${formatRelativeDay(item.dueDate)}` : formatRelativeDay(item.dueDate)}
               </p>
             </div>

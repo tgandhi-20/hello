@@ -6,3 +6,6 @@ export { groupByDay, filterTxns } from './selectors';
 export type { DayGroup, TxnFilter } from './selectors';
 export { normalizeMerchant, ruleMatchFor, displayMerchant } from './merchant';
 export { useWindowedList } from './useWindowedList';
+export { UncategorisedQueue } from './UncategorisedQueue';
+export type { UncategorisedQueueProps } from './UncategorisedQueue';
+export { selectUncategorisedTxns, countUncategorisedTxns, UNCATEGORISED_CATEGORY_ID } from './uncategorised';

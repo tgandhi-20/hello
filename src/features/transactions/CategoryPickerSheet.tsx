@@ -41,7 +41,7 @@ export function CategoryPickerSheet({ open, onClose, categories, merchant, onPic
                 onPick(c, remember);
                 onClose();
               }}
-              className="flex min-h-[80px] flex-col items-center justify-center gap-2 rounded-card bg-surface-2 px-2 py-2 text-center active:scale-[0.97] transition-transform duration-200"
+              className="flex min-h-[80px] flex-col items-center justify-center gap-2 rounded-card bg-surface-sunk px-2 py-2 text-center active:scale-[0.97] transition-transform duration-200"
             >
               <CategoryIcon icon={c.icon} colorToken={c.colorToken} size="sm" />
               <span className="line-clamp-1 text-xs font-medium text-ink-1">{c.label}</span>

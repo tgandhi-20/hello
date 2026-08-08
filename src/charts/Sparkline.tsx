@@ -24,20 +24,38 @@ const VB_H = 24;
 const PAD_Y = 4;
 const PLOT_H = VB_H - PAD_Y * 2;
 
-function buildPoints(values: number[], min: number, span: number): string {
+interface Point {
+  x: number;
+  y: number;
+}
+
+function buildPointList(values: number[], min: number, span: number): Point[] {
   const n = values.length;
-  if (n === 0) return '';
+  if (n === 0) return [];
   if (n === 1) {
     const y = PAD_Y + (PLOT_H - safeDiv(values[0] - min, span, 0.5) * PLOT_H);
-    return `0,${y} ${VB_W},${y}`;
+    return [
+      { x: 0, y },
+      { x: VB_W, y },
+    ];
   }
-  return values
-    .map((v, i) => {
-      const x = safeDiv(i, n - 1, 0) * VB_W;
-      const y = PAD_Y + (PLOT_H - safeDiv(v - min, span, 0.5) * PLOT_H);
-      return `${x},${y}`;
-    })
-    .join(' ');
+  return values.map((v, i) => ({
+    x: safeDiv(i, n - 1, 0) * VB_W,
+    y: PAD_Y + (PLOT_H - safeDiv(v - min, span, 0.5) * PLOT_H),
+  }));
+}
+
+function pointsToStr(points: Point[]): string {
+  return points.map((p) => `${p.x},${p.y}`).join(' ');
+}
+
+/** The polyline's own points, closed down to the baseline — used as the area fill. */
+function buildAreaPath(points: Point[]): string {
+  if (points.length === 0) return '';
+  const line = points.map((p) => `${p.x},${p.y}`).join(' L ');
+  const first = points[0];
+  const last = points[points.length - 1];
+  return `M ${first.x},${VB_H} L ${line} L ${last.x},${VB_H} Z`;
 }
 
 /** Compact trend line — daily spend this month, optionally overlaid against last month. */
@@ -62,6 +80,10 @@ export function Sparkline({
   const isEmpty = data.length === 0;
   const hasCompare = Boolean(compareData && compareData.length > 0);
 
+  const points = useMemo(() => buildPointList(data, min, span), [data, min, span]);
+  const areaPath = useMemo(() => buildAreaPath(points), [points]);
+  const endpoint = points.length > 0 ? points[points.length - 1] : null;
+
   return (
     <ChartEnter className={className}>
       <div className="flex flex-col gap-1.5">
@@ -85,9 +107,12 @@ export function Sparkline({
             />
           ) : (
             <>
+              {/* Area fill under the primary series — a soft tint of the line's own
+                  colour, so the trend reads as a shape, not just a wire. */}
+              <path d={areaPath} fill={tokenVar(colorToken)} fillOpacity={0.12} stroke="none" />
               {hasCompare ? (
                 <polyline
-                  points={buildPoints(compareData as number[], min, span)}
+                  points={pointsToStr(buildPointList(compareData as number[], min, span))}
                   fill="none"
                   stroke={tokenVar('ink-3')}
                   strokeWidth={1.25}
@@ -99,7 +124,7 @@ export function Sparkline({
                 />
               ) : null}
               <polyline
-                points={buildPoints(data, min, span)}
+                points={pointsToStr(points)}
                 fill="none"
                 stroke={tokenVar(colorToken)}
                 strokeWidth={2}
@@ -107,6 +132,19 @@ export function Sparkline({
                 strokeLinejoin="round"
                 vectorEffect="non-scaling-stroke"
               />
+              {/* Emphasised endpoint — a filled dot with a white ring so the most
+                  recent value pops off the line, not just the last pixel of it. */}
+              {endpoint ? (
+                <circle
+                  cx={endpoint.x}
+                  cy={endpoint.y}
+                  r={2.4}
+                  fill={tokenVar(colorToken)}
+                  stroke={tokenVar('surface')}
+                  strokeWidth={1}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ) : null}
             </>
           )}
         </svg>

@@ -38,10 +38,12 @@ export function SeriesList() {
             key={s.id}
             onClick={() => setEditing(s)}
             leading={
+              // No `--positive` token in v3 — "confirmed" is carried by the filled check
+              // shape itself plus full-strength ink, not a second green (DESIGN-V3.md §1).
               s.confirmed ? (
-                <CheckCircle2 size={18} className="text-positive" aria-hidden="true" />
+                <CheckCircle2 size={18} className="text-ink-1" aria-hidden="true" />
               ) : (
-                <Circle size={18} className="text-ink-2" aria-hidden="true" />
+                <Circle size={18} className="text-ink-3" aria-hidden="true" />
               )
             }
             title={s.merchant}

@@ -8,11 +8,14 @@ const LABEL: Record<ConfidenceLevel, string> = {
   unknown: 'Unknown',
 };
 
+// No `--positive` token in v3 (DESIGN-V3.md §1) — a confident prediction reads as the
+// absence of warning (full-strength ink), not a second green. The ramp still runs
+// ink-1 -> ink-2 -> caution -> critical as confidence drops.
 const TONE_CLASS: Record<ConfidenceLevel, string> = {
-  high: 'text-positive',
+  high: 'text-ink-1',
   medium: 'text-ink-2',
   low: 'text-caution',
-  unknown: 'text-negative',
+  unknown: 'text-critical',
 };
 
 export interface ConfidenceBadgeProps {

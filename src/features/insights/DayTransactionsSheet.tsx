@@ -31,7 +31,9 @@ export function DayTransactionsSheet({ day, txns, categories, onClose }: DayTran
                   <p className="truncate text-sm text-ink-1">{t.merchant || t.description}</p>
                   <p className="text-xs text-ink-3">{cat?.label ?? 'Uncategorised'}</p>
                 </div>
-                <span className={['money shrink-0 text-sm', income ? 'text-positive' : 'text-ink-1'].join(' ')}>
+                {/* No `--positive` token in v3 — income is carried by the `+` sign
+                    (`showSign`), not a second green competing with the accent. */}
+                <span className="money shrink-0 text-sm text-ink-1">
                   {formatMoney(t.amountCents < 0 ? -t.amountCents : t.amountCents, { showSign: income })}
                 </span>
               </li>

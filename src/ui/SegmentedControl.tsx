@@ -22,7 +22,7 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       role="tablist"
-      className={['flex rounded-control bg-surface-1 p-1', className].join(' ')}
+      className={['flex rounded-control bg-surface-sunk p-1', className].join(' ')}
     >
       {options.map((opt) => {
         const active = opt.value === value;
@@ -36,7 +36,7 @@ export function SegmentedControl<T extends string>({
             className={[
               'flex-1 min-h-[48px] rounded-control px-3 text-sm font-medium transition-colors duration-180 ease-standard',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-              active ? 'bg-accent text-ink-on-accent' : 'text-ink-2 active:bg-surface-2',
+              active ? 'bg-surface text-ink-1 shadow-card' : 'text-ink-2 active:bg-surface-sunk',
             ].join(' ')}
           >
             {opt.label}

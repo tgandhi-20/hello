@@ -15,8 +15,10 @@ export interface CalendarHeatmapProps {
   categories: Category[];
 }
 
-/** Blend from `--surface-1` (no spend) up to full `--accent` (busiest day) — one hue, varying
+/** Blend from `--surface-sunk` (no spend) up to full `--accent` (busiest day) — one hue, varying
  * lightness/saturation via `color-mix`, so intensity reads correctly without relying on hue at all.
+ * `--surface-sunk` (not `--surface`/white) so a zero-spend day still reads as a filled grid cell
+ * against the white card behind it, per DESIGN-V3.md §1's inset-well use for that token.
  *
  * `intensity` itself is linear against the month's single highest day (store/selectors.ts). Spend
  * distributions are typically right-skewed — a handful of big days (a bill, a shop) alongside many
@@ -24,12 +26,26 @@ export interface CalendarHeatmapProps {
  * low band while only the single outlier stands out. A sqrt curve is a standard contrast-stretch for
  * exactly this shape: it spreads the low-to-mid range out (where the days that actually need
  * distinguishing live) while still monotonically topping out at the real max, so the ramp stays an
- * honest, ordered representation of "more" vs "less" — just a legible one. */
-function cellBackground(intensity: number, hasSpend: boolean): string {
-  if (!hasSpend) return 'var(--surface-1)';
+ * honest, ordered representation of "more" vs "less" — just a legible one.
+ *
+ * Returns 0 for a zero-spend day, else 18-92 — the % of `--accent` mixed into the cell fill. */
+function cellIntensityPct(intensity: number, hasSpend: boolean): number {
+  if (!hasSpend) return 0;
   const perceptual = Math.sqrt(clampRatio(intensity));
-  const pct = Math.round(18 + perceptual * 74); // 18%..92% accent mix
-  return `color-mix(in srgb, var(--accent) ${pct}%, var(--surface-1))`;
+  return Math.round(18 + perceptual * 74);
+}
+
+function cellBackground(pct: number): string {
+  if (pct === 0) return 'var(--surface-sunk)';
+  return `color-mix(in srgb, var(--accent) ${pct}%, var(--surface-sunk))`;
+}
+
+/** Past the midpoint of the ramp the cell is dark enough that near-black `--ink-1` text
+ * loses contrast — flip to `--ink-on-accent` (white) rather than let a busy day's figures
+ * wash out. This is exactly the kind of dark-theme assumption that inverts on a light
+ * ground: `--ink-1` reads fine on a pale tint but not on a saturated fill. */
+function cellIsDark(pct: number): boolean {
+  return pct >= 50;
 }
 
 /**
@@ -61,7 +77,7 @@ export function CalendarHeatmap({ month, onMonthChange, cells, txns, categories 
           type="button"
           aria-label="Previous month"
           onClick={() => onMonthChange(prevMonth(month))}
-          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
+          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-sunk"
         >
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
@@ -70,7 +86,7 @@ export function CalendarHeatmap({ month, onMonthChange, cells, txns, categories 
           type="button"
           aria-label="Next month"
           onClick={() => onMonthChange(nextMonth(month))}
-          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
+          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-sunk"
         >
           <ChevronRight size={20} aria-hidden="true" />
         </button>
@@ -108,6 +124,9 @@ export function CalendarHeatmap({ month, onMonthChange, cells, txns, categories 
             const hasSpend = cell.totalCents > 0;
             const isToday = cell.date === today;
             const dayNum = Number(cell.date.slice(8, 10));
+            const pct = cellIntensityPct(cell.intensity, hasSpend);
+            const dark = cellIsDark(pct);
+            const fg = !hasSpend ? 'text-ink-3' : dark ? 'text-ink-on-accent' : 'text-ink-1';
             return (
               <button
                 key={cell.date}
@@ -121,14 +140,10 @@ export function CalendarHeatmap({ month, onMonthChange, cells, txns, categories 
                   'flex aspect-square min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] transition-transform duration-200 active:scale-95',
                   isToday ? 'ring-1 ring-accent' : '',
                 ].join(' ')}
-                style={{ backgroundColor: cellBackground(cell.intensity, hasSpend) }}
+                style={{ backgroundColor: cellBackground(pct) }}
               >
-                <span className={hasSpend ? 'text-ink-1' : 'text-ink-3'}>{dayNum}</span>
-                {hasSpend ? (
-                  <span className="money leading-none text-ink-1">
-                    {formatMoney(cell.totalCents, { compact: true })}
-                  </span>
-                ) : null}
+                <span className={fg}>{dayNum}</span>
+                {hasSpend ? <span className={['money leading-none', fg].join(' ')}>{formatMoney(cell.totalCents, { compact: true })}</span> : null}
               </button>
             );
           })}

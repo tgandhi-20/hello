@@ -9,16 +9,18 @@ export interface ProgressBarProps {
   label?: string;
 }
 
-// `warning`/`danger` are retained prop names (frozen API) but paint with the v2
-// `caution`/`negative` semantic tokens.
+// `positive`/`warning`/`danger` are retained prop names (frozen API) but paint with
+// v3 tokens. DESIGN-V3.md §1 deliberately has no second "positive" green — a second
+// green would collide with `--accent` — so `positive` paints identically to `accent`;
+// `warning`/`danger` map to `caution`/`critical`.
 const TONE_CLASSES: Record<NonNullable<ProgressBarProps['tone']>, string> = {
   accent: 'bg-accent',
-  positive: 'bg-positive',
+  positive: 'bg-accent',
   warning: 'bg-caution',
-  danger: 'bg-negative',
+  danger: 'bg-critical',
 };
 
-/** Thin horizontal progress meter, e.g. category budget usage. */
+/** Thin horizontal progress meter, e.g. category budget usage. Track uses --surface-sunk. */
 export function ProgressBar({ value, tone = 'accent', className = '', label }: ProgressBarProps) {
   const pct = Math.max(0, Math.min(1, value)) * 100;
   return (
@@ -28,7 +30,7 @@ export function ProgressBar({ value, tone = 'accent', className = '', label }: P
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={label}
-      className={['h-2 w-full overflow-hidden rounded-pill bg-surface-2', className].join(' ')}
+      className={['h-2 w-full overflow-hidden rounded-pill bg-surface-sunk', className].join(' ')}
     >
       <div
         className={['h-full rounded-pill transition-[width] duration-180 ease-standard', TONE_CLASSES[tone]].join(' ')}

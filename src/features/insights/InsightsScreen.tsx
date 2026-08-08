@@ -106,10 +106,13 @@ export function InsightsScreen() {
               <li key={m.categoryId} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
                 <span className="min-w-0 flex-1 truncate text-sm text-ink-1">{m.label}</span>
                 <span className="flex shrink-0 items-center gap-1 text-sm">
+                  {/* No `--positive`/`--negative` token in v3 (DESIGN-V3.md §1) — a category
+                      spending more than last month is a fact worth a light nudge (`--caution`),
+                      spending less needs no colour at all; it reads as the absence of warning. */}
                   {m.deltaCents > 0 ? (
-                    <ArrowUp size={14} className="text-negative" aria-hidden="true" />
+                    <ArrowUp size={14} className="text-caution" aria-hidden="true" />
                   ) : m.deltaCents < 0 ? (
-                    <ArrowDown size={14} className="text-positive" aria-hidden="true" />
+                    <ArrowDown size={14} className="text-ink-2" aria-hidden="true" />
                   ) : null}
                   <span className={['money', m.deltaCents > 0 ? 'text-ink-1' : 'text-ink-2'].join(' ')}>
                     {formatMoney(Math.abs(m.deltaCents))}

@@ -16,6 +16,7 @@ const CADENCE_OPTIONS: { value: RecurringCadence; label: string }[] = [
 const ACCOUNT_OPTIONS: { value: AccountId | ''; label: string }[] = [
   { value: '', label: 'Not linked' },
   { value: 'cba', label: ACCOUNT_LABEL.cba },
+  { value: 'cba-card', label: ACCOUNT_LABEL['cba-card'] },
   { value: 'bankwest', label: ACCOUNT_LABEL.bankwest },
   { value: 'amex', label: ACCOUNT_LABEL.amex },
   { value: 'cash', label: ACCOUNT_LABEL.cash },

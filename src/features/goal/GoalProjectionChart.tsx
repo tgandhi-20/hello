@@ -89,7 +89,7 @@ export function GoalProjectionChart({
                 y1={targetY}
                 x2={VB_W - PAD_X}
                 y2={targetY}
-                stroke={tokenVar('positive')}
+                stroke={tokenVar('ink-3')}
                 strokeWidth={0.6}
                 strokeDasharray="2 1.5"
                 vectorEffect="non-scaling-stroke"
@@ -110,7 +110,7 @@ export function GoalProjectionChart({
                   cy={yFor(series[m.index])}
                   r={1.8}
                   fill={tokenVar('caution')}
-                  stroke={tokenVar('bg')}
+                  stroke={tokenVar('surface')}
                   strokeWidth={0.5}
                 />
               ))}
@@ -137,7 +137,7 @@ export function GoalProjectionChart({
               <span
                 className="inline-block h-[2px] w-3 shrink-0 rounded-pill opacity-80"
                 style={{
-                  backgroundImage: `repeating-linear-gradient(90deg, ${tokenVar('positive')} 0 2px, transparent 2px 3.5px)`,
+                  backgroundImage: `repeating-linear-gradient(90deg, ${tokenVar('ink-3')} 0 2px, transparent 2px 3.5px)`,
                 }}
               />
               Target

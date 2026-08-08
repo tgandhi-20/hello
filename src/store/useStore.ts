@@ -65,8 +65,8 @@ import { decryptBatch, type DecryptBatchResult } from './decryptBatch';
 import { buildDefaultCategories, DEFAULT_PINNED_CATEGORY_IDS } from '@/data/defaultCategories';
 import { generateDemoTxns } from '@/data/demoData';
 import { PLAN_DEFAULTS } from '@/personal/plan';
-import { applyPersonalPlan } from '@/personal/applyPersonalPlan';
 import { hashTxn, dedupeGroupKey } from '@/data/dedupe';
+import { migrateTxnAccounts } from '@/data/accountMigration';
 import { planCategoryDeletion, resolveFallbackCategoryId } from './categoryDeletion';
 import {
   TALLY_BACKUP_FORMAT,
@@ -311,8 +311,24 @@ export const useStore = create<TallyStore>((set, get) => {
       budgetIndex.set(budgetMapKey(rec.value.categoryId, rec.value.month), rec.id);
     }
 
+    // Deliverable 4 (DESIGN-V3.md §5): repair any transaction whose `account`
+    // field is missing/invalid (see accountMigration.ts's doc comment — this
+    // is a defensive no-op for the overwhelming common case, never a rename
+    // of existing 'cba' rows). Self-heals once, on this hydrate, by writing
+    // back only the rows that actually needed it.
+    const accountMigration = migrateTxnAccounts(txns.items);
+    if (accountMigration.migratedCount > 0) {
+      const changed = new Set(accountMigration.changedIds);
+      const toPersist = accountMigration.txns.filter((t) => changed.has(t.id));
+      await encryptAndPutMany(
+        'txns',
+        key,
+        toPersist.map((t) => ({ id: t.id, value: t }))
+      );
+    }
+
     set({
-      txns: sortTxns(txns.items),
+      txns: sortTxns(accountMigration.txns),
       categories: sortCategories(categories.items),
       budgets: budgetRecords.items.map((r) => r.value),
       rules: rules.items,
@@ -371,10 +387,11 @@ export const useStore = create<TallyStore>((set, get) => {
         lockState: 'unlocked',
         skippedRecordCount: 0,
       });
-      // Seed the user's actual budget on a fresh vault, so the app arrives
-      // already knowing their plan rather than presenting empty caps they'd
-      // have to re-enter from a document they already wrote.
-      await applyPersonalPlan(get());
+      // NOTE: does NOT seed the personal plan here. A fresh vault's onboarding
+      // flow (src/features/onboarding/) asks explicitly whether to "start
+      // with my plan" (calls applyPersonalPlan) or "start empty" — seeding
+      // budgets/subscriptions unconditionally at this point would make
+      // "start empty" a lie. See src/features/onboarding/OnboardingFlow.tsx.
     },
 
     async unlock(pin) {
@@ -750,6 +767,14 @@ export const useStore = create<TallyStore>((set, get) => {
         // Validate first, so a bad file fails harmlessly with the vault intact.
         assertValidBackupPayload(payload);
 
+        // Deliverable 4: a backup file's `account` values aren't re-checked by
+        // `assertValidBackupPayload` (shape only, not enum membership) — could
+        // be hand-edited, or exported before the 'cba-card' split existed with
+        // some other tool's account naming. Repair rather than trust blindly,
+        // same as hydrateAll — never drop a transaction over this.
+        const accountMigration = migrateTxnAccounts(payload.txns);
+        payload.txns = accountMigration.txns;
+
         // Encrypt everything under the new key up front, in memory only —
         // the existing vault on disk is not touched by any of this and is
         // still fully intact if any of it throws.
@@ -933,8 +958,8 @@ export async function setupPassphrase(passphrase: string): Promise<void> {
     lockState: 'unlocked',
     skippedRecordCount: 0,
   });
-  // Same as setupPin: a fresh vault arrives already carrying the user's plan.
-  await applyPersonalPlan(useStore.getState());
+  // Same as setupPin: does NOT seed the personal plan here — see setupPin's
+  // comment. Onboarding decides "start with my plan" vs "start empty".
 }
 
 /**

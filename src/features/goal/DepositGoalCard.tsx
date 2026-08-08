@@ -48,7 +48,9 @@ export function DepositGoalCard() {
           </div>
           <span className="label">Deposit goal</span>
         </div>
-        <Chip tone={onTrack ? 'positive' : 'neutral'} className="pointer-events-none min-h-0 px-3 py-1 text-xs">
+        {/* No `--positive` token in v3 — on track needs no colour at all (absence of
+            warning); only "behind plan" earns a pill worth noticing. */}
+        <Chip tone={onTrack ? 'neutral' : 'warning'} className="pointer-events-none min-h-0 px-3 py-1 text-xs">
           <span className="inline-flex items-center gap-1">
             {onTrack ? (
               <TrendingUp size={13} strokeWidth={2} aria-hidden="true" />
@@ -74,7 +76,7 @@ export function DepositGoalCard() {
 
       <ProgressBar
         value={progressRatio}
-        tone={onTrack ? 'positive' : 'warning'}
+        tone={onTrack ? 'accent' : 'warning'}
         label={`${Math.round(progressRatio * 100)}% of deposit target`}
       />
 
@@ -86,7 +88,7 @@ export function DepositGoalCard() {
       <GoalProjectionChart points={projection.points} targetCents={projection.targetCents} height={110} />
 
       {nextWarning ? (
-        <div className="flex items-start gap-2 rounded-card bg-[color-mix(in_srgb,var(--caution)_12%,transparent)] p-3 text-xs text-ink-2">
+        <div className="flex items-start gap-2 rounded-card bg-caution-tint p-3 text-xs text-ink-2">
           <AlertTriangle size={16} strokeWidth={1.75} className="mt-0.5 shrink-0 text-caution" aria-hidden="true" />
           <span>
             {nextWarning.month} withdrawals (

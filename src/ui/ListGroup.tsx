@@ -6,10 +6,12 @@ export interface ListGroupProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * Groups related `ListRow`s into ONE surface with hairline dividers between them,
- * rather than giving each row its own card (DESIGN.md §4/§5 — this is what removes
- * most of v1's box-soup). Rounded once, at the group's own corners; individual rows
- * never carry their own radius or border.
+ * Groups related `ListRow`s into ONE white surface with hairline dividers
+ * between them, rather than giving each row its own card (DESIGN-V3.md §3 —
+ * the core grouped-list pattern: a section label above, in `--ink-2`, then
+ * one rounded container). Rounded once, at the group's own corners and
+ * lifted off `--ground` by shadow; individual rows never carry their own
+ * radius, border, or shadow.
  */
 export const ListGroup = React.forwardRef<HTMLDivElement, ListGroupProps>(function ListGroup(
   { className = '', children, ...rest },
@@ -18,7 +20,9 @@ export const ListGroup = React.forwardRef<HTMLDivElement, ListGroupProps>(functi
   return (
     <div
       ref={ref}
-      className={['divide-y divide-hairline overflow-hidden rounded-card bg-surface-1', className].join(' ')}
+      className={['divide-y divide-hairline overflow-hidden rounded-card bg-surface shadow-card', className].join(
+        ' '
+      )}
       {...rest}
     >
       {children}
@@ -84,7 +88,7 @@ export const ListRow = React.forwardRef<HTMLButtonElement, ListRowProps>(functio
       type="button"
       className={[
         rowClassName,
-        'active:bg-surface-2 focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent',
+        'active:bg-surface-sunk focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent',
       ].join(' ')}
       {...rest}
     >

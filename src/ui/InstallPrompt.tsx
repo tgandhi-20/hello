@@ -65,7 +65,7 @@ export function InstallPrompt({ className = '', onResolved }: InstallPromptProps
   return (
     <div
       className={[
-        'flex items-center gap-3 rounded-card bg-surface-1 p-4',
+        'flex items-center gap-3 rounded-card bg-surface p-4 shadow-card',
         className,
       ].join(' ')}
     >

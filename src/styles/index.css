@@ -5,42 +5,52 @@
 @tailwind utilities;
 
 /**
- * Typography — DESIGN.md §3. System stack only (no webfonts: offline + CSP),
- * set globally in tokens.css on html/body. The utilities below are the two
- * pieces of typographic treatment that carry real hierarchy work in this
- * design system: money is a display element, and labels are always quiet.
+ * Typography — DESIGN-V3.md §2. System stack only (no webfonts: offline +
+ * strict CSP), set globally in tokens.css on html/body. `.money`/`.money-hero`
+ * are the exact spec: money is a display element carried by weight, tabular
+ * numerals and slight negative tracking, never by size alone.
  */
 @layer components {
   /**
-   * Every amount in the app renders through this class. Tight negative
-   * tracking on tabular numerals is most of what separates a designed finance
-   * app from a spreadsheet (DESIGN.md §3).
+   * Every amount in the app renders through this class (DESIGN-V3.md §2:
+   * "600, tabular, -0.01em"). Inherits font-size from context — a row total
+   * and a card total both use `.money`, at whatever text-* size the row calls
+   * for; `.money-hero` below is the one exception that fixes its own size.
    */
   .money {
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
+    font-feature-settings: 'tnum';
+    letter-spacing: -0.01em;
     font-weight: 600;
   }
 
-  /** Hero figures (Safe-to-Spend, dashboard totals) — same idea, tracked tighter still. */
+  /**
+   * Hero figures only — Safe-to-Spend, the deposit goal total (DESIGN-V3.md
+   * §2: "40px, 700, tabular, -0.02em"). Fixes its own size/weight rather than
+   * inheriting, since a hero figure must look identical wherever it renders.
+   */
   .money-hero {
+    font-size: 40px;
+    line-height: 44px;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.03em;
-    font-weight: 600;
+    font-feature-settings: 'tnum';
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    color: var(--ink-1);
   }
 
   /** Quiet eyebrow/label style: small, tracked out, tertiary ink. Do not uppercase by default. */
   .label {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 16px;
     color: var(--ink-3);
     letter-spacing: 0.02em;
   }
 
-  /** Section/card title style (DESIGN.md §5): weight and tight tracking do the work, not size alone. */
+  /** Section/card title style (DESIGN-V3.md §3/§5): weight and tight tracking do the work, not size alone. */
   .title {
-    font-size: 22px;
-    line-height: 28px;
+    font-size: 20px;
+    line-height: 26px;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--ink-1);

@@ -50,7 +50,7 @@ export function BarList({
                     {formatValue(d.value)}
                   </span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-pill bg-surface-2" aria-hidden="true">
+                <div className="h-2 w-full overflow-hidden rounded-pill bg-surface-sunk" aria-hidden="true">
                   <div
                     className="h-full rounded-pill"
                     style={{
