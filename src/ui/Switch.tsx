@@ -37,13 +37,15 @@ export function Switch({ checked, onChange, label, disabled, id }: SwitchProps) 
             // element — `peer-focus-visible:` mirrors its keyboard focus onto this
             // visible track so keyboard users still get a clear focus ring.
             'peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent',
-            checked ? 'bg-accent' : 'bg-surface-2',
+            checked ? 'bg-accent' : 'bg-surface-sunk',
           ].join(' ')}
         />
         <span
           className={[
-            // A warm off-white knob, never pure white (DESIGN.md §1.4).
-            'pointer-events-none absolute h-6 w-6 rounded-full bg-ink-1 shadow transition-transform duration-180 ease-standard',
+            // White knob with its own soft shadow — the moving element, not the
+            // track, is what earns a shadow here (DESIGN-V3.md §1: shadow for
+            // elevation, never paired with a border on the same element).
+            'pointer-events-none absolute h-6 w-6 rounded-full bg-surface shadow-card transition-transform duration-180 ease-standard',
             checked ? 'translate-x-7' : 'translate-x-1',
           ].join(' ')}
         />

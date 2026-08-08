@@ -2,17 +2,20 @@ import React from 'react';
 
 export interface ChipProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   selected?: boolean;
-  /** `warning`/`danger` are retained prop names (API is frozen) but map to the v2
-   * `caution`/`negative` semantic tokens. */
+  /** `positive`/`warning`/`danger` are retained prop names (API is frozen) but map
+   * to v3 tokens. DESIGN-V3.md §1 deliberately has no second "positive" green — a
+   * second green would collide with `--accent` — so `positive` paints identically
+   * to `accent` (the calm, "on track reads as absence of warning" read); `warning`/
+   * `danger` map to `caution`/`critical`. */
   tone?: 'neutral' | 'accent' | 'positive' | 'warning' | 'danger';
 }
 
 const TONE_CLASSES: Record<NonNullable<ChipProps['tone']>, string> = {
   neutral: 'border-hairline text-ink-2',
   accent: 'border-accent text-accent',
-  positive: 'border-positive text-positive',
+  positive: 'border-accent text-accent',
   warning: 'border-caution text-caution',
-  danger: 'border-negative text-negative',
+  danger: 'border-critical text-critical',
 };
 
 /** Small tag / filter pill. Renders as a `<button>` — pass `type="button"` semantics are default. */

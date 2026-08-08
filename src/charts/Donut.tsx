@@ -102,7 +102,7 @@ export function Donut({
             cy={cy}
             r={r}
             fill="none"
-            stroke={tokenVar('surface-2')}
+            stroke={tokenVar('surface-sunk')}
             strokeWidth={thickness}
           />
           {segments.map((s) => (

@@ -9,14 +9,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   fullWidth?: boolean;
 }
 
-// Filled variants (primary/danger) sit on the accent/negative token colours and use
-// --ink-on-accent for their glyph — measured 5.7-5.9:1, well clear of AA, where plain
-// --ink-1 would only clear large-text AA on these particular fills (DESIGN.md §3).
+// Filled variants (primary/danger) sit on the accent/critical token colours and use
+// --ink-on-accent (white) for their glyph — measured 5.33:1 on --accent and 6.54:1 on
+// --critical, both clearing normal-text AA (DESIGN-V3.md §1). `ghost` never pairs a
+// border with a shadow on the same element (DESIGN-V3.md §1) — it has no shadow.
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: 'bg-accent text-ink-on-accent active:bg-accent-press disabled:opacity-40',
   ghost:
-    'bg-transparent text-ink-1 border border-hairline active:bg-surface-2 disabled:opacity-40',
-  danger: 'bg-negative text-ink-on-accent active:brightness-90 disabled:opacity-40',
+    'bg-transparent text-ink-1 border border-hairline active:bg-surface-sunk disabled:opacity-40',
+  danger: 'bg-critical text-ink-on-accent active:brightness-90 disabled:opacity-40',
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {

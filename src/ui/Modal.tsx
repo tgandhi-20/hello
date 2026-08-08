@@ -47,7 +47,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative w-full max-w-sm rounded-sheet bg-surface-2 p-5 shadow-[0_8px_24px_rgba(0,0,0,0.4)] outline-none"
+        className="relative w-full max-w-sm rounded-sheet bg-surface p-5 shadow-elevated outline-none"
       >
         {title ? <h2 className="title mb-2">{title}</h2> : null}
         {children}

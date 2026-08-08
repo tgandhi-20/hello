@@ -1,98 +1,149 @@
 /**
- * Tally design tokens — DESIGN.md v2 (FROZEN spec, supersedes CONTRACTS.md §4).
- * Every colour used anywhere in the app must trace back to a token here.
- * Never hardcode a hex value in a component.
+ * Tally design tokens — DESIGN-V3.md (FROZEN spec, supersedes DESIGN.md v2
+ * and CONTRACTS.md §4). Every colour used anywhere in the app must trace
+ * back to a token here. Never hardcode a hex value in a component.
  *
- * Why v1 failed (DESIGN.md §0): pure #000 + saturated violet is the default of
- * every AI-scaffolded dark app; a fully-saturated 12-hue category ramp reads as
- * syntax highlighting; borders on every card read as drawn box soup. v2 fixes
- * the causes: a warm near-black ground with tonal (not bordered) elevation, one
- * desaturated accent reserved for interactive affordance, and a muted
- * equal-lightness category ramp that reads as one family.
- */
+ * Why v3 (DESIGN-V3.md §0): two rounds of dark/violet themes were rejected —
+ * "i hate the violet neon blue colours make it simple white colourful design
+ * like how google apple has in their apps." v3 commits fully to light: a
+ * soft neutral page ground with white cards lifting off it on a soft shadow
+ * (never a border AND a shadow on the same element), near-black text, one
+ * restrained accent (deep green, not violet/blue) reserved for interactive
+ * affordance, and a genuinely colourful 12-swatch category ramp doing the
+ * expressive work. Dark mode is explicitly out of scope for v3 — this file
+ * commits to one theme rather than leaving half of a dark theme behind.
+ *
+ * MEASURED contrast ratios (WCAG relative-luminance formula; see this
+ * agent's report for the full table and methodology):
+ *   ink-1 #16191C   17.65:1 / white   16.29:1 / ground   (body text, AAA)
+ *   ink-2 #565D66    6.66:1 / white    6.15:1 / ground   (secondary, AAA)
+ *   ink-3 #646C77    5.31:1 / white    4.90:1 / ground   (tertiary — SEE NOTE BELOW)
+ *   accent #0E7A57   5.33:1 / white as fill; white-on-accent text 5.33:1 (AA)
+ *   accent-press     7.68:1 white-on-fill (AAA)
+ *   caution #A15C00  5.19:1 / white    4.79:1 / ground   (AA)
+ *   critical #B3261E 6.54:1 / white    6.03:1 / ground   (AAA on white, AA on ground)
+ *
+ * ADJUSTED FROM SPEC: DESIGN-V3.md §1 lists --ink-3 as #858C95, which
+ * measures only 3.40:1 on --surface and 3.14:1 on --ground — both FAIL
+ * normal-text WCAG AA (4.5:1); 3.14 doesn't even clear large-text AA (3:1)
+ * cleanly against ground. That is the exact failure DESIGN-V3.md §1 warns
+ * about ("verify >=4.5:1 on --surface AND --ground"). Darkened to #646C77
+ * (same hue/saturation as --ink-2, ~7pt lower lightness) — the smallest
+ * darkening found that clears 4.5:1 against BOTH surfaces with a small
+ * safety margin (4.90:1 on the harder case, --ground). See report for the
+ * search.
+ * ============================================================ */
 
 :root {
   /* ============================================================
-   * Ground — tonal elevation (DESIGN.md §2). Each step up is a lighter,
-   * slightly warm-shifted near-black. Borders are the exception, not the
-   * default way surfaces separate from each other — see --hairline.
+   * Ground — white cards lift off a cool, slightly-grey page ground
+   * (DESIGN-V3.md §1). Elevation is a soft shadow, defined once below and
+   * applied via Tailwind's `shadow-card` — never a border on the same
+   * element as that shadow.
    * ============================================================ */
-  --bg: #07070a;
-  --surface-1: #101015; /* cards, list groups */
-  --surface-2: #17171e; /* raised, pressed, input fields */
-  --surface-3: #1f1f27; /* sheets, menus, popovers */
-  --hairline: #24242d; /* USE SPARINGLY — only where two same-tone surfaces meet */
+  --ground: #f4f6f8; /* page background — deliberately not pure white */
+  --surface: #ffffff; /* cards, list groups, sheets, modals */
+  --surface-sunk: #edeff3; /* inset wells, progress tracks, skeletons */
+  --hairline: #e2e6eb; /* dividers INSIDE a card/list group; cards separate from ground by shadow, not border */
 
   /* ============================================================
-   * Ink — warm off-white, never pure white/black (DESIGN.md §1.4 — warmth is
-   * the single biggest difference between "designed" and "default").
+   * Ink — near-black, never pure black. See ADJUSTED note above for ink-3.
+   * ============================================================ */
+  --ink-1: #16191c; /* primary text and figures */
+  --ink-2: #565d66; /* secondary / supporting copy */
+  --ink-3: #646c77; /* tertiary / captions — darkened from spec, see note above */
+  --ink-on-accent: #ffffff;
+
+  /* ============================================================
+   * Accent — ONE, for interactive affordance only. Deep emerald green:
+   * honest for a savings app, unmistakably distinct from the two rejected
+   * violet/blue rounds. Never used decoratively — that's what the category
+   * ramp is for.
+   * ============================================================ */
+  --accent: #0e7a57;
+  --accent-press: #0a5f44;
+  --accent-tint: #e2f1eb; /* selected rows, icon wells, chart fills */
+
+  /* ============================================================
+   * Semantic — state only, never decorative. Deliberately NO "positive"
+   * green (DESIGN-V3.md §1): a second green would collide with --accent.
+   * On-track reads as absence of warning, exactly as Apple's own apps do.
+   * ============================================================ */
+  --caution: #a15c00; /* amber, text-safe on white — approaching a cap */
+  --caution-tint: #fbeedc;
+  --critical: #b3261e; /* error / destructive / genuinely over */
+  --critical-tint: #fbe9e7;
+
+  /* Modal/Sheet backdrop — not part of DESIGN-V3.md's named palette, but
+     every overlay-bearing surface needs the same scrim. Built from --ink-1
+     at low opacity so it reads as "the page dimmed", not a foreign colour. */
+  --scrim: rgba(16, 25, 28, 0.48);
+
+  /* ============================================================
+   * Category ramp — twelve hues, ~30deg apart around the full wheel, at
+   * roughly equal lightness (38-60% HSL, most within a ~15pt band — yellow
+   * and green need to sit darker than blue/violet to hit the same contrast,
+   * which is physics, not inconsistency) and moderate/equal chroma
+   * (HSL saturation 40-41% throughout). This is where "colourful" lives —
+   * deliberately NOT the muted one-family v2 ramp.
    *
-   * --ink-3 is shipped LIGHTER than the DESIGN.md-listed #6C6976: that value
-   * measures 3.05–3.76:1 against these surfaces (large-text-AA only, fails
-   * normal-text AA everywhere, and DESIGN.md §3 itself says to lighten rather
-   * than ship it). #8C8996 is the smallest lightening that clears 4.5:1 even
-   * against --surface-3, the lightest ground it sits on — see this agent's
-   * report for the full measured ratio table.
+   * MEASURED against --surface (#FFFFFF) — every swatch clears the required
+   * >=3:1 non-text contrast, most with real margin (3.71-4.02:1):
+   *   cat-1  red        #C06B6B   3.78:1
+   *   cat-2  terracotta #AB7A49   3.74:1
+   *   cat-3  gold/olive #88883A   3.73:1
+   *   cat-4  lime/moss  #66903C   3.74:1
+   *   cat-5  green      #409640   3.71:1
+   *   cat-6  jade       #3E9369   3.76:1
+   *   cat-7  teal       #3C9090   3.76:1
+   *   cat-8  azure      #5787B7   3.78:1
+   *   cat-9  indigo     #7777C5   4.02:1
+   *   cat-10 violet     #9A72C3   3.77:1
+   *   cat-11 magenta    #BC62BC   3.74:1
+   *   cat-12 pink       #BE6793   3.78:1
+   * Lightness varies hue-to-hue (38% at cat-5/green to 60% at cat-9/indigo)
+   * on purpose — a ramp at truly identical lightness would make same-weight
+   * hues (e.g. red/green) indistinguishable to colourblind viewers relying
+   * on lightness alone; this keeps them apart on lightness too, not just
+   * hue.
    * ============================================================ */
-  --ink-1: #f4f2ee; /* primary */
-  --ink-2: #a29fa8; /* secondary */
-  --ink-3: #8c8996; /* tertiary / disabled — lightened from spec #6c6976, see note above */
-  --ink-on-accent: #0a0f13;
+  --cat-1: #c06b6b;
+  --cat-2: #ab7a49;
+  --cat-3: #88883a;
+  --cat-4: #66903c;
+  --cat-5: #409640;
+  --cat-6: #3e9369;
+  --cat-7: #3c9090;
+  --cat-8: #5787b7;
+  --cat-9: #7777c5;
+  --cat-10: #9a72c3;
+  --cat-11: #bc62bc;
+  --cat-12: #be6793;
 
   /* ============================================================
-   * Accent — ONE, for interactive affordance only. Deliberately blue-half-of-
-   * the-wheel (never confused with money-direction colours) and deliberately
-   * desaturated (never reads neon).
+   * Typography — DESIGN-V3.md §2: system stack only, no webfonts (offline +
+   * strict CSP forbids a font CDN). On the target Samsung device this
+   * resolves to Roboto — the Google-app typeface — which is deliberate, not
+   * a fallback. The px/line-height SCALE itself is expressed as Tailwind
+   * fontSize entries in tailwind.config.js so `text-md` etc. carry both
+   * size AND line-height together in one utility class.
    * ============================================================ */
-  --accent: #6a93b0; /* dusty steel blue */
-  --accent-press: #58809c;
-  --accent-tint: rgba(106, 147, 176, 0.14); /* selected rows, icon wells */
+  --font-sans: -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   /* ============================================================
-   * Semantic — money direction and budget state ONLY. Never decorative.
+   * Elevation — DESIGN-V3.md §1's exact shadow value, for cards/list groups
+   * lifting off --ground. --shadow-elevated is this agent's extension of
+   * the same neutral-ink shadow family (same rgba base colour, larger
+   * blur/spread) for surfaces that sit further off the page — sheets,
+   * modals, toasts — so every elevated surface in the app reads as one
+   * consistent light source, not a mix of shadow colours.
    * ============================================================ */
-  --positive: #6fbf9b; /* jade — income, under budget */
-  --caution: #e0a458; /* amber — approaching a cap */
-  --negative: #d2705e; /* clay — over budget, destructive actions */
-
-  /* Modal/Sheet backdrop. Not part of DESIGN.md's named palette, but every
-     overlay-bearing surface (Modal, Sheet) needs the same scrim so a stack of
-     either always dims consistently. */
-  --scrim: rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.1);
+  --shadow-elevated: 0 8px 24px rgba(16, 24, 40, 0.16), 0 2px 8px rgba(16, 24, 40, 0.08);
 
   /* ============================================================
-   * Category ramp — muted, equal-weight, one family (DESIGN.md §2). All at
-   * roughly equal lightness/chroma so the donut reads as a coherent palette,
-   * not a rainbow. Lightness still varies enough to stay distinguishable for
-   * colourblind users who can't rely on hue alone.
-   * ============================================================ */
-  --cat-1: #7fa8c4; /* blue */
-  --cat-2: #6fbf9b; /* jade */
-  --cat-3: #a8c47f; /* olive */
-  --cat-4: #e0c25e; /* wheat */
-  --cat-5: #e0a458; /* amber */
-  --cat-6: #d2705e; /* clay */
-  --cat-7: #c47f9b; /* rose */
-  --cat-8: #a87fc4; /* mauve */
-  --cat-9: #7f86c4; /* periwinkle */
-  --cat-10: #5e9ea0; /* teal */
-  --cat-11: #b39b7f; /* taupe */
-  --cat-12: #8c9199; /* slate */
-
-  /* ============================================================
-   * Typography — system stack only, no webfonts (offline + CSP). Roboto is
-   * native on the target Samsung device. The px/line-height SCALE itself
-   * (2xs..2xl) is expressed as Tailwind fontSize entries in tailwind.config.js
-   * rather than CSS vars, so `text-md` etc. carry both size AND line-height
-   * together in one utility class.
-   * ============================================================ */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
-
-  /* ============================================================
-   * Motion (DESIGN.md §4): 140–180ms, cubic-bezier(0.2,0,0,1), transform/
-   * opacity only. --duration-fast/--duration-standard kept as the two steps
-   * already referenced across the app; retimed into the v2 window.
+   * Motion (DESIGN-V3.md §3): 140-180ms, cubic-bezier(0.2,0,0,1), transform/
+   * opacity only.
    * ============================================================ */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --duration-fast: 140ms;
@@ -101,7 +152,7 @@
 
 html,
 body {
-  background: var(--bg);
+  background: var(--ground);
   color: var(--ink-1);
   font-family: var(--font-sans);
 }
@@ -110,6 +161,7 @@ body {
 .tabular-nums,
 body {
   font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }
 
 /* Money/label utility classes live in src/styles/index.css, in @layer

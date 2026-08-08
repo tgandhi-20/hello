@@ -13,6 +13,7 @@ export * from './ProgressBar';
 export * from './Skeleton';
 export * from './EmptyState';
 export * from './Chip';
+export * from './StatusPill';
 export * from './CategoryIcon';
 export * from './InstallPrompt';
 export * from './format';

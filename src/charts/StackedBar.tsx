@@ -53,7 +53,7 @@ export function StackedBar({
     <ChartEnter className={className}>
       <div>
         <svg viewBox={`0 0 ${VB_W} 8`} width="100%" height={height} preserveAspectRatio="none" role="img" aria-label={ariaLabel}>
-          <rect x={0} y={0} width={VB_W} height={8} rx={4} fill={tokenVar('surface-2')} />
+          <rect x={0} y={0} width={VB_W} height={8} rx={4} fill={tokenVar('surface-sunk')} />
           {isEmpty ? null : (
             <clipPath id="stacked-bar-clip">
               <rect x={0} y={0} width={VB_W} height={8} rx={4} />

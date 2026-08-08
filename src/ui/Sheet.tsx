@@ -109,7 +109,7 @@ export function Sheet({ open, onClose, title, children, footer, busy = false }: 
       <div
         ref={sheetRef}
         tabIndex={-1}
-        className="relative w-full max-w-lg bg-surface-3 rounded-t-sheet overflow-hidden shadow-[0_-8px_24px_rgba(0,0,0,0.4)] outline-none"
+        className="relative w-full max-w-lg bg-surface rounded-t-sheet overflow-hidden shadow-elevated outline-none"
         style={{
           transform: `translateY(${dragY}px)`,
           transition: dragging ? 'none' : 'transform 180ms var(--ease-standard)',

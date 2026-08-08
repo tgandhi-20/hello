@@ -180,8 +180,8 @@ export function StorageStatus({ className = '' }: { className?: string }): React
   const { estimate } = useStorageEstimate();
 
   return (
-    <div className={['flex items-start gap-3 rounded-card bg-surface-1 p-4', className].join(' ')}>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2">
+    <div className={['flex items-start gap-3 rounded-card bg-surface p-4 shadow-card', className].join(' ')}>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-sunk">
         <HardDrive size={16} className="text-ink-2" aria-hidden="true" />
       </span>
       <div className="min-w-0 flex-1">

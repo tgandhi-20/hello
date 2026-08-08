@@ -95,7 +95,7 @@ function ErrorFallback({ label, onRetry }: { label?: string; onRetry: () => void
       role="alert"
       className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-6 py-12 text-center"
     >
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-1">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-sunk">
         <AlertTriangle size={28} strokeWidth={1.75} className="text-caution" aria-hidden="true" />
       </div>
       <div>
@@ -117,19 +117,19 @@ function ErrorFallback({ label, onRetry }: { label?: string; onRetry: () => void
           {exportState === 'busy' ? 'Exporting…' : exportState === 'done' ? 'Backup saved' : 'Export encrypted backup'}
         </button>
         {exportState === 'failed' ? (
-          <p className="text-xs text-negative">
+          <p className="text-xs text-critical">
             Couldn&rsquo;t export right now — try Reload below, then Settings → Export backup once Tally is
             open again.
           </p>
         ) : null}
         {exportState === 'done' ? (
-          <p className="text-xs text-positive">Saved to your downloads. Safe to reload now.</p>
+          <p className="text-xs text-accent">Saved to your downloads. Safe to reload now.</p>
         ) : null}
 
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="flex min-h-[48px] items-center justify-center gap-2 rounded-control border border-hairline bg-transparent px-4 text-md font-medium text-ink-1 transition-colors duration-180 ease-standard active:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="flex min-h-[48px] items-center justify-center gap-2 rounded-control border border-hairline bg-transparent px-4 text-md font-medium text-ink-1 transition-colors duration-180 ease-standard active:bg-surface-sunk focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           Reload
         </button>

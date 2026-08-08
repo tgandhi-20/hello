@@ -44,7 +44,11 @@ Green is honest for a savings app and unmistakably distinct from what came befor
 
 --ink-1         #16191C   primary text and figures
 --ink-2         #565D66   secondary / supporting copy
---ink-3         #858C95   tertiary / captions (verify >=4.5:1 on --surface AND --ground)
+--ink-3         #646C77   tertiary / captions — CORRECTED. The value first written
+                          here (#858C95) measured 3.40:1 on --surface and 3.14:1 on
+                          --ground, failing normal-text AA on both. This is the second
+                          time a hand-picked tertiary ink in this project failed when
+                          measured: derive it from the contrast target, never by eye.
 --ink-on-accent #FFFFFF
 
 --accent        #0E7A57   deep emerald — interactive affordance ONLY
