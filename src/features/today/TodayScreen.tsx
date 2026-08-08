@@ -101,7 +101,19 @@ export function TodayScreen() {
   );
 
   if (!hydrated) return <TodaySkeleton />;
-  if (txns.length === 0) return <NewInstallEmptyState />;
+
+  // "Nothing set up yet" is not the same as "nothing logged yet".
+  //
+  // Gating purely on transaction count meant that the moment right after
+  // onboarding — income confirmed, budgets and subscriptions seeded, and the
+  // user expecting to see their plan — Today still showed a generic welcome
+  // screen. That is precisely the moment the app has to feel like theirs, and
+  // every input Safe-to-Spend needs (income, committed recurring, savings
+  // target) already exists at that point without a single transaction.
+  //
+  // So the empty state is now for a genuinely blank vault only.
+  const hasSetup = settings.monthlyIncomeCents > 0 || recurring.length > 0;
+  if (txns.length === 0 && !hasSetup) return <NewInstallEmptyState />;
 
   return (
     <div className="flex flex-col gap-6 px-4 py-6">

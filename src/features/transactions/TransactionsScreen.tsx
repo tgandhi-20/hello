@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Search, Receipt, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { EmptyState, Select, formatMoney, formatRelativeDay, useToast, vibrate, TOAST_RESERVE_BOTTOM } from '@/ui';
+import { EmptyState, Select, formatMoney, formatTxnAmount, formatRelativeDay, useToast, vibrate, TOAST_RESERVE_BOTTOM } from '@/ui';
 import type { AccountId, Category, Txn } from '@/types';
 import { currentMonth, monthLabel, nextMonth, prevMonth } from '@/features/insights/monthMath';
 import { groupByDay, filterTxns } from './selectors';
@@ -218,7 +218,7 @@ export function TransactionsScreen() {
                 {item.kind === 'header' ? (
                   <div className="flex items-baseline justify-between px-4 py-2 text-xs text-ink-3">
                     <span>{formatRelativeDay(item.date)}</span>
-                    <span className="money text-ink-3">{formatMoney(item.subtotalCents)}</span>
+                    <span className="money text-ink-3">{formatTxnAmount(item.subtotalCents)}</span>
                   </div>
                 ) : (
                   <TransactionRow

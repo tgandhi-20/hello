@@ -80,6 +80,26 @@ export function formatMoney(cents: Cents, opts: FormatMoneyOptions = {}): string
   return out;
 }
 
+/**
+ * Format a `Txn.amountCents` the one canonical way the app displays a transaction
+ * amount: spend (positive cents) as a plain figure, income (negative cents, per
+ * CONTRACTS.md §3 — "positive for spend, negative for income") as a `+`-prefixed
+ * inflow. Never a bare minus sign — nothing in the app shows one for a transaction
+ * amount, so a raw `formatMoney(txn.amountCents)` on an income row silently reads
+ * backwards (a $500 payment received rendering as "-$500.00", which scans as money
+ * OUT on a screen where every other figure means money out).
+ *
+ * `TransactionRow` had this logic inline; the day-subtotal header in
+ * `TransactionsScreen`/`selectors.ts` and `UncategorisedQueue`'s row amount each
+ * independently summed/formatted `amountCents` with plain `formatMoney` instead,
+ * so an income-only day or an imported refund read with the opposite sign from
+ * the very same amount one row away. Centralising it here is the fix — every
+ * caller uses this instead of re-deriving the sign convention.
+ */
+export function formatTxnAmount(amountCents: Cents): string {
+  return amountCents < 0 ? formatMoney(-amountCents, { showSign: true }) : formatMoney(amountCents);
+}
+
 export type DateFormatStyle = 'short' | 'medium' | 'long';
 
 /**

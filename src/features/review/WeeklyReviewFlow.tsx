@@ -38,7 +38,7 @@ import { Card } from '@/ui/Card';
 import { ListGroup, ListRow } from '@/ui/ListGroup';
 import { CategoryIcon } from '@/ui/CategoryIcon';
 import { ProgressBar } from '@/ui/ProgressBar';
-import { formatMoney, formatDate, todayStr } from '@/ui/format';
+import { formatMoney, formatTxnAmount, formatDate, todayStr } from '@/ui/format';
 import { useStore } from '@/store/useStore';
 import { CategoryPickerSheet, ruleMatchFor } from '@/features/transactions';
 import { useRoutineChecklist, AMEX_INTEREST_RATE_PCT } from '@/features/routine';
@@ -186,7 +186,7 @@ export function WeeklyReviewFlow({ onClose }: WeeklyReviewFlowProps) {
                     <p className="text-md font-medium text-ink-1">{current.merchant || current.description}</p>
                     <p className="text-xs text-ink-3">{formatDate(current.date, 'long')}</p>
                   </div>
-                  <p className="money text-lg text-ink-1">{formatMoney(current.amountCents)}</p>
+                  <p className="money text-lg text-ink-1">{formatTxnAmount(current.amountCents)}</p>
                   <div className="flex gap-3">
                     <Button variant="ghost" fullWidth onClick={() => setSkippedIds((s) => new Set(s).add(current.id))}>
                       Skip

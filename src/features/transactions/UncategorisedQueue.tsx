@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Inbox, X, PartyPopper } from 'lucide-react';
-import { ListGroup, ListRow, Sheet, formatDate, formatMoney } from '@/ui';
+import { ListGroup, ListRow, Sheet, formatDate, formatTxnAmount } from '@/ui';
 import type { Category, Txn } from '@/types';
 import { selectUncategorisedTxns } from './uncategorised';
 import { CategoryPickerSheet } from './CategoryPickerSheet';
@@ -119,7 +119,7 @@ function UncategorisedQueueSheet({ open, items, onClose, onRowTap }: Uncategoris
               onClick={() => onRowTap(t)}
               title={t.merchant || t.description}
               subtitle={formatDate(t.date, 'short')}
-              trailing={<span className="money text-ink-1">{formatMoney(t.amountCents)}</span>}
+              trailing={<span className="money text-ink-1">{formatTxnAmount(t.amountCents)}</span>}
               chevron
             />
           ))}

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Tag, Trash2 } from 'lucide-react';
-import { CategoryIcon, formatMoney } from '@/ui';
+import { CategoryIcon, formatTxnAmount } from '@/ui';
 import type { Category, Txn } from '@/types';
 
 const SWIPE_THRESHOLD = 72;
@@ -69,8 +69,6 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
     onTap(txn);
   }
 
-  const isIncome = txn.amountCents < 0;
-
   return (
     <div className="relative overflow-hidden">
       <div className="absolute inset-0 flex items-stretch justify-between">
@@ -128,9 +126,7 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
         </div>
         {/* No `--positive` token in v3 — income is carried by the `+` sign, not a
             second green competing with the accent. */}
-        <span className="money shrink-0 text-md text-ink-1">
-          {isIncome ? formatMoney(-txn.amountCents, { showSign: true }) : formatMoney(txn.amountCents)}
-        </span>
+        <span className="money shrink-0 text-md text-ink-1">{formatTxnAmount(txn.amountCents)}</span>
       </div>
     </div>
   );

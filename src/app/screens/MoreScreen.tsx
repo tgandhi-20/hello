@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Settings as SettingsIcon } from 'lucide-react';
+import { Upload, Settings as SettingsIcon, ClipboardCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ListGroup, ListRow } from '@/ui';
 import { InstallPrompt } from '@/ui/InstallPrompt';
 import { AppVersionTag } from '@/ui/version';
+import { WeeklyReviewFlow } from '@/features/review/WeeklyReviewFlow';
 
 interface LinkDef {
   to: string;
@@ -21,9 +22,16 @@ interface LinkDef {
 // that used to live here (Transactions, Budgets, Statements, Recurring, Goal,
 // Routine, Habits) now has a home as a Spending or Plan tab, reachable from the
 // bottom bar directly — repeating those links here would just be the same
-// destination behind a second door. There is no weekly-review flow built yet
-// (DESIGN-V3.md §5 lists it as a functional gap, not something this IA pass
-// built) — nothing links to it rather than pointing at a screen that doesn't exist.
+// destination behind a second door.
+//
+// Weekly review (src/features/review/WeeklyReviewFlow.tsx) IS built, but it isn't
+// a route — it's a full-screen overlay with a persisted step bookmark (see that
+// file's doc comment), the same pattern Settings already used to open it. This
+// screen used to have no entry to it at all, which contradicted the frozen IA
+// above: the ritual DESIGN-V3.md §0 says the whole app exists to support was three
+// taps deep inside Settings instead of one tap from More. Opening it here reuses
+// the exact same component/bookmark Settings opens — there is only ever one
+// resumable review in progress, never two parallel ones.
 const LINKS: LinkDef[] = [
   { to: '/import', label: 'Import statement', subtitle: 'CBA, Amex or Bankwest CSV', icon: Upload },
 ];
@@ -56,6 +64,8 @@ function LinkGroup({ links }: { links: LinkDef[] }) {
 }
 
 export function MoreScreen() {
+  const [reviewOpen, setReviewOpen] = useState(false);
+
   return (
     <div className="flex flex-col gap-6 px-4 py-6">
       <InstallPrompt />
@@ -63,6 +73,23 @@ export function MoreScreen() {
       <section className="flex flex-col gap-2">
         <p className="label px-1">Data</p>
         <LinkGroup links={LINKS} />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <p className="label px-1">Routine</p>
+        <ListGroup>
+          <ListRow
+            onClick={() => setReviewOpen(true)}
+            leading={
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-sunk">
+                <ClipboardCheck size={18} className="text-ink-2" aria-hidden="true" />
+              </span>
+            }
+            title="Weekly review"
+            subtitle="Import, categorise, confirm recurring, pay Amex"
+            chevron
+          />
+        </ListGroup>
       </section>
 
       <section className="flex flex-col gap-2">
@@ -74,6 +101,8 @@ export function MoreScreen() {
       <p className="px-1 text-center">
         <AppVersionTag />
       </p>
+
+      {reviewOpen ? <WeeklyReviewFlow onClose={() => setReviewOpen(false)} /> : null}
     </div>
   );
 }
