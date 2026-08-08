@@ -50,8 +50,8 @@ export function UpcomingCalendarSection({ cashflow }: UpcomingCalendarSectionPro
       </h2>
 
       {cashflow.squeezeWarning ? (
-        <div className="flex items-start gap-2 rounded-control bg-surface-2 p-3">
-          <TrendingDown size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-negative" />
+        <div className="flex items-start gap-2 rounded-control bg-critical-tint p-3">
+          <TrendingDown size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-critical" />
           <p className="text-sm text-ink-1">
             Your projected balance goes below zero around{' '}
             {cashflow.lowestPointDate ? formatDate(cashflow.lowestPointDate, 'long') : 'this window'} (
@@ -64,20 +64,21 @@ export function UpcomingCalendarSection({ cashflow }: UpcomingCalendarSectionPro
       <ListGroup>
         {cashflow.events.map((event) => {
           const Icon = KIND_ICON[event.kind];
-          const cashIn = event.amountCents < 0;
           return (
             <ListRow
               key={event.sourceId}
               as="div"
               leading={
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-sunk text-ink-2">
                   <Icon size={14} aria-hidden="true" />
                 </span>
               }
               title={event.label}
               subtitle={eventCaption(event)}
               trailing={
-                <span className={['money', cashIn ? 'text-positive' : 'text-ink-1'].join(' ')}>
+                // No `--positive` token in v3 — money coming in is carried by the `+`
+                // sign (`showSign`), not a second green.
+                <span className="money text-ink-1">
                   {event.amountCents === 0 ? '—' : formatMoney(-event.amountCents, { showSign: true })}
                 </span>
               }

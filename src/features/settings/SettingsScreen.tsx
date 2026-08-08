@@ -12,6 +12,11 @@ import {
   Trash2,
   ShieldCheck,
   Lock,
+  Home,
+  HelpCircle,
+  ListChecks,
+  ClipboardCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { Card } from '@/ui/Card';
 import { Button } from '@/ui/Button';
@@ -29,6 +34,10 @@ import type { Cents } from '@/types';
 import { ChangeUnlockSheet } from './ChangeUnlockSheet';
 import { ImportBackupSheet } from './ImportBackupSheet';
 import { parseDollarsToCents, centsToPlainDollarsString } from './money';
+import { OnboardingFlow } from '@/features/onboarding/OnboardingFlow';
+import { PLAN_SEED_BUDGET_COUNT, PLAN_SEED_SUBSCRIPTION_COUNT } from '@/features/onboarding/onboardingSettings';
+import { WeeklyReviewFlow } from '@/features/review/WeeklyReviewFlow';
+import { applyPersonalPlan } from '@/personal/applyPersonalPlan';
 
 const LOCK_TIMEOUT_OPTIONS = [
   { value: '30000', label: '30 seconds' },
@@ -101,6 +110,9 @@ export function SettingsScreen() {
   const [exportBusy, setExportBusy] = useState(false);
   const [demoBusy, setDemoBusy] = useState(false);
   const [unlockConfig, setUnlockConfig] = useState<UnlockConfig>(DEFAULT_UNLOCK_CONFIG);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [applyPlanBusy, setApplyPlanBusy] = useState(false);
 
   useEffect(() => {
     void isBiometricAvailable().then(setBiometricSupported);
@@ -167,6 +179,20 @@ export function SettingsScreen() {
   async function handleReset() {
     setResetOpen(false);
     await resetAll();
+  }
+
+  async function handleApplyPlanNow() {
+    setApplyPlanBusy(true);
+    try {
+      const result = await applyPersonalPlan(useStore.getState());
+      show(`Seeded ${result.budgetsSet} budgets and ${result.subscriptionsSeeded} subscriptions for this month.`, {
+        variant: 'success',
+      });
+    } catch (e) {
+      show(e instanceof Error ? e.message : 'Could not apply your plan.', { variant: 'danger' });
+    } finally {
+      setApplyPlanBusy(false);
+    }
   }
 
   return (
@@ -282,6 +308,72 @@ export function SettingsScreen() {
         </div>
       </Card>
 
+      {/* --- Your plan (DESIGN-V3.md §5 deliverables 1/2) --- */}
+      <Card>
+        <h2 className="mb-3 text-md font-semibold text-ink-1">Your plan</h2>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <Home size={20} className="mt-8 shrink-0 text-ink-2" aria-hidden="true" />
+            <div className="flex-1">
+              <Input
+                label="Move-in date"
+                type="date"
+                value={settings.moveInDate ?? ''}
+                onChange={(e) => void updateSettings({ moveInDate: e.target.value || undefined })}
+              />
+              <p className="mt-1 text-xs text-ink-3">
+                Rent, utilities and the sublet income only count from this date. Leave blank if it's not fixed yet.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <HelpCircle size={20} className="mt-1 shrink-0 text-ink-2" aria-hidden="true" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-md text-ink-1">HECS/HELP debt</span>
+                <Switch
+                  id="hecs-toggle"
+                  checked={settings.hasHecsDebt ?? false}
+                  onChange={(v) => void updateSettings({ hasHecsDebt: v })}
+                />
+              </div>
+              <p className="mt-1 text-xs text-ink-3">
+                {settings.hasHecsDebt === undefined
+                  ? "Not answered yet — the plan's figures currently assume no HECS/HELP debt."
+                  : settings.hasHecsDebt
+                    ? "Flagged. This plan's take-home figures assume no HECS/HELP debt and will need revisiting."
+                    : 'No HECS/HELP debt — the plan is calculated as-is.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <ListGroup className="mt-4">
+          <ListRow
+            onClick={() => setOnboardingOpen(true)}
+            leading={<RotateCcw size={20} className="text-ink-2" aria-hidden="true" />}
+            title="Run setup again"
+            subtitle="Revisit income, payday, savings, move-in date and HECS"
+            chevron
+          />
+          <ListRow
+            onClick={() => void handleApplyPlanNow()}
+            leading={<ListChecks size={20} className="text-ink-2" aria-hidden="true" />}
+            title="Apply my plan now"
+            subtitle={`Set ${PLAN_SEED_BUDGET_COUNT} budgets + ${PLAN_SEED_SUBSCRIPTION_COUNT} subscriptions for this month`}
+            trailing={applyPlanBusy ? <span className="text-xs text-ink-3">Working…</span> : undefined}
+          />
+          <ListRow
+            onClick={() => setReviewOpen(true)}
+            leading={<ClipboardCheck size={20} className="text-ink-2" aria-hidden="true" />}
+            title="Weekly review"
+            subtitle="Import, categorise, confirm recurring, pay Amex"
+            chevron
+          />
+        </ListGroup>
+      </Card>
+
       {/* --- Data --- */}
       <Card>
         <h2 className="mb-3 text-md font-semibold text-ink-1">Your data</h2>
@@ -319,6 +411,8 @@ export function SettingsScreen() {
         onChanged={refreshUnlockConfig}
       />
       <ImportBackupSheet open={importOpen} onClose={() => setImportOpen(false)} />
+      {onboardingOpen ? <OnboardingFlow variant="rerun" onDone={() => setOnboardingOpen(false)} /> : null}
+      {reviewOpen ? <WeeklyReviewFlow onClose={() => setReviewOpen(false)} /> : null}
       <ConfirmDialog
         open={resetOpen}
         title="Reset everything?"

@@ -93,7 +93,7 @@ export function BudgetsScreen() {
           type="button"
           aria-label="Previous month"
           onClick={() => setMonth(prevMonth(month))}
-          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
+          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-sunk"
         >
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
@@ -102,7 +102,7 @@ export function BudgetsScreen() {
           type="button"
           aria-label="Next month"
           onClick={() => setMonth(nextMonth(month))}
-          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
+          className="flex h-12 w-12 items-center justify-center rounded-full text-ink-2 active:bg-surface-sunk"
         >
           <ChevronRight size={20} aria-hidden="true" />
         </button>

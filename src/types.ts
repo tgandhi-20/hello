@@ -14,7 +14,20 @@ export type MonthStr = string;
 /** Integer cents. Positive = money out (spend). Negative = money in (income/refund). */
 export type Cents = number;
 
-export type AccountId = 'cba' | 'bankwest' | 'amex' | 'cash';
+/**
+ * `'cba'` is the CBA everyday/transaction account. `'cba-card'` is a CBA credit
+ * card (DESIGN-V3.md §5 / deliverable 4) — split out because a single `'cba'`
+ * bucket covering both an everyday account and a card pollutes statement-cycle
+ * prediction (a card has a due date and a closing cycle; an everyday account
+ * doesn't). Purely additive: every transaction already stored with
+ * `account: 'cba'` keeps exactly that value and exactly that meaning (the
+ * everyday account) — nothing about existing data changes. `'cba-card'` only
+ * ever appears on a transaction the user explicitly tags that way (import
+ * account picker, manual edit) from this point on. See
+ * `src/data/accountMigration.ts` for the defensive (not corrective — nothing
+ * needs correcting) validation this split is paired with.
+ */
+export type AccountId = 'cba' | 'cba-card' | 'bankwest' | 'amex' | 'cash';
 
 export type CategoryKind = 'need' | 'want' | 'save';
 
@@ -131,6 +144,33 @@ export interface Settings {
    * business sitting in plaintext storage.
    */
   goalCurrentBalanceCents?: Cents;
+  /**
+   * Epoch ms the first-run onboarding flow (`src/features/onboarding/`) was
+   * completed OR explicitly skipped — either way counts as "asked". Gates
+   * whether `LockGate` shows onboarding after unlock. `undefined` = never
+   * run. Re-running from Settings overwrites this with a fresh timestamp.
+   */
+  onboardingCompletedAt?: number;
+  /**
+   * Bookmark for the weekly-review guided flow (`src/features/review/`,
+   * personal plan §8's first-Saturday ritual). Scoped to a calendar month so
+   * a new month always starts fresh, same rollover shape as
+   * `RoutineChecklistState` (`src/features/routine/types.ts`). The flow
+   * itself re-derives what's actually left to do (uncategorised
+   * transactions, unconfirmed recurring series, unpaid Amex) from live data
+   * on every open — this is a resume-position convenience, not a source of
+   * truth. `undefined` = never started this month.
+   */
+  weeklyReview?: WeeklyReviewBookmark;
+}
+
+/** The five steps of the weekly-review guided flow, in order. */
+export type ReviewStepId = 'import' | 'categorise' | 'recurring' | 'amex' | 'done';
+
+export interface WeeklyReviewBookmark {
+  /** `YYYY-MM` — the month this bookmark applies to. */
+  month: MonthStr;
+  step: ReviewStepId;
 }
 
 export interface HabitStats {

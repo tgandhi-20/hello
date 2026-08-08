@@ -79,15 +79,17 @@ export interface StatementCycleOverride {
  * ... the CBA card due the 25th"). `bankwest` holds savings, not a card;
  * `cash` isn't a bank product at all.
  *
- * HONESTY FLAG (see the report): `AccountId` has exactly one `'cba'` bucket
- * for the whole bank — CBA everyday-transaction spending and CBA-card
- * spending are structurally indistinguishable in this codebase's data model.
- * Treating every `'cba'` transaction as card spend is an assumption, made
- * because PERSONAL.md explicitly describes a CBA card with its own due date;
- * it will overstate the CBA "card" statement if the user also uses a CBA
- * everyday/debit account for non-card spending under the same account id.
+ * Uses `'cba-card'`, not `'cba'` (DESIGN-V3.md §5 / deliverable 5, landed in
+ * `src/data/accountMigration.ts`): `AccountId` now splits the CBA everyday
+ * account from the CBA credit card, so this list can finally name the card
+ * bucket precisely instead of treating every `'cba'` transaction — including
+ * everyday debit spend — as card spend. This resolves the honesty flag this
+ * comment used to carry. Existing data is unaffected (every transaction
+ * already tagged `'cba'` keeps meaning "everyday account"); a statement only
+ * starts predicting once transactions are explicitly tagged `'cba-card'`
+ * (import account picker, manual edit, or a confirmed recurring series).
  */
-export const CARD_ACCOUNT_IDS: readonly AccountId[] = ['cba', 'amex'];
+export const CARD_ACCOUNT_IDS: readonly AccountId[] = ['cba-card', 'amex'];
 
 export function isCardAccount(accountId: AccountId | undefined): accountId is AccountId {
   return accountId !== undefined && (CARD_ACCOUNT_IDS as readonly string[]).includes(accountId);
@@ -95,6 +97,7 @@ export function isCardAccount(accountId: AccountId | undefined): accountId is Ac
 
 export const ACCOUNT_LABEL: Record<AccountId, string> = {
   cba: 'CBA',
+  'cba-card': 'CBA Card',
   bankwest: 'Bankwest',
   amex: 'Amex',
   cash: 'Cash',

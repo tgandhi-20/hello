@@ -13,7 +13,7 @@ export function CategoryTile({ category, onSelect }: CategoryTileProps) {
     <button
       type="button"
       onClick={() => onSelect(category)}
-      className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-card bg-surface-1 px-2 py-3 text-center transition-[transform,background-color] duration-200 active:scale-[0.97] active:bg-surface-2"
+      className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-card bg-surface px-2 py-3 text-center transition-[transform,background-color] duration-200 active:scale-[0.97] active:bg-surface-sunk"
     >
       <CategoryIcon icon={category.icon} colorToken={category.colorToken} size="md" />
       <span className="line-clamp-1 text-sm font-medium text-ink-1">{category.label}</span>

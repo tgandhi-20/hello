@@ -59,7 +59,7 @@ export function SourcePicker({ onText, disabled }: SourcePickerProps) {
           dragOver ? 'border-accent bg-accent-tint' : '',
         ].join(' ')}
       >
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-sunk">
           <Upload size={24} className="text-accent" aria-hidden="true" />
         </div>
         <div>

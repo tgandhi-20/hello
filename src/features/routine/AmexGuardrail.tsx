@@ -48,12 +48,14 @@ export function AmexGuardrail(): React.JSX.Element | null {
       </p>
 
       {paid ? (
-        <div className="flex items-center gap-2 text-sm text-positive">
+        // No `--positive` token in v3 — paid-in-full needs no colour, the check shape
+        // and full-strength ink already say "done" (DESIGN-V3.md §1).
+        <div className="flex items-center gap-2 text-sm text-ink-1">
           <CheckCircle2 size={16} aria-hidden="true" /> Paid in full for this cycle.
         </div>
       ) : (
-        <div className="rounded-card bg-surface-2 px-3 py-3">
-          <p className={['text-sm font-medium', overdue ? 'text-negative' : 'text-ink-1'].join(' ')}>
+        <div className="rounded-card bg-surface-sunk px-3 py-3">
+          <p className={['text-sm font-medium', overdue ? 'text-critical' : 'text-ink-1'].join(' ')}>
             {overdue ? `Statement was due ${formatDate(dueDate, 'long')}` : `Statement due ${formatDate(dueDate, 'long')}`}
           </p>
           <p className="mt-1 text-xs text-ink-3">

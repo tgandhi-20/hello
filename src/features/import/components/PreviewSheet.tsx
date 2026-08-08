@@ -14,6 +14,7 @@ import type { BankFormat } from '@/import';
 
 const ACCOUNT_OPTIONS: { value: AccountId; label: string }[] = [
   { value: 'cba', label: 'Commonwealth Bank' },
+  { value: 'cba-card', label: 'Commonwealth Bank — card' },
   { value: 'bankwest', label: 'Bankwest' },
   { value: 'amex', label: 'Amex' },
   { value: 'cash', label: 'Cash' },
@@ -120,7 +121,7 @@ export function PreviewSheet({
         </div>
 
         {preview?.warnings.length ? (
-          <div className="flex flex-col gap-2 rounded-card bg-[color-mix(in_srgb,var(--caution)_12%,transparent)] p-3">
+          <div className="flex flex-col gap-2 rounded-card bg-caution-tint p-3">
             {preview.warnings.map((w, i) => (
               <div key={i} className="flex items-start gap-2 text-xs text-caution">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
@@ -162,7 +163,9 @@ export function PreviewSheet({
                     trailing={
                       <div className="text-right">
                         <p className="money text-sm text-ink-1">{formatMoney(Math.abs(row.amountCents))}</p>
-                        <p className={['text-xs', isSpend ? 'text-ink-2' : 'text-positive'].join(' ')}>
+                        {/* No `--positive` token in v3 — income reads via the label text
+                            itself, in slightly stronger ink than a routine spend row. */}
+                        <p className={['text-xs', isSpend ? 'text-ink-2' : 'text-ink-1'].join(' ')}>
                           {isSpend ? '— spend' : '— income'}
                         </p>
                       </div>

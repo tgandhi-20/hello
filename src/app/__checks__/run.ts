@@ -188,6 +188,72 @@ async function main(): Promise<void> {
     }
   }
 
+  // ===================================================================
+  // IA reachability (DESIGN-V3.md §4) — the specific 5-tab structure this
+  // round of work exists to land, checked explicitly rather than trusting
+  // the generic scan above alone. That scan proves a Screen is referenced
+  // SOMEWHERE under src/app/**; it says nothing about whether it's actually
+  // wired into the right tab, or whether an old bookmark still resolves.
+  // Deliberately dumb, same spirit as the rest of this file: substring
+  // matches on file text, no module execution.
+  // ===================================================================
+  {
+    const tabBarPath = join(APP_DIR, 'shell/TabBar.tsx');
+    const appTsxPath2 = join(APP_DIR, 'App.tsx');
+    if (isFile(tabBarPath) && isFile(appTsxPath2)) {
+      const tabBarText = readFileSync(tabBarPath, 'utf8');
+      const appTsxText = readFileSync(appTsxPath2, 'utf8');
+
+      // 5 tab-bar destinations: Today, Spending, quick-add (FAB), Plan, More.
+      for (const dest of ["to: '/'", "to: '/spending'", "to: '/log'", "to: '/plan'", "to: '/more'"]) {
+        check(`TabBar.tsx routes to ${dest}`, tabBarText.includes(dest));
+      }
+
+      // Today mounted at '/'.
+      check("App.tsx mounts TodayScreen at '/'", /path="\/"\s*element=\{<TodayScreen/.test(appTsxText));
+
+      // Spending and Plan are container routes hosting the existing feature
+      // screens as nested children — not just linked to, actually routed.
+      check('App.tsx has a /spending container route', appTsxText.includes('path="/spending"'));
+      check('App.tsx has a /plan container route', appTsxText.includes('path="/plan"'));
+      for (const child of [
+        'path="transactions"',
+        'path="trends"',
+        'path="habits"',
+      ]) {
+        check(`App.tsx nests ${child} under /spending`, appTsxText.includes(child));
+      }
+      for (const child of [
+        'path="goal"',
+        'path="budgets"',
+        'path="recurring"',
+        'path="statements"',
+        'path="routine"',
+      ]) {
+        check(`App.tsx nests ${child} under /plan`, appTsxText.includes(child));
+      }
+
+      // Every OLD top-level path must still resolve (redirect is enough — see
+      // App.tsx's own doc comment). A user's saved bookmark or an in-app
+      // `navigate('/goal')` call this agent didn't find must not 404.
+      for (const legacy of [
+        '/transactions',
+        '/trends',
+        '/habits',
+        '/goal',
+        '/budgets',
+        '/recurring',
+        '/statements',
+        '/routine',
+      ]) {
+        const redirectRe = new RegExp(`path="${legacy}"[^>]*element=\\{<Navigate`);
+        check(`Legacy path ${legacy} still resolves (redirected, not 404)`, redirectRe.test(appTsxText));
+      }
+    } else {
+      check('TabBar.tsx and App.tsx both exist to run the IA structure checks', false);
+    }
+  }
+
   console.log(`\n--- ${passed} passed, ${failed} failed ---`);
   if (failed > 0) {
     console.log('\nFailures:');

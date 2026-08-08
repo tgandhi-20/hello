@@ -24,7 +24,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(fun
         autoCapitalize="off"
         autoCorrect="off"
         className={[
-          'w-full rounded-control border border-hairline bg-surface-2 px-4 py-3 text-sm text-ink-1',
+          'w-full rounded-control border border-hairline bg-surface-sunk px-4 py-3 text-sm text-ink-1',
           'placeholder:text-ink-3 outline-none transition-colors duration-200 focus:border-accent',
           'font-mono leading-relaxed',
           className,

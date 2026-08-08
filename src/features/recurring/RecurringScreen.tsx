@@ -137,7 +137,7 @@ export function RecurringScreen() {
                   type="button"
                   onClick={() => toggleMute(s)}
                   aria-label={s.muted ? 'Unmute' : 'Mute'}
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-2"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-sunk"
                 >
                   {s.muted ? <BellOff size={18} aria-hidden="true" /> : <Bell size={18} aria-hidden="true" />}
                 </button>

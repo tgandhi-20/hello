@@ -78,18 +78,19 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
           <Tag size={18} aria-hidden="true" />
           <span className="text-sm font-medium">Re-categorise</span>
         </div>
-        <div className="flex w-1/2 items-center justify-end gap-2 bg-negative px-4 text-ink-on-accent">
+        <div className="flex w-1/2 items-center justify-end gap-2 bg-critical px-4 text-ink-on-accent">
           <span className="text-sm font-medium">Delete</span>
           <Trash2 size={18} aria-hidden="true" />
         </div>
       </div>
       <div
         className={[
-          // `bg-surface-1` (not `bg-bg`) so the list reads as one raised surface with hairline
-          // row dividers (DESIGN.md §5 "List rows... Not one card per row"), rather than floating
-          // directly on the page ground — it's still fully opaque, which is what actually matters
-          // for hiding the swipe-action layer sitting at `absolute inset-0` behind it.
-          'relative flex min-h-[64px] items-center gap-3 border-b border-hairline bg-surface-1 px-4 py-3 select-none',
+          // `bg-surface` (not `bg-ground`) so the list reads as one raised white surface with
+          // hairline row dividers (DESIGN-V3.md §3 "grouped lists... never one card per row"),
+          // rather than floating directly on the page ground — it's still fully opaque, which is
+          // what actually matters for hiding the swipe-action layer sitting at `absolute inset-0`
+          // behind it.
+          'relative flex min-h-[64px] items-center gap-3 border-b border-hairline bg-surface px-4 py-3 select-none',
           // Dim the CONTENTS, never this element. It carries the opaque background that
           // hides the swipe-action layer sitting at `absolute inset-0` behind it —
           // fading the element itself made that background translucent and let the
@@ -125,7 +126,9 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
             {txn.note ? ` · ${txn.note}` : ''}
           </p>
         </div>
-        <span className={['money shrink-0 text-md', isIncome ? 'text-positive' : 'text-ink-1'].join(' ')}>
+        {/* No `--positive` token in v3 — income is carried by the `+` sign, not a
+            second green competing with the accent. */}
+        <span className="money shrink-0 text-md text-ink-1">
           {isIncome ? formatMoney(-txn.amountCents, { showSign: true }) : formatMoney(txn.amountCents)}
         </span>
       </div>

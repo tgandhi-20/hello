@@ -28,6 +28,9 @@ import { Keypad, PinDots, PinLengthStepper, PIN_LENGTH, isWeakPin } from './PinP
 import { PassphraseField } from './PassphraseField';
 import { ModeOptionCard } from './ModeOptionCard';
 import { RecoverySheet } from './RecoverySheet';
+// First-run onboarding gate — see LockGate's doc comment below for why this
+// feature-owned-elsewhere import lives here.
+import { OnboardingFlow } from '@/features/onboarding/OnboardingFlow';
 import {
   type UnlockMode,
   type UnlockConfig,
@@ -304,11 +307,11 @@ export function LockScreen() {
   if (lockState === 'unsupported') {
     return (
       <div
-        className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-bg px-6 text-center"
+        className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-ground px-6 text-center"
         role="alert"
       >
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-hairline bg-surface-1">
-          <ShieldAlert size={26} className="text-negative" aria-hidden="true" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-hairline bg-surface">
+          <ShieldAlert size={26} className="text-critical" aria-hidden="true" />
         </div>
         <h1 className="text-xl font-semibold text-ink-1">This browser can't run Tally</h1>
         <p className="max-w-sm text-sm text-ink-2">
@@ -326,12 +329,12 @@ export function LockScreen() {
   // -------------------------------------------------------------------
   if (screen === 'choose-mode') {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col bg-bg" role="dialog" aria-modal="true" aria-label="Choose how to unlock Tally">
+      <div className="fixed inset-0 z-[100] flex flex-col bg-ground" role="dialog" aria-modal="true" aria-label="Choose how to unlock Tally">
         <div
           className="flex flex-1 flex-col items-center gap-5 overflow-y-auto px-6 pb-4 pt-8 text-center scroll-container"
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2rem)' }}
         >
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-hairline bg-surface-1">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-hairline bg-surface">
             <Lock size={26} className="text-accent" aria-hidden="true" />
           </div>
           <div>
@@ -369,7 +372,7 @@ export function LockScreen() {
         </div>
 
         <div
-          className="border-t border-hairline bg-surface-1 px-6 pb-8 pt-6"
+          className="border-t border-hairline bg-surface px-6 pb-8 pt-6"
           style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
         >
           <Button variant="primary" size="lg" fullWidth onClick={beginSetupEntry}>
@@ -407,13 +410,13 @@ export function LockScreen() {
     : 'Unlock Tally to continue.';
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-bg" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-[100] flex flex-col bg-ground" role="dialog" aria-modal="true" aria-label={title}>
       {/* Top: identity + status. Deliberately not the bottom third — that's reserved for entry controls. */}
       <div
         className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-hairline bg-surface-1">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-hairline bg-surface">
           <Lock size={26} className="text-accent" aria-hidden="true" />
         </div>
         <div>
@@ -426,13 +429,13 @@ export function LockScreen() {
         ) : null}
 
         {weakWarning && screen === 'setup-confirm' ? (
-          <div className="flex items-center gap-2 rounded-card bg-[color-mix(in_srgb,var(--caution)_12%,transparent)] px-4 py-2 text-xs text-caution">
+          <div className="flex items-center gap-2 rounded-card bg-caution-tint px-4 py-2 text-xs text-caution">
             <AlertTriangle size={16} aria-hidden="true" />
             <span>{weakWarning} You can still use it, but a less predictable PIN is safer.</span>
           </div>
         ) : null}
 
-        {error ? <p className="text-sm text-negative">{error}</p> : null}
+        {error ? <p className="text-sm text-critical">{error}</p> : null}
 
         {isBackedOff ? (
           <p className="text-sm text-ink-3">Try again in {Math.ceil(remainingMs / 1000)}s</p>
@@ -443,7 +446,7 @@ export function LockScreen() {
             type="button"
             onClick={() => void attemptBiometric()}
             disabled={busy}
-            className="mt-2 flex min-h-[48px] items-center gap-2 rounded-pill border border-hairline px-5 text-sm font-medium text-ink-1 active:bg-surface-2 disabled:opacity-40"
+            className="mt-2 flex min-h-[48px] items-center gap-2 rounded-pill border border-hairline px-5 text-sm font-medium text-ink-1 active:bg-surface-sunk disabled:opacity-40"
           >
             <Fingerprint size={20} className="text-accent" aria-hidden="true" />
             Use fingerprint
@@ -486,7 +489,7 @@ export function LockScreen() {
 
       {/* Bottom third: entry controls. This is the whole one-handed-use point (CONTRACTS.md §4). */}
       <div
-        className="border-t border-hairline bg-surface-1 px-6 pb-8 pt-6"
+        className="border-t border-hairline bg-surface px-6 pb-8 pt-6"
         style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
       >
         {activeMode === 'pin' ? (
@@ -540,6 +543,7 @@ export function LockGate({ children }: { children: React.ReactNode }) {
   const lockState = useStore((s) => s.lockState);
   const hydrated = useStore((s) => s.hydrated);
   const skippedRecordCount = useStore((s) => s.skippedRecordCount);
+  const onboardingCompletedAt = useStore((s) => s.settings.onboardingCompletedAt);
   const { show } = useToast();
   const shownForCountRef = useRef(0);
 
@@ -555,7 +559,19 @@ export function LockGate({ children }: { children: React.ReactNode }) {
     );
   }, [hydrated, skippedRecordCount, show]);
 
-  if (lockState === 'unlocked') return <>{children}</>;
+  if (lockState === 'unlocked') {
+    // First-run onboarding (DESIGN-V3.md §5 deliverable 1, src/features/onboarding/):
+    // once a fresh vault is unlocked and hydrated, ask the setup questions before
+    // the rest of the app is reachable. `onboardingCompletedAt` is set the instant
+    // the flow finishes OR is explicitly skipped, so this never shows twice
+    // uninvited — re-running it lives in Settings instead. This is the one
+    // integration point onboarding structurally needs (every route mounts inside
+    // this gate) — see the report for why it's here rather than in src/app/**.
+    if (hydrated && !onboardingCompletedAt) {
+      return <OnboardingFlow variant="first-run" onDone={() => {}} />;
+    }
+    return <>{children}</>;
+  }
   return <LockScreen />;
 }
 

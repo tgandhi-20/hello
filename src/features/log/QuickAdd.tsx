@@ -10,6 +10,7 @@ import { rankedCategories, suggestedAmountCents, lastUsedAccount } from './selec
 const ACCOUNT_OPTIONS: { value: AccountId; label: string }[] = [
   { value: 'cash', label: 'Cash' },
   { value: 'cba', label: 'CBA' },
+  { value: 'cba-card', label: 'CBA Card' },
   { value: 'bankwest', label: 'Bankwest' },
   { value: 'amex', label: 'Amex' },
 ];

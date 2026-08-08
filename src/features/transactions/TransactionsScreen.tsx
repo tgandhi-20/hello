@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { Search, Receipt } from 'lucide-react';
+import { Search, Receipt, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { EmptyState, Select, formatMoney, formatRelativeDay, useToast, vibrate, TOAST_RESERVE_BOTTOM } from '@/ui';
 import type { AccountId, Category, Txn } from '@/types';
+import { currentMonth, monthLabel, nextMonth, prevMonth } from '@/features/insights/monthMath';
 import { groupByDay, filterTxns } from './selectors';
 import { useWindowedList } from './useWindowedList';
 import { TransactionRow } from './TransactionRow';
 import { EditSheet } from './EditSheet';
 import { CategoryPickerSheet } from './CategoryPickerSheet';
+import { UncategorisedQueue } from './UncategorisedQueue';
 
 const ROW_HEIGHT = 64;
 const HEADER_HEIGHT = 40;
@@ -20,6 +22,7 @@ const ACCOUNT_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Account' },
   { value: 'cash', label: 'Cash' },
   { value: 'cba', label: 'CBA' },
+  { value: 'cba-card', label: 'CBA Card' },
   { value: 'bankwest', label: 'Bankwest' },
   { value: 'amex', label: 'Amex' },
 ];
@@ -48,6 +51,22 @@ export function TransactionsScreen() {
     for (const t of txns) set.add(t.date.slice(0, 7));
     return Array.from(set).sort().reverse();
   }, [txns]);
+
+  // Month navigation (DESIGN-V3.md §5.4): `month === ''` means "All time" — search and
+  // the category/account filters keep working unchanged in that state, they just AND
+  // together with whichever month (or lack of one) is currently selected.
+  const latestMonthWithData = months[0] ?? currentMonth();
+  function goPrevMonth() {
+    setMonth((m) => prevMonth(m || latestMonthWithData));
+  }
+  function goNextMonth() {
+    setMonth((m) => {
+      if (!m) return m; // already "All time" — nothing further ahead
+      const next = nextMonth(m);
+      return next > currentMonth() ? m : next; // never navigate into the future
+    });
+  }
+  const nextDisabled = !month || month >= currentMonth();
 
   const filtered = useMemo(
     () =>
@@ -121,18 +140,49 @@ export function TransactionsScreen() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-col gap-2 px-4 py-3">
+      <div className="flex flex-col gap-3 px-4 py-3">
         <label className="relative block">
           <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" aria-hidden="true" />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search merchant or note"
-            className="h-12 w-full rounded-control border border-hairline bg-surface-2 pl-10 pr-4 text-md text-ink-1 placeholder:text-ink-3 outline-none focus:border-accent"
+            placeholder="Search merchant, description or note"
+            className="h-12 w-full rounded-control border border-hairline bg-surface-sunk pl-10 pr-4 text-md text-ink-1 placeholder:text-ink-3 outline-none focus:border-accent"
           />
         </label>
-        <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-2">
+
+        {/* Month navigation (DESIGN-V3.md §5.4) — independent of search/category/account,
+            so any combination of the four composes cleanly (see `filterTxns`). */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="Previous month"
+            onClick={goPrevMonth}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-sunk"
+          >
+            <ChevronLeft size={20} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setMonth('')}
+            aria-label={month ? `Showing ${monthLabel(month)} — tap for all time` : 'Showing all time'}
+            className="min-h-[48px] flex-1 rounded-control px-3 text-center text-sm font-medium text-ink-1 active:bg-surface-sunk"
+          >
+            {month ? monthLabel(month) : 'All time'}
+          </button>
+          <button
+            type="button"
+            aria-label="Next month"
+            onClick={goNextMonth}
+            disabled={nextDisabled}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-2 active:bg-surface-sunk disabled:opacity-30"
+          >
+            <ChevronRight size={20} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
           <Select
             aria-label="Filter by category"
             options={[{ value: '', label: 'Category' }, ...categories.map((c) => ({ value: c.id, label: c.label }))]}
@@ -145,13 +195,13 @@ export function TransactionsScreen() {
             value={account}
             onChange={(e) => setAccount(e.target.value)}
           />
-          <Select
-            aria-label="Filter by month"
-            options={[{ value: '', label: 'Month' }, ...months.map((m) => ({ value: m, label: m }))]}
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-          />
         </div>
+
+        <UncategorisedQueue
+          txns={txns}
+          categories={categories}
+          onCategorize={(txn, category, remember) => void applyRecategorize(txn, category, remember)}
+        />
       </div>
 
       {filtered.length === 0 ? (

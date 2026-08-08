@@ -1,9 +1,13 @@
 /**
- * Safe-to-Spend — the dashboard's hero number.
+ * Safe-to-Spend — the Today screen's hero number (DESIGN-V3.md §4.1,
+ * CONTRACTS.md §7). Moved here from the old ten-card dashboard (which this
+ * feature replaces) unchanged in substance — only the relative import to
+ * `insights/monthMath` moved to the `@/` alias since this file no longer
+ * lives inside `src/features/insights`'s sibling directory.
  *
  * income − committed (rent, bills, detected recurring) − savings target − what's
  * already been spent on non-committed things this month, divided across the days
- * left in the month (CONTRACTS.md §7 + §0's dashboard brief).
+ * left in the month.
  *
  * The contract's one-line formula ("income minus committed minus savings, divided
  * across days remaining") would hold the daily allowance constant all month even as
@@ -12,14 +16,13 @@
  * must be excluded from that subtraction so a rent payment already posted isn't
  * counted twice (once as "committed", once as "already spent").
  *
- * `Txn.recurringId` exists in the type but nothing in this codebase ever writes it
- * (see the fix note below) — so exclusion is derived directly from the *active*
- * (non-muted) `RecurringSeries[].txnIds`, which is the single source of truth for
- * "which transactions belong to a committed series" already. This avoids a
- * denormalised field that has to be kept in sync on every detection pass, edit,
- * mute, or delete. A *muted* series contributes nothing to `committedCents`
- * (filtered out below) — its transactions must then fall through into ordinary
- * `spentSoFarCents`, or that money would never be counted at all. Only txn ids
+ * `Txn.recurringId` exists in the type but nothing in this codebase ever writes it —
+ * so exclusion is derived directly from the *active* (non-muted) `RecurringSeries[].txnIds`,
+ * which is the single source of truth for "which transactions belong to a committed
+ * series" already. This avoids a denormalised field that has to be kept in sync on
+ * every detection pass, edit, mute, or delete. A *muted* series contributes nothing to
+ * `committedCents` (filtered out below) — its transactions must then fall through into
+ * ordinary `spentSoFarCents`, or that money would never be counted at all. Only txn ids
  * belonging to a currently-active series are excluded, so every dollar is counted
  * exactly once: either as "committed" or as "already spent", never both, never
  * neither.
@@ -28,7 +31,7 @@
  */
 import type { Cents, MonthStr, RecurringSeries, Settings, Txn } from '@/types';
 import { safeDiv } from '@/charts';
-import { currentMonth, daysRemainingInMonth } from '../insights/monthMath';
+import { currentMonth, daysRemainingInMonth } from '@/features/insights/monthMath';
 
 export interface SafeToSpendResult {
   month: MonthStr;

@@ -55,7 +55,7 @@ export function SubscriptionTruth(): React.JSX.Element | null {
       </p>
 
       {unknown.length > 0 ? (
-        <div className="flex flex-col gap-2 rounded-card bg-[color-mix(in_srgb,var(--caution)_12%,transparent)] px-3 py-3">
+        <div className="flex flex-col gap-2 rounded-card bg-caution-tint px-3 py-3">
           <p className="flex items-center gap-1.5 text-sm font-medium text-caution">
             <AlertTriangle size={14} aria-hidden="true" /> Not on the known list
           </p>

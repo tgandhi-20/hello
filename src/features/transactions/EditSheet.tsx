@@ -8,6 +8,7 @@ import { CategoryPickerSheet } from './CategoryPickerSheet';
 const ACCOUNT_OPTIONS: { value: AccountId; label: string }[] = [
   { value: 'cash', label: 'Cash' },
   { value: 'cba', label: 'CBA' },
+  { value: 'cba-card', label: 'CBA Card' },
   { value: 'bankwest', label: 'Bankwest' },
   { value: 'amex', label: 'Amex' },
 ];
@@ -73,7 +74,7 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="flex min-h-[56px] items-center gap-3 rounded-card bg-surface-2 px-4"
+            className="flex min-h-[56px] items-center gap-3 rounded-card bg-surface-sunk px-4"
           >
             <CategoryIcon icon={category?.icon ?? 'Circle'} colorToken={category?.colorToken ?? 'cat-1'} size="sm" />
             <span className="flex-1 text-left text-md text-ink-1">{category?.label ?? 'Uncategorised'}</span>
@@ -90,7 +91,7 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
                 const cleaned = e.target.value.replace(/[^0-9.]/g, '');
                 setAmountBuf(cleaned);
               }}
-              className="h-12 w-full rounded-control border border-hairline bg-surface-2 px-4 text-md tabular-nums text-ink-1 outline-none focus:border-accent"
+              className="h-12 w-full rounded-control border border-hairline bg-surface-sunk px-4 text-md tabular-nums text-ink-1 outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-3">
               {isIncome ? 'Income' : 'Spend'} ·{' '}
@@ -115,7 +116,7 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
             placeholder="Optional"
           />
 
-          <div className="flex flex-col gap-1 rounded-card bg-surface-2 px-4 py-3">
+          <div className="flex flex-col gap-1 rounded-card bg-surface-sunk px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <label htmlFor="txn-excluded" className="text-sm text-ink-1">
                 Exclude from budgets &amp; insights

@@ -100,7 +100,7 @@ export function FoodWeekCard({ txns, categories }: FoodWeekCardProps) {
         </p>
       </div>
 
-      <div className="flex flex-col gap-1 rounded-card bg-surface-2 px-3 py-2.5">
+      <div className="flex flex-col gap-1 rounded-card bg-surface-sunk px-3 py-2.5">
         {stats.daysElapsed < 7 ? (
           <p className="text-sm text-ink-2">
             On pace for about{' '}

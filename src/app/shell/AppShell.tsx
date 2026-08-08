@@ -8,19 +8,21 @@ import { TopBar } from './TopBar';
 import { TabBar } from './TabBar';
 
 const TITLES: Record<string, string> = {
-  '/': 'Tally',
+  '/': 'Today',
   '/log': 'Log',
-  '/trends': 'Trends',
   '/more': 'More',
   '/import': 'Import',
-  '/budgets': 'Budgets',
   '/settings': 'Settings',
-  '/goal': 'Deposit goal',
-  '/routine': 'Routine',
-  '/recurring': 'Recurring',
-  '/habits': 'Habits',
-  '/transactions': 'Transactions',
-  '/statements': 'Statements',
+  '/spending': 'Spending',
+  '/spending/transactions': 'Transactions',
+  '/spending/trends': 'Trends',
+  '/spending/habits': 'Habits',
+  '/plan': 'Plan',
+  '/plan/goal': 'Deposit goal',
+  '/plan/budgets': 'Budgets',
+  '/plan/recurring': 'Recurring',
+  '/plan/statements': 'Statements',
+  '/plan/routine': 'Routine',
 };
 
 /**
@@ -68,7 +70,7 @@ export function AppShell() {
   }, [pathname, title]);
 
   return (
-    <div className="flex h-full flex-col bg-bg">
+    <div className="flex h-full flex-col bg-ground">
       <TopBar ref={headingRef} title={title} />
       <UpdateBanner />
       {/* Polite live region for route-change announcements — see the effect above.

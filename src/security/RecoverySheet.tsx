@@ -120,7 +120,7 @@ export function RecoverySheet({ open, onClose }: RecoverySheetProps) {
             <Trash2 size={18} aria-hidden="true" />
             Erase this device and start fresh
           </Button>
-          <p className="px-1 text-xs text-negative">
+          <p className="px-1 text-xs text-critical">
             Only if you have no backup. This permanently deletes every transaction, category,
             budget, and setting on this device — there is no undo.
           </p>
@@ -156,7 +156,7 @@ export function RecoverySheet({ open, onClose }: RecoverySheetProps) {
               />
             </>
           )}
-          {error ? <p className="text-center text-sm text-negative">{error}</p> : null}
+          {error ? <p className="text-center text-sm text-critical">{error}</p> : null}
           <Button
             variant="primary"
             fullWidth
@@ -173,7 +173,7 @@ export function RecoverySheet({ open, onClose }: RecoverySheetProps) {
 
       {view === 'erase' ? (
         <div className="flex flex-col gap-4 py-2">
-          <div className="flex items-start gap-2 rounded-card bg-[color-mix(in_srgb,var(--negative)_12%,transparent)] px-4 py-3 text-sm text-negative">
+          <div className="flex items-start gap-2 rounded-card bg-critical-tint px-4 py-3 text-sm text-critical">
             <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
             <span>
               This erases every transaction, category, budget, and setting on this device,

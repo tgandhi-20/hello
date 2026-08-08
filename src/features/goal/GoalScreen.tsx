@@ -57,9 +57,12 @@ export function GoalScreen() {
         <span className="text-xs text-ink-3">
           {balanceState.isUserEntered ? 'Balance you entered' : 'Estimated from the plan — not observed'}
         </span>
+        {/* No `--positive` token in v3 (DESIGN-V3.md §1) — on-track uses `ProgressBar`'s
+            own accent default, matching BudgetRow's toneFor(); only "behind plan" earns
+            the caution fill. */}
         <ProgressBar
           value={progressRatio}
-          tone={balanceState.balanceCents >= plannedTodayCents ? 'positive' : 'warning'}
+          tone={balanceState.balanceCents >= plannedTodayCents ? 'accent' : 'warning'}
           label={`${Math.round(progressRatio * 100)}% of deposit target`}
         />
         <p className="text-sm text-ink-2">
@@ -89,12 +92,14 @@ export function GoalScreen() {
           .filter((p) => p.oneOffCents < 0)
           .map((p) => (
             <div key={p.month} className="flex items-center gap-3">
-              <ArrowDownCircle size={18} strokeWidth={1.75} className="shrink-0 text-negative" aria-hidden="true" />
+              {/* Known, planned withdrawals (visa, travel) — informational, not an error,
+                  so plain ink rather than `--critical` (DESIGN-V3.md §1). */}
+              <ArrowDownCircle size={18} strokeWidth={1.75} className="shrink-0 text-ink-2" aria-hidden="true" />
               <div className="flex flex-1 flex-col">
                 <span className="text-sm text-ink-1">{p.oneOffLabels.join(', ')}</span>
                 <span className="text-xs text-ink-3">{monthLabel(p.month)}</span>
               </div>
-              <span className="money text-sm text-negative">{formatMoney(p.oneOffCents)}</span>
+              <span className="money text-sm text-ink-1">{formatMoney(p.oneOffCents)}</span>
             </div>
           ))}
       </Card>
@@ -113,7 +118,7 @@ export function GoalScreen() {
           warnings.map((w) => (
             <div
               key={w.month}
-              className="flex flex-col gap-1 rounded-card bg-[color-mix(in_srgb,var(--caution)_10%,transparent)] p-3"
+              className="flex flex-col gap-1 rounded-card bg-caution-tint p-3"
             >
               <span className="text-sm text-ink-1">
                 {monthLabel(w.month)}: <span className="money text-ink-1">{formatMoney(w.withdrawalsCents)}</span>{' '}
@@ -171,10 +176,12 @@ export function GoalScreen() {
                   </td>
                   <td className="money py-2 pr-3 text-ink-2">{p.annualRatePct}%</td>
                   <td className="money py-2 pr-3 text-right text-ink-2">{formatMoney(p.contributionCents)}</td>
-                  <td className={['money py-2 pr-3 text-right', p.oneOffCents < 0 ? 'text-negative' : 'text-ink-3'].join(' ')}>
+                  <td className={['money py-2 pr-3 text-right', p.oneOffCents < 0 ? 'text-ink-1' : 'text-ink-3'].join(' ')}>
                     {p.oneOffCents < 0 ? formatMoney(p.oneOffCents) : '—'}
                   </td>
-                  <td className="money py-2 pr-3 text-right text-positive">{formatMoney(p.netInterestCents)}</td>
+                  {/* No `--positive` token in v3 — interest earned is plain ink like every
+                      other money column here, not a second green. */}
+                  <td className="money py-2 pr-3 text-right text-ink-1">{formatMoney(p.netInterestCents)}</td>
                   <td className="money py-2 pr-3 text-right text-ink-1">{formatMoney(p.closingBalanceCents)}</td>
                 </tr>
               ))}
@@ -220,10 +227,14 @@ export function GoalScreen() {
                       {s.feasible ? formatMoney(s.weeklyFoodBudgetCents) : 'not feasible'}
                     </td>
                     <td className="money py-2 pr-3 text-right text-ink-1">{formatMoney(s.finalPoolCents)}</td>
+                    {/* No `--positive` token in v3 — reaching/exceeding the target needs no
+                        colour (absence of warning); a genuine shortfall vs the hard $72,339
+                        target earns `--critical`, the one place in this what-if table a
+                        scenario is flatly worse than the plan. */}
                     <td
                       className={[
                         'money py-2 pr-3 text-right',
-                        s.finalPoolGapVsTargetCents >= 0 ? 'text-positive' : 'text-negative',
+                        s.finalPoolGapVsTargetCents >= 0 ? 'text-ink-1' : 'text-critical',
                       ].join(' ')}
                     >
                       {s.finalPoolGapVsTargetCents >= 0 ? '+' : ''}
