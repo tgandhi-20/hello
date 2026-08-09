@@ -21,6 +21,15 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      // `short:` — a viewport-height (not orientation) breakpoint. M1 fix: a rotated
+      // phone, a split-screen browser tab, or a foldable can all end up with a short
+      // viewport without ever reporting `orientation: landscape` as the *cause* (a
+      // portrait split-screen pane can be just as short), so this triggers on the real
+      // constraint — available height — rather than assuming rotation is the trigger.
+      // 500px comfortably covers the measured failure case (915x412) with margin.
+      screens: {
+        short: { raw: '(max-height: 500px)' },
+      },
       colors: {
         ground: 'var(--ground)',
         surface: {

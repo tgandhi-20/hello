@@ -67,7 +67,12 @@ export function Keypad({ onKey, disabledBackspace }: KeypadProps) {
   };
 
   return (
-    <div className="grid grid-cols-3 gap-2" role="group" aria-label="Amount keypad">
+    // `short:grid-cols-4` — M1 fix: 4 columns x 3 rows instead of 3x4 saves a whole
+    // row's worth of height (~50px+), which trimming gaps alone couldn't make up.
+    // Buttons stay well over the 48x48 touch-target floor either way (this column's
+    // measured width is ~430px at the viewport this was measured against, i.e.
+    // ~100px per key even at 4 across).
+    <div className="grid grid-cols-3 short:grid-cols-4 gap-2 short:gap-1.5" role="group" aria-label="Amount keypad">
       {KEYS.map((key) => {
         if (key === 'back') {
           return (
@@ -77,7 +82,10 @@ export function Keypad({ onKey, disabledBackspace }: KeypadProps) {
               aria-label="Backspace"
               disabled={disabledBackspace}
               onClick={() => press('back')}
-              className="flex h-16 items-center justify-center rounded-2xl bg-surface text-ink-1 active:bg-surface-sunk focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 transition-[transform,background-color] duration-200 active:scale-[0.97]"
+              // `short:h-12` — M1 fix: a shorter viewport gets a shorter (but still
+              // >=48px, the touch-target floor) keypad so it and the Save button both
+              // fit without needing the row to scroll (see QuickAdd.tsx's `short:` layout).
+              className="flex h-16 short:h-12 items-center justify-center rounded-2xl bg-surface text-ink-1 active:bg-surface-sunk focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 transition-[transform,background-color] duration-200 active:scale-[0.97]"
             >
               <Delete size={24} aria-hidden="true" />
             </button>
@@ -89,7 +97,7 @@ export function Keypad({ onKey, disabledBackspace }: KeypadProps) {
             type="button"
             aria-label={key === '.' ? 'Decimal point' : `Digit ${key}`}
             onClick={() => press(key)}
-            className="h-16 rounded-2xl bg-surface text-2xl font-semibold tabular-nums text-ink-1 active:bg-surface-sunk focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-[transform,background-color] duration-200 active:scale-[0.97]"
+            className="h-16 short:h-12 rounded-2xl bg-surface text-2xl short:text-lg font-semibold tabular-nums text-ink-1 active:bg-surface-sunk focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-[transform,background-color] duration-200 active:scale-[0.97]"
           >
             {key}
           </button>

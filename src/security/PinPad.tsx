@@ -42,7 +42,17 @@ export function Keypad({ onDigit, onBackspace, disabled }: KeypadProps) {
     ['', '0', 'back'],
   ];
   return (
-    <div className="mx-auto grid w-full max-w-xs grid-cols-3 gap-3" role="group" aria-label="PIN keypad">
+    // `short:` (max-height 500px) mirrors the fix already applied to the quick-add
+    // keypad. A rotated phone gave this pad a 412px-tall viewport to fit a 4-row
+    // grid plus the title and dots above it, which pushed the bottom row off
+    // screen — and unlike quick-add, an unreachable key here means the user
+    // cannot get into the app at all. Four columns by three rows removes a whole
+    // row; heights shrink to the 48px touch-target floor and no further.
+    <div
+      className="mx-auto grid w-full max-w-xs grid-cols-3 short:max-w-md short:grid-cols-4 gap-3 short:gap-2"
+      role="group"
+      aria-label="PIN keypad"
+    >
       {rows.flat().map((k, i) => {
         if (k === '') return <div key={i} aria-hidden="true" />;
         const isBack = k === 'back';
@@ -54,7 +64,7 @@ export function Keypad({ onDigit, onBackspace, disabled }: KeypadProps) {
             onClick={() => (isBack ? onBackspace() : onDigit(k))}
             aria-label={isBack ? 'Delete digit' : `Digit ${k}`}
             className={[
-              'flex h-16 min-h-[48px] items-center justify-center rounded-2xl',
+              'flex h-16 short:h-12 min-h-[48px] items-center justify-center rounded-2xl',
               'bg-surface border border-hairline text-xl font-semibold text-ink-1',
               'transition-[transform,background-color] duration-150 active:scale-[0.96] active:bg-surface-sunk',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',

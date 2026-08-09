@@ -216,7 +216,13 @@ export function SettingsScreen() {
           <ListRow
             as="div"
             leading={<Fingerprint size={20} className="text-ink-2" aria-hidden="true" />}
-            title="Biometric unlock"
+            // m2 fix: a plain string here renders as ListGroup's own unlabelled <span>
+            // (see ListGroup.tsx), which has no id/for relationship to the Switch's
+            // <input> — its accessible name computed empty (announced as just
+            // "switch"). A <label htmlFor> pointing at the Switch's id works from
+            // anywhere in the document, nested or not, and is the same pattern
+            // EditSheet.tsx already uses for its own Switch.
+            title={<label htmlFor="biometric-toggle">Biometric unlock</label>}
             trailing={
               biometricSupported ? (
                 <Switch
@@ -331,7 +337,13 @@ export function SettingsScreen() {
             <HelpCircle size={20} className="mt-1 shrink-0 text-ink-2" aria-hidden="true" />
             <div className="flex-1">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-md text-ink-1">HECS/HELP debt</span>
+                {/* m2 fix: was a plain <span> — not wrapped in <label for> nor
+                    aria-labelledby, so the Switch's accessible name computed empty
+                    (announced as just "switch"). A real <label htmlFor> fixes it and,
+                    as a bonus, makes the text itself part of the tap target. */}
+                <label htmlFor="hecs-toggle" className="text-md text-ink-1">
+                  HECS/HELP debt
+                </label>
                 <Switch
                   id="hecs-toggle"
                   checked={settings.hasHecsDebt ?? false}

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { sheetClosed, sheetOpened } from './sheetStack';
+import { trapTabKey } from './focusTrap';
 
 export interface SheetProps {
   open: boolean;
@@ -114,6 +115,9 @@ export function Sheet({ open, onClose, title, children, footer, busy = false }: 
           transform: `translateY(${dragY}px)`,
           transition: dragging ? 'none' : 'transform 180ms var(--ease-standard)',
           paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
+        onKeyDown={(e) => {
+          if (sheetRef.current) trapTabKey(sheetRef.current, e);
         }}
       >
         <div

@@ -69,6 +69,21 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
     onTap(txn);
   }
 
+  // WCAG 2.1.1: a `role="button"` div gets none of a native <button>'s key
+  // handling for free — Enter/Space must be wired up by hand or the row is
+  // keyboard- and switch-access-dead (measured: focus + Enter/Space did
+  // nothing). The swipe gestures (delete / re-categorise) stay pointer-only,
+  // but that's fine: `onTap` opens EditSheet, which offers both as ordinary
+  // focusable buttons (delete icon button in the footer, "Change" category
+  // row that opens CategoryPickerSheet) — so the swipe actions are never the
+  // *only* way to reach delete/re-categorise, just a pointer shortcut to them.
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      onTap(txn);
+    }
+  }
+
   return (
     <div className="relative overflow-hidden">
       <div className="absolute inset-0 flex items-stretch justify-between">
@@ -106,6 +121,7 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onClick={handleClick}
+        onKeyDown={onKeyDown}
         role="button"
         tabIndex={0}
       >

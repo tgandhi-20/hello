@@ -108,7 +108,10 @@ export function BudgetsScreen() {
         >
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
-        <h1 className="text-md font-semibold text-ink-1">{monthLabel(month)}</h1>
+        {/* M4 fix: AppShell already renders "Budgets" as this page's `<h1>` — this
+            month picker label was a second one. Demoted to `<h2>`, matching the
+            identical prev/next-month header pattern in CalendarHeatmap.tsx. */}
+        <h2 className="text-md font-semibold text-ink-1">{monthLabel(month)}</h2>
         <button
           type="button"
           aria-label="Next month"

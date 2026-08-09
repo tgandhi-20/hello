@@ -271,7 +271,10 @@ export function WeeklyReviewFlow({ onClose }: WeeklyReviewFlowProps) {
               <PartyPopper size={26} className="text-accent" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-ink-1">Review done</h1>
+              {/* M4 fix: this flow is always mounted under AppShell (as the `/review`
+                  route, or as an overlay from Settings) — either way there's already a
+                  shell `<h1>` ("Weekly catch-up" / "Settings"). Demoted to `<h2>`. */}
+              <h2 className="text-xl font-semibold text-ink-1">Review done</h2>
               <ul className="mt-3 flex flex-col gap-1 text-sm text-ink-2">
                 <li>{sessionCategorised} transaction{sessionCategorised === 1 ? '' : 's'} categorised</li>
                 <li>{sessionConfirmed} regular payments confirmed, {sessionDismissed} dismissed</li>
@@ -316,7 +319,9 @@ function StepHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-hairline bg-surface text-accent">
         {icon}
       </span>
-      <h1 className="text-lg font-semibold text-ink-1">{title}</h1>
+      {/* M4 fix: see the identical note on the "Review done" heading above — this
+          flow never renders without AppShell's own `<h1>` already present. */}
+      <h2 className="text-lg font-semibold text-ink-1">{title}</h2>
     </div>
   );
 }

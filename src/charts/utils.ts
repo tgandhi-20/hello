@@ -111,6 +111,53 @@ export function allocateArcSweeps(fractions: number[], availableDeg: number, min
   return result;
 }
 
+/** Parse a `#rgb` or `#rrggbb` hex string into 0-255 channel values. Defensive against a
+ * malformed/empty token value (returns black) rather than throwing mid-render. */
+function parseHexColor(hex: string): [number, number, number] {
+  const cleaned = hex.trim().replace('#', '');
+  const full = cleaned.length === 3 ? cleaned.split('').map((c) => c + c).join('') : cleaned;
+  const num = Number.parseInt(full, 16);
+  if (full.length !== 6 || !Number.isFinite(num)) return [0, 0, 0];
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
+function srgbChannelToLinear(c: number): number {
+  const cs = c / 255;
+  return cs <= 0.03928 ? cs / 12.92 : Math.pow((cs + 0.055) / 1.055, 2.4);
+}
+
+/** WCAG relative luminance of an sRGB colour: 0 (black) to 1 (white). */
+export function relativeLuminance(rgb: [number, number, number]): number {
+  const [r, g, b] = rgb;
+  return 0.2126 * srgbChannelToLinear(r) + 0.7152 * srgbChannelToLinear(g) + 0.0722 * srgbChannelToLinear(b);
+}
+
+/** WCAG contrast ratio between two sRGB colours: 1 (identical) to 21 (black vs white). */
+export function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const lighter = Math.max(la, lb);
+  const darker = Math.min(la, lb);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** Linear-in-sRGB blend matching CSS `color-mix(in srgb, a pct%, b)` — `pct` of `a`, rest `b`. */
+export function mixSrgb(a: [number, number, number], b: [number, number, number], pct: number): [number, number, number] {
+  const t = clampRatio(pct / 100);
+  return [
+    Math.round(a[0] * t + b[0] * (1 - t)),
+    Math.round(a[1] * t + b[1] * (1 - t)),
+    Math.round(a[2] * t + b[2] * (1 - t)),
+  ];
+}
+
+/** Read a CSS custom property (e.g. `'accent'` for `--accent`) as an RGB triple, straight off
+ * the live token — never a hardcoded hex — so any future retheming stays self-correcting. */
+export function readTokenRgb(token: string, root: HTMLElement = document.documentElement): [number, number, number] {
+  const value = getComputedStyle(root).getPropertyValue(`--${token}`);
+  return parseHexColor(value || '#000000');
+}
+
 let uidCounter = 0;
 /** Small, collision-safe id generator for SVG `id`/`clip-path` references (React 18 has no `useId` requirement here). */
 export function nextChartId(prefix: string): string {

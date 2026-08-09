@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Button } from './Button';
+import { trapTabKey } from './focusTrap';
 
 export interface ModalProps {
   open: boolean;
@@ -48,6 +49,9 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
         ref={panelRef}
         tabIndex={-1}
         className="relative w-full max-w-sm rounded-sheet bg-surface p-5 shadow-elevated outline-none"
+        onKeyDown={(e) => {
+          if (panelRef.current) trapTabKey(panelRef.current, e);
+        }}
       >
         {title ? <h2 className="title mb-2">{title}</h2> : null}
         {children}

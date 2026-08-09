@@ -200,6 +200,12 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
   }
 
   const isFirstRun = variant === 'first-run';
+  // M4 fix: `'first-run'` replaces the whole tree (LockGate renders this INSTEAD of
+  // AppShell — see this file's top comment), so its own heading is genuinely the
+  // page's only `<h1>`. `'rerun'` is opened from inside Settings, which is already
+  // under AppShell and already has its own shell `<h1>Settings</h1>` — this flow's
+  // heading is a second one in that case, so it must not also claim `<h1>`.
+  const HeadingTag = isFirstRun ? 'h1' : 'h2';
 
   const committedPreview = buildEquationPreview(monthlyIncomeCents, savingsTargetCents);
   const month = currentMonth();
@@ -246,7 +252,7 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
               <Sparkles size={26} className="text-accent" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-ink-1">Let's set up Tally</h1>
+              <HeadingTag className="text-xl font-semibold text-ink-1">Let's set up Tally</HeadingTag>
               <p className="mt-2 max-w-sm text-sm text-ink-2">
                 Three short steps build your equation: what comes in, what's already committed, what's
                 left to spend. Skip anytime — you can run this again from Settings.
@@ -257,7 +263,7 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
 
         {step === 'comesIn' ? (
           <div className="flex flex-col gap-5 pt-4">
-            <StepHeader icon={<Wallet size={22} aria-hidden="true" />} title="What comes in" step={step} />
+            <StepHeader icon={<Wallet size={22} aria-hidden="true" />} title="What comes in" step={step} headingTag={HeadingTag} />
             <p className="text-sm text-ink-2">What actually lands in your account each month, after tax.</p>
             <MoneyField
               label="Monthly take-home"
@@ -280,7 +286,7 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
 
         {step === 'committed' ? (
           <div className="flex flex-col gap-5 pt-4">
-            <StepHeader icon={<PiggyBank size={22} aria-hidden="true" />} title="What's already committed" step={step} />
+            <StepHeader icon={<PiggyBank size={22} aria-hidden="true" />} title="What's already committed" step={step} headingTag={HeadingTag} />
             <p className="text-sm text-ink-2">
               Two things come off the top before you spend anything. Bills — rent, utilities,
               subscriptions — get added automatically once Tally sees them; there's nothing to enter
@@ -298,7 +304,7 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
 
         {step === 'left' ? (
           <div className="flex flex-col gap-5 pt-4">
-            <StepHeader icon={<Scale size={22} aria-hidden="true" />} title="What's left" step={step} />
+            <StepHeader icon={<Scale size={22} aria-hidden="true" />} title="What's left" step={step} headingTag={HeadingTag} />
             <p className="text-sm text-ink-2">
               Here's your equation, complete. Left — spread over the days remaining this month — is the
               number the rest of Tally is built around. Every screen you'll see from here is a view of
@@ -310,7 +316,7 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
 
         {step === 'moveIn' ? (
           <div className="flex flex-col gap-4 pt-4">
-            <StepHeader icon={<Home size={22} aria-hidden="true" />} title="Move-in date" />
+            <StepHeader icon={<Home size={22} aria-hidden="true" />} title="Move-in date" headingTag={HeadingTag} />
             <p className="text-xs text-ink-3">Optional — this fine-tunes the equation, it doesn't gate anything.</p>
             <p className="text-sm text-ink-2">
               Rent, utilities and the sublet income only start counting once you've actually
@@ -337,7 +343,7 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
 
         {step === 'hecs' ? (
           <div className="flex flex-col gap-4 pt-4">
-            <StepHeader icon={<HelpCircle size={22} aria-hidden="true" />} title="HECS or HELP debt?" />
+            <StepHeader icon={<HelpCircle size={22} aria-hidden="true" />} title="HECS or HELP debt?" headingTag={HeadingTag} />
             <p className="text-xs text-ink-3">Optional — skip it if you're not sure, rather than guess.</p>
             <p className="text-sm text-ink-2">
               This changes how much of your salary is actually take-home. Answer once — Tally
@@ -367,7 +373,7 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
 
         {step === 'plan' ? (
           <div className="flex flex-col gap-4 pt-4">
-            <StepHeader icon={<ClipboardCheck size={22} aria-hidden="true" />} title="Your budget" />
+            <StepHeader icon={<ClipboardCheck size={22} aria-hidden="true" />} title="Your budget" headingTag={HeadingTag} />
             <p className="text-sm text-ink-2">
               Tally already knows your real category budgets and subscriptions from your own
               plan. Seed them now, or start from a clean slate and build them up yourself.
@@ -405,7 +411,7 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
               )}
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-ink-1">You're set up</h1>
+              <HeadingTag className="text-xl font-semibold text-ink-1">You're set up</HeadingTag>
               {seededCounts ? (
                 <p className="mt-2 max-w-sm text-sm text-ink-2">
                   {seededCounts.budgets} category budgets and {seededCounts.subscriptions} subscriptions
@@ -485,7 +491,19 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
   );
 }
 
-function StepHeader({ icon, title, step }: { icon: React.ReactNode; title: string; step?: Step }) {
+function StepHeader({
+  icon,
+  title,
+  step,
+  headingTag: HeadingTag = 'h1',
+}: {
+  icon: React.ReactNode;
+  title: string;
+  step?: Step;
+  /** Which of this step's own steps is a real, page-level `<h1>` — see the
+   * `HeadingTag` comment above where `OnboardingFlow` computes it. */
+  headingTag?: 'h1' | 'h2';
+}) {
   const modelIndex = step ? MODEL_STEPS.indexOf(step) : -1;
   return (
     <div className="flex flex-col gap-1">
@@ -494,7 +512,7 @@ function StepHeader({ icon, title, step }: { icon: React.ReactNode; title: strin
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-hairline bg-surface text-accent">
           {icon}
         </span>
-        <h1 className="text-lg font-semibold text-ink-1">{title}</h1>
+        <HeadingTag className="text-lg font-semibold text-ink-1">{title}</HeadingTag>
       </div>
     </div>
   );

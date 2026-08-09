@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Category, DayCell, MonthStr, Txn } from '@/types';
 import { formatMoney, todayStr } from '@/ui';
 import { daysInMonth, startOfMonth } from '@/ui/format';
-import { clampRatio } from '@/charts';
+import { clampRatio, contrastRatio, mixSrgb, readTokenRgb } from '@/charts';
 import { WEEKDAY_LABELS_MON_FIRST, mondayIndex, monthLabel, nextMonth, prevMonth } from './monthMath';
 import { DayTransactionsSheet } from './DayTransactionsSheet';
 
@@ -15,24 +15,42 @@ export interface CalendarHeatmapProps {
   categories: Category[];
 }
 
-/** Blend from `--surface-sunk` (no spend) up to full `--accent` (busiest day) — one hue, varying
- * lightness/saturation via `color-mix`, so intensity reads correctly without relying on hue at all.
+const MIN_TEXT_CONTRAST = 4.5; // WCAG AA, normal text — the cell figures render at 10px, never "large text".
+
+/**
+ * Blend from `--surface-sunk` (no spend) up to `--accent` (busiest day) — one hue, varying
+ * lightness/saturation via a blend, so intensity reads correctly without relying on hue at all.
  * `--surface-sunk` (not `--surface`/white) so a zero-spend day still reads as a filled grid cell
  * against the white card behind it, per DESIGN-V3.md §1's inset-well use for that token.
  *
- * `intensity` itself is linear against the month's single highest day (store/selectors.ts). Spend
- * distributions are typically right-skewed — a handful of big days (a bill, a shop) alongside many
- * ordinary ones — so a linear map compresses every ordinary day into a narrow, visually-identical
- * low band while only the single outlier stands out. A sqrt curve is a standard contrast-stretch for
- * exactly this shape: it spreads the low-to-mid range out (where the days that actually need
- * distinguishing live) while still monotonically topping out at the real max, so the ramp stays an
- * honest, ordered representation of "more" vs "less" — just a legible one.
+ * B3 fix (measured — see this module's `verifyRampContrast`): the previous version mixed
+ * `--accent` in continuously from 18-92% and switched text colour to white at a guessed pct>=50
+ * cutoff. Two things were wrong with that:
+ *   1. The cutoff itself was miscalibrated — white text is nowhere near 4.5:1 until the mix is
+ *      past ~90% accent (measured 2.34:1 at 50%, matching the auditor's 2.41:1 finding).
+ *   2. Worse, no cutoff pct can fully fix it: `--ink-1` (near-black, not pure black — deliberately,
+ *      per DESIGN-V3.md — L=0.0095) stops clearing 4.5:1 once the background luminance drops below
+ *      ~0.218, but white doesn't clear 4.5:1 until the background luminance is back down at ~0.183.
+ *      That's a dead zone in *background luminance* — roughly pct 82-90 against this ramp's actual
+ *      accent/surface-sunk endpoints — where NEITHER text colour clears 4.5:1, independent of where
+ *      the switchover threshold is set. A continuous ramp through that zone cannot be made
+ *      accessible by recalibrating a threshold alone.
  *
- * Returns 0 for a zero-spend day, else 18-92 — the % of `--accent` mixed into the cell fill. */
-function cellIntensityPct(intensity: number, hasSpend: boolean): number {
+ * Fix: a small fixed set of shades (a real "ramp", not a continuum) chosen to sit entirely outside
+ * that dead zone, with the text colour for each shade decided by *measuring* both candidates'
+ * contrast against that shade's actual background (see `chooseTextColor` below) rather than
+ * guessing a single global pct threshold. `intensity` is still perceptually stretched via sqrt
+ * (spend distributions are right-skewed — a handful of big days alongside many ordinary ones — so
+ * a linear map would compress every ordinary day into one indistinguishable low band) and then
+ * quantised into this ramp's six levels.
+ */
+const RAMP_PCTS = [16, 32, 48, 64, 78, 100] as const;
+
+function cellShadePct(intensity: number, hasSpend: boolean): number {
   if (!hasSpend) return 0;
   const perceptual = Math.sqrt(clampRatio(intensity));
-  return Math.round(18 + perceptual * 74);
+  const idx = Math.min(RAMP_PCTS.length - 1, Math.floor(perceptual * RAMP_PCTS.length));
+  return RAMP_PCTS[idx];
 }
 
 function cellBackground(pct: number): string {
@@ -40,12 +58,40 @@ function cellBackground(pct: number): string {
   return `color-mix(in srgb, var(--accent) ${pct}%, var(--surface-sunk))`;
 }
 
-/** Past the midpoint of the ramp the cell is dark enough that near-black `--ink-1` text
- * loses contrast — flip to `--ink-on-accent` (white) rather than let a busy day's figures
- * wash out. This is exactly the kind of dark-theme assumption that inverts on a light
- * ground: `--ink-1` reads fine on a pale tint but not on a saturated fill. */
-function cellIsDark(pct: number): boolean {
-  return pct >= 50;
+export interface RampShadeMeasurement {
+  pct: number;
+  bgHex: string;
+  dark: boolean;
+  contrastInk1: number;
+  contrastWhite: number;
+  chosenContrast: number;
+  passes: boolean;
+}
+
+/** Compute, from the *actual live tokens* (never a hardcoded hex — CONTRACTS.md §4), which text
+ * colour wins at each ramp shade and what its measured contrast is. Exported so a check/tooling
+ * pass can assert every shade clears `MIN_TEXT_CONTRAST` without eyeballing it. */
+export function measureRampContrast(root: HTMLElement = document.documentElement): RampShadeMeasurement[] {
+  const accent = readTokenRgb('accent', root);
+  const sunk = readTokenRgb('surface-sunk', root);
+  const ink1 = readTokenRgb('ink-1', root);
+  const white: [number, number, number] = [255, 255, 255];
+
+  return RAMP_PCTS.map((pct) => {
+    const bg = mixSrgb(accent, sunk, pct);
+    const cInk1 = contrastRatio(ink1, bg);
+    const cWhite = contrastRatio(white, bg);
+    const dark = cWhite > cInk1;
+    return {
+      pct,
+      bgHex: `#${bg.map((c) => c.toString(16).padStart(2, '0')).join('')}`,
+      dark,
+      contrastInk1: cInk1,
+      contrastWhite: cWhite,
+      chosenContrast: dark ? cWhite : cInk1,
+      passes: (dark ? cWhite : cInk1) >= MIN_TEXT_CONTRAST,
+    };
+  });
 }
 
 /**
@@ -56,6 +102,14 @@ function cellIsDark(pct: number): boolean {
 export function CalendarHeatmap({ month, onMonthChange, cells, txns, categories }: CalendarHeatmapProps) {
   const [selected, setSelected] = useState<DayCell | null>(null);
   const today = todayStr();
+
+  // Tokens don't change at runtime (v3 is light-only, DESIGN-V3.md §1), so this measures once
+  // per mount rather than once per cell per render — but it's a measurement of the real,
+  // currently-applied token values, never a hardcoded/assumed colour.
+  const darkByPct = useMemo(() => {
+    const measured = measureRampContrast();
+    return new Map(measured.map((m) => [m.pct, m.dark]));
+  }, []);
 
   const cellByDate = useMemo(() => new Map(cells.map((c) => [c.date, c])), [cells]);
 
@@ -124,8 +178,8 @@ export function CalendarHeatmap({ month, onMonthChange, cells, txns, categories 
             const hasSpend = cell.totalCents > 0;
             const isToday = cell.date === today;
             const dayNum = Number(cell.date.slice(8, 10));
-            const pct = cellIntensityPct(cell.intensity, hasSpend);
-            const dark = cellIsDark(pct);
+            const pct = cellShadePct(cell.intensity, hasSpend);
+            const dark = darkByPct.get(pct) ?? false;
             const fg = !hasSpend ? 'text-ink-3' : dark ? 'text-ink-on-accent' : 'text-ink-1';
             return (
               <button

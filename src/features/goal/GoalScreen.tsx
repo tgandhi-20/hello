@@ -41,7 +41,10 @@ export function GoalScreen() {
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <Target size={20} strokeWidth={1.75} className="text-accent" aria-hidden="true" />
-          <h1 className="text-lg font-semibold text-ink-1">Deposit plan</h1>
+          {/* M4 fix: AppShell already renders "Deposit plan" as this page's `<h1>`
+              (TopBar, driven by App.tsx's TITLES map) — this was a second, identical
+              one. Demoted to `<h2>`, styling unchanged. */}
+          <h2 className="text-lg font-semibold text-ink-1">Deposit plan</h2>
         </div>
         <p className="text-sm text-ink-2">{GOAL.purpose}</p>
       </div>
