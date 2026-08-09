@@ -338,7 +338,7 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
         {step === 'hecs' ? (
           <div className="flex flex-col gap-4 pt-4">
             <StepHeader icon={<HelpCircle size={22} aria-hidden="true" />} title="HECS or HELP debt?" />
-            <p className="text-xs text-ink-3">Optional — but if you answer, answer for real; Tally never guesses this one.</p>
+            <p className="text-xs text-ink-3">Optional — skip it if you're not sure, rather than guess.</p>
             <p className="text-sm text-ink-2">
               This changes how much of your salary is actually take-home. Answer once — Tally
               never assumes.

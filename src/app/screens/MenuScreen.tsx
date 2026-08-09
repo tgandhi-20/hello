@@ -5,7 +5,9 @@ import {
   Wallet,
   Repeat,
   CreditCard,
+  TrendingUp,
   PiggyBank,
+  CalendarCheck,
   Upload,
   ClipboardCheck,
   ShieldCheck,
@@ -41,10 +43,19 @@ const MONEY_LINKS: LinkDef[] = [
   { to: '/budgets', label: 'Budgets', subtitle: 'Monthly caps by category', icon: Wallet },
   { to: '/recurring', label: 'Regular payments', subtitle: 'Rent, subscriptions, bills', icon: Repeat },
   { to: '/statements', label: 'Card balances', subtitle: 'What each card will bill you', icon: CreditCard },
+  // DESIGN-V4.md §2's list omitted Trends and Habits on the assumption Home's
+  // "Where it went" replaced them. It doesn't: that shows this month's
+  // categories, while these hold the month-by-month comparison, the calendar
+  // heatmap and the coffee/no-spend streaks — the heatmap in particular was one
+  // of the four features originally asked for. Leaving them routed but unlisted
+  // made three screens unreachable by navigation, which is exactly the failure
+  // the reachability check exists to catch. One row, not three.
+  { to: '/trends', label: 'Spending patterns', subtitle: 'Month by month, the calendar, your habits', icon: TrendingUp },
 ];
 
 const SAVING_LINKS: LinkDef[] = [
   { to: '/goal', label: 'Deposit plan', subtitle: 'Progress toward the apartment deposit', icon: PiggyBank },
+  { to: '/routine', label: 'Monthly routine', subtitle: 'Payday, transfer, the end-of-month check', icon: CalendarCheck },
 ];
 
 const DATA_LINKS: LinkDef[] = [
