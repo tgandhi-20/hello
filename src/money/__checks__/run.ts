@@ -8,7 +8,7 @@
  * suite in this repo (see src/import/__checks__/run.ts).
  */
 import type { Category, RecurringSeries, Settings, Txn } from '../../types';
-import { computeMonthMoney } from '../index';
+import { computeMonthMoney, isBillSeries, activeRecurringTxnIds } from '../index';
 
 let passed = 0;
 let failed = 0;
@@ -361,6 +361,52 @@ async function main(): Promise<void> {
     eq('foodThisWeek target is the frozen $141/week headline', m.foodThisWeek.targetCents, 14_100);
     eq('foodThisWeek groceries bucket', m.foodThisWeek.groceriesCents, 5_000);
     eq('foodThisWeek away bucket (eating-out + lunch + coffee)', m.foodThisWeek.awayCents, 3_000 + 1_500 + 500);
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // Bills are commitments, not just anything that repeats.
+  //
+  // Detection needs only three occurrences at a regular interval, so a lunch spot
+  // visited three Tuesdays running gets picked up. Treating that as a bill
+  // silently reduced "To spend" before the user ever agreed it was a commitment.
+  // ---------------------------------------------------------------------------
+  {
+    const weeklyHabit: RecurringSeries = {
+      id: 'weekly-lunch',
+      merchant: 'Lunch Spot',
+      categoryId: 'cat-lunch',
+      cadence: 'weekly',
+      amountCents: 1_800,
+      lastSeen: '2026-08-04',
+      nextDue: '2026-08-11',
+      txnIds: ['lunch-1'],
+    };
+    const monthlyRent: RecurringSeries = {
+      id: 'rent',
+      merchant: 'Rent',
+      categoryId: 'cat-rent',
+      cadence: 'monthly',
+      amountCents: 260_000,
+      lastSeen: '2026-07-01',
+      nextDue: '2026-08-01',
+      txnIds: ['rent-1'],
+    };
+
+    check('a weekly habit is not a bill', !isBillSeries(weeklyHabit));
+    check('a monthly commitment is a bill', isBillSeries(monthlyRent));
+    check(
+      'confirming a weekly series promotes it to a bill',
+      isBillSeries({ ...weeklyHabit, confirmed: true } as RecurringSeries)
+    );
+    check('a muted monthly series is not a bill', !isBillSeries({ ...monthlyRent, muted: true }));
+
+    // The exclusion set must mirror the bills filter exactly. If a series is left
+    // out of bills but its transactions are still excluded from spend, that money
+    // disappears from the month entirely — counted neither as committed nor spent.
+    const ids = activeRecurringTxnIds([weeklyHabit, monthlyRent]);
+    check('a non-bill series does not hide its transactions from spend', !ids.has('lunch-1'));
+    check('a bill series does hide its transactions from spend', ids.has('rent-1'));
   }
 
   // ===================================================================

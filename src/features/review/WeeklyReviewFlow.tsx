@@ -161,8 +161,8 @@ export function WeeklyReviewFlow({ onClose }: WeeklyReviewFlowProps) {
           <div className="flex flex-col gap-4">
             <StepHeader icon={<Upload size={22} aria-hidden="true" />} title="Import statements" />
             <p className="text-sm text-ink-2">
-              Export this cycle's CSVs from CBA, Amex and Bankwest, and bring them in here. If
-              you've already imported everything for this cycle, just continue.
+              Export this week's CSVs from CBA, Amex and Bankwest, and bring them in here. If
+              you've already imported everything for this week, just continue.
             </p>
             <Link to="/import" onClick={onClose}>
               <Button variant="primary" fullWidth>
@@ -256,7 +256,7 @@ export function WeeklyReviewFlow({ onClose }: WeeklyReviewFlowProps) {
               interest paid there outweighs everything this plan earns in savings interest.
             </p>
             {amexPaid ? (
-              <EmptyStepState icon={<Check size={22} aria-hidden="true" />} text="Marked paid in full for this cycle." />
+              <EmptyStepState icon={<Check size={22} aria-hidden="true" />} text="Marked paid in full this month." />
             ) : (
               <Button fullWidth onClick={() => toggleItem('pay-amex')}>
                 Mark paid in full

@@ -149,6 +149,61 @@ export interface ComputeMonthMoneyParams {
 // The one calculation
 // ---------------------------------------------------------------------------
 
+/**
+ * Every txn id belonging to a currently-active (non-muted) recurring series —
+ * already represented in `billsCents`, so it must be excluded from `spentCents`
+ * (and any other "discretionary spend so far" figure) everywhere in the app, or
+ * the same dollar gets counted twice: once as a bill, once as ordinary spend.
+ *
+ * Exported (not just inlined below) so every screen that aggregates spend from
+ * raw `txns` — not just this module's own `computeMonthMoney` — filters out the
+ * same ids before summing. `BudgetsScreen` and `InsightsScreen` (Trends) both
+ * used to run their own independent `txns` scan with no such exclusion, which
+ * made their "spent this month" totals silently diverge from Home's by exactly
+ * the committed-recurring amount — two numbers on screen disagreeing on the
+ * same data, the one thing DESIGN-V4.md §1 says must never ship. Fix: those
+ * screens now pre-filter `txns` through this same set before handing them to
+ * their own selectors, rather than duplicating (and risking drifting from)
+ * this logic a second time.
+ */
+/**
+ * Is this series a *bill* — something committed that should be reserved out of
+ * the month before the user spends anything?
+ *
+ * Not everything the detector finds is a bill. Detection needs only three
+ * occurrences at a regular interval, so a lunch spot visited three Tuesdays in
+ * a row gets picked up — and used to be silently subtracted from "To spend"
+ * before the user had agreed it was a commitment. A number that moves on its own,
+ * for a reason the user never accepted, is exactly the kind of thing that makes
+ * an app impossible to trust.
+ *
+ * So: a bill is either something the user has confirmed, or something that
+ * repeats monthly or less often. Every living cost in their plan — rent,
+ * utilities, phone, health, subscriptions — is monthly or longer. A weekly or
+ * fortnightly habit is discretionary spending, and belongs in `spentCents`
+ * where the user can see it, not hidden inside the committed line.
+ *
+ * Weekly series still appear under Regular payments, and confirming one there
+ * promotes it to a bill — the user decides, not the detector.
+ */
+export function isBillSeries(series: RecurringSeries): boolean {
+  if (series.muted) return false;
+  if (series.confirmed) return true;
+  return series.cadence === 'monthly' || series.cadence === 'quarterly' || series.cadence === 'yearly';
+}
+
+export function activeRecurringTxnIds(recurring: RecurringSeries[]): Set<string> {
+  const ids = new Set<string>();
+  for (const series of recurring) {
+    // Must mirror `billsCents` exactly. A series excluded from bills has to have
+    // its transactions fall through into ordinary spend, or that money vanishes
+    // from the month entirely — counted neither as committed nor as spent.
+    if (!isBillSeries(series)) continue;
+    for (const txnId of series.txnIds) ids.add(txnId);
+  }
+  return ids;
+}
+
 export function computeMonthMoney({
   txns,
   recurring,
@@ -160,16 +215,13 @@ export function computeMonthMoney({
   const incomeCents = settings.monthlyIncomeCents;
   const incomeUnset = !incomeCents || incomeCents <= 0;
 
-  const activeSeries = recurring.filter((r) => !r.muted);
+  const activeSeries = recurring.filter(isBillSeries);
   const billsCents = activeSeries.reduce((sum, r) => sum + monthlyEquivalentCents(r), 0);
 
   // Every txn id belonging to a currently-active series is already represented in
   // `billsCents` — exclude it from `spentCents` (and from `foodThisWeek`, below) so
   // it is never double-counted. See the module doc comment.
-  const committedTxnIds = new Set<string>();
-  for (const series of activeSeries) {
-    for (const txnId of series.txnIds) committedTxnIds.add(txnId);
-  }
+  const committedTxnIds = activeRecurringTxnIds(recurring);
 
   const savingsCents = Math.max(0, settings.savingsTargetCents);
   const toSpendCents = incomeCents - billsCents - savingsCents;

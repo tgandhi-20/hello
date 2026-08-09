@@ -142,7 +142,14 @@ export function QuickAdd() {
   }
 
   return (
-    <div className="flex h-full flex-col px-4 py-4">
+    // Reserve the toast's own footprint here too — see the identical comment on the
+    // category-grid view above. Quick-add is explicitly designed to be used "many
+    // times back to back" (see `save()` above, which resets straight to this same
+    // flow): the very next tap after a save routinely lands here, on THIS view, while
+    // the previous save's toast is still showing. Without this padding the toast sat
+    // directly on top of the Save button — for the app's single most frequent action,
+    // on the one screen the P0 diagnosis exists to make trustworthy.
+    <div className="flex h-full flex-col px-4 py-4" style={{ paddingBottom: TOAST_RESERVE_BOTTOM }}>
       <button
         type="button"
         onClick={backToGrid}
