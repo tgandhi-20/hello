@@ -36,6 +36,21 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # The check suites were written to catch specific bugs that already shipped
+      # once - a vault-wide lockout, a double-counted bill, an import that
+      # silently dropped a transaction - but they were never wired into CI, so
+      # for weeks a commit could break every one of them and still deploy, gated
+      # only by tsc. Assertions that do not run are documentation, not a safety
+      # net. This step is why they are worth having.
+      - name: Run check suites
+        run: npm run checks
+
+      # A known-vulnerable dependency reaching a finance app unnoticed is exactly
+      # the class of problem a lockfile plus an audit gate exists to prevent.
+      # Dev-only advisories are excluded: they never reach the user's phone.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Build
         run: npm run build
 
