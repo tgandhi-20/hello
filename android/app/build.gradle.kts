@@ -1,6 +1,9 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    // Required for Room's annotation processor (room-compiler) — see the
+    // dependencies block below.
+    id("org.jetbrains.kotlin.kapt")
 }
 
 android {
@@ -84,4 +87,40 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+
+    // ---- security/data layer additions (deliverables 2-5) -----------------
+    // Only these four new dependency families were added, exactly as scoped:
+    //
+    // Room (encrypted storage, deliverable 4) — every financial field is
+    // encrypted before it reaches these tables; Room only ever sees
+    // ciphertext blobs (see data/Entities.kt). 2.6.1 is a long-stable release
+    // well-tested against Kotlin 1.9.x / AGP 8.5.x / compileSdk 34.
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+
+    // androidx.security-crypto (deliverable 5's durable wrong-attempt
+    // backoff) — EncryptedSharedPreferences backed by a Keystore MasterKey,
+    // see security/LockoutStore.kt. 1.1.0-alpha06 is the newest release;
+    // androidx.security-crypto has never shipped a 1.1.0 stable — this is
+    // the version that introduced the MasterKey API LockoutStore uses.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // androidx.biometric (deliverable 2's biometric unlock prompt), stable
+    // and long-established — see security/BiometricVaultUnlock.kt.
+    implementation("androidx.biometric:biometric:1.1.0")
+
+    // Kotlin coroutines (async vault operations, the resilient-decrypt
+    // Promise.allSettled equivalent in data/DecryptBatch.kt, and the
+    // whole-vault write Mutex in security/VaultLock.kt). -android brings in
+    // kotlinx-coroutines-core transitively. 1.7.3 supports Kotlin 1.6-1.9.
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+}
+
+// Room's suspend-fun DAO methods generate code that references types across
+// this single module — correctErrorTypes avoids kapt stub-generation issues
+// with forward references between generated and hand-written Kotlin in the
+// same compilation, a commonly-recommended default for Kotlin+Room+kapt.
+kapt {
+    correctErrorTypes = true
 }
