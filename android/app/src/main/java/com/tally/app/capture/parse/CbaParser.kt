@@ -16,9 +16,9 @@ import com.tally.app.capture.model.AccountIds
 object CbaParser : TableDrivenParser(
     accountId = AccountIds.CBA,
     rules = listOf(
-        ParseRule(Regex("""^You spent \$(?<amt>$AMOUNT_PATTERN) at (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
-        ParseRule(Regex("""^Purchase of \$(?<amt>$AMOUNT_PATTERN) at (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
-        ParseRule(Regex("""^You were refunded \$(?<amt>$AMOUNT_PATTERN) (?:by|from) (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = true),
-        ParseRule(Regex("""^\$(?<amt>$AMOUNT_PATTERN) (?:was )?refunded (?:by|from) (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = true)
+        ParseRule(Regex("""^You spent \$($AMOUNT_PATTERN) at (.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
+        ParseRule(Regex("""^Purchase of \$($AMOUNT_PATTERN) at (.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
+        ParseRule(Regex("""^You were refunded \$($AMOUNT_PATTERN) (?:by|from) (.+)$""", RegexOption.IGNORE_CASE), isCredit = true),
+        ParseRule(Regex("""^\$($AMOUNT_PATTERN) (?:was )?refunded (?:by|from) (.+)$""", RegexOption.IGNORE_CASE), isCredit = true)
     )
 )

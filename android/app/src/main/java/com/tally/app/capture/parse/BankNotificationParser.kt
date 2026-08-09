@@ -22,7 +22,17 @@ interface BankNotificationParser {
     fun parse(text: String): ParsedNotification?
 }
 
-/** One row of a bank's parse table. `regex` must contain named groups `amt` and `merchant`. */
+/**
+ * One row of a bank's parse table. `regex` must have exactly two capturing
+ * groups, in this fixed order: group 1 is the amount numeral, group 2 is the
+ * merchant text. Plain positional groups rather than named ones (`(?<amt>...)`)
+ * on purpose: Kotlin's common `MatchResult.groups` is statically typed as
+ * `MatchGroupCollection`, which has no `get(String)` -- name-based lookup
+ * needs a cast to the JVM-only `MatchNamedGroupCollection` that this codebase
+ * cannot verify compiles cleanly against this exact Kotlin/Android stdlib
+ * pairing without a working local build. `groupValues[n]` has no such
+ * ambiguity on any Kotlin target.
+ */
 data class ParseRule(val regex: Regex, val isCredit: Boolean)
 
 /**
@@ -33,8 +43,8 @@ data class ParseRule(val regex: Regex, val isCredit: Boolean)
  * A notification shaped like `"$45.00 debited from your account"` has no `at
  * <merchant>` (or equivalent) anywhere in it, so it matches none of these
  * regexes and `parse` returns `null` -- there is no separate "no merchant"
- * rule to write, because every rule here requires a `merchant` group by
- * construction. That `null` is exactly the "dropped and counted, never
+ * rule to write, because every rule here requires a merchant capturing group
+ * by construction. That `null` is exactly the "dropped and counted, never
  * guessed" behaviour deliverable 2 requires.
  */
 open class TableDrivenParser(
@@ -51,12 +61,10 @@ open class TableDrivenParser(
 
         for (rule in rules) {
             val match = rule.regex.find(body) ?: continue
-            val amtText = match.groups["amt"]?.value ?: continue
-            val merchantText = match.groups["merchant"]?.value
-                ?.trim()
-                ?.trim('.', ',', ';', ':', '!')
-                ?.trim()
-                ?: continue
+            val groups = match.groupValues
+            if (groups.size < 3) continue // group 0 is the whole match; need groups 1 (amount) and 2 (merchant)
+            val amtText = groups[1]
+            val merchantText = groups[2].trim().trim('.', ',', ';', ':', '!').trim()
             if (merchantText.isEmpty()) continue
             val cents = AmountCents.parseNumeral(amtText) ?: continue
             return ParsedNotification(amountCents = cents, merchant = merchantText, isCredit = rule.isCredit)

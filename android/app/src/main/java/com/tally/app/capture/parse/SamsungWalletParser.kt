@@ -9,7 +9,7 @@ package com.tally.app.capture.parse
 object SamsungWalletParser : TableDrivenParser(
     accountId = null,
     rules = listOf(
-        ParseRule(Regex("""^You paid \$(?<amt>$AMOUNT_PATTERN) at (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
-        ParseRule(Regex("""^Payment of \$(?<amt>$AMOUNT_PATTERN) approved at (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = false)
+        ParseRule(Regex("""^You paid \$($AMOUNT_PATTERN) at (.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
+        ParseRule(Regex("""^Payment of \$($AMOUNT_PATTERN) approved at (.+)$""", RegexOption.IGNORE_CASE), isCredit = false)
     )
 )

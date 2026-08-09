@@ -21,8 +21,8 @@ package com.tally.app.capture.parse
 object GoogleWalletParser : TableDrivenParser(
     accountId = null,
     rules = listOf(
-        ParseRule(Regex("""^You paid \$(?<amt>$AMOUNT_PATTERN) to (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
-        ParseRule(Regex("""^Paid \$(?<amt>$AMOUNT_PATTERN) at (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
-        ParseRule(Regex("""^\$(?<amt>$AMOUNT_PATTERN)\s*[·•-]\s*(?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = false)
+        ParseRule(Regex("""^You paid \$($AMOUNT_PATTERN) to (.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
+        ParseRule(Regex("""^Paid \$($AMOUNT_PATTERN) at (.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
+        ParseRule(Regex("""^\$($AMOUNT_PATTERN)\s*[·•-]\s*(.+)$""", RegexOption.IGNORE_CASE), isCredit = false)
     )
 )

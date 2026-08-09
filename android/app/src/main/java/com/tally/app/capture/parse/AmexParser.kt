@@ -20,10 +20,10 @@ import com.tally.app.capture.model.AccountIds
 object AmexParser : TableDrivenParser(
     accountId = AccountIds.AMEX,
     rules = listOf(
-        ParseRule(Regex("""^A new transaction of \$(?<amt>$AMOUNT_PATTERN) (?:was made|has been made) at (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
-        ParseRule(Regex("""^You made a \$(?<amt>$AMOUNT_PATTERN) purchase at (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
-        ParseRule(Regex("""^Your card was charged \$(?<amt>$AMOUNT_PATTERN) at (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
-        ParseRule(Regex("""^A credit of \$(?<amt>$AMOUNT_PATTERN) (?:was applied|has been applied) at (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = true),
-        ParseRule(Regex("""^You were refunded \$(?<amt>$AMOUNT_PATTERN) (?:by|from|at) (?<merchant>.+)$""", RegexOption.IGNORE_CASE), isCredit = true)
+        ParseRule(Regex("""^A new transaction of \$($AMOUNT_PATTERN) (?:was made|has been made) at (.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
+        ParseRule(Regex("""^You made a \$($AMOUNT_PATTERN) purchase at (.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
+        ParseRule(Regex("""^Your card was charged \$($AMOUNT_PATTERN) at (.+)$""", RegexOption.IGNORE_CASE), isCredit = false),
+        ParseRule(Regex("""^A credit of \$($AMOUNT_PATTERN) (?:was applied|has been applied) at (.+)$""", RegexOption.IGNORE_CASE), isCredit = true),
+        ParseRule(Regex("""^You were refunded \$($AMOUNT_PATTERN) (?:by|from|at) (.+)$""", RegexOption.IGNORE_CASE), isCredit = true)
     )
 )
