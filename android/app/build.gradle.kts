@@ -1,9 +1,9 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    // Required for Room's annotation processor (room-compiler) — see the
-    // dependencies block below.
-    id("org.jetbrains.kotlin.kapt")
+    // Room's annotation processor — see the root build file for why KSP and
+    // not kapt.
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -97,7 +97,7 @@ dependencies {
     // well-tested against Kotlin 1.9.x / AGP 8.5.x / compileSdk 34.
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
-    kapt("androidx.room:room-compiler:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
 
     // androidx.security-crypto (deliverable 5's durable wrong-attempt
     // backoff) — EncryptedSharedPreferences backed by a Keystore MasterKey,
@@ -117,10 +117,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }
 
-// Room's suspend-fun DAO methods generate code that references types across
-// this single module — correctErrorTypes avoids kapt stub-generation issues
-// with forward references between generated and hand-written Kotlin in the
-// same compilation, a commonly-recommended default for Kotlin+Room+kapt.
-kapt {
-    correctErrorTypes = true
-}
+// `correctErrorTypes` was a kapt-only workaround for stub-generation seeing
+// not-yet-generated types as errors. KSP has no such stage, so there is
+// nothing to correct and no equivalent setting.
