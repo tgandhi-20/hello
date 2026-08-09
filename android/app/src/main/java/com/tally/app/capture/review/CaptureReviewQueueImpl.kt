@@ -36,7 +36,12 @@ class CaptureReviewQueueImpl(
     }
 
     override suspend fun accept(id: String, chosenAccount: String?): CaptureOutcome {
-        val outcome = mutex.withLock {
+        // Explicit `CaptureOutcome` type argument: this lambda has several early
+        // `return@withLock` points returning different CaptureOutcome subtypes
+        // (NotFound, NeedsAccount, AlreadyInLedger) plus a final Written/Failed
+        // expression -- spelling out the target type here removes any reliance
+        // on Kotlin inferring the right common supertype across all of them.
+        val outcome = mutex.withLock<CaptureOutcome> {
             val capture = buffer.pendingItems().find { it.id == id }
                 ?: return@withLock CaptureOutcome.NotFound
 

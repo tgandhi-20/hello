@@ -86,21 +86,14 @@ class CaptureIngestPipelineTest {
     @Test
     fun `a reposted notification -- identical package, key, post time, title and text -- is not double-captured`() = runBlocking {
         val buffer = FakeCaptureBuffer()
-        val args = mapOf(
-            "packageName" to "com.commbank.netbank",
-            "notificationKey" to "key-1",
-            "postedAtMillis" to 1_754_722_800_000L,
-            "title" to "CommBank",
-            "text" to "You spent \$5.50 at CAMPOS COFFEE"
-        )
-        val first = CaptureIngestPipeline.ingest(
-            buffer, args["packageName"] as String, CbaParser, args["notificationKey"] as String,
-            args["postedAtMillis"] as Long, args["title"] as String, args["text"] as String
-        )
-        val second = CaptureIngestPipeline.ingest(
-            buffer, args["packageName"] as String, CbaParser, args["notificationKey"] as String,
-            args["postedAtMillis"] as Long, args["title"] as String, args["text"] as String
-        )
+        val packageName = "com.commbank.netbank"
+        val notificationKey = "key-1"
+        val postedAtMillis = 1_754_722_800_000L
+        val title = "CommBank"
+        val text = "You spent \$5.50 at CAMPOS COFFEE"
+
+        val first = CaptureIngestPipeline.ingest(buffer, packageName, CbaParser, notificationKey, postedAtMillis, title, text)
+        val second = CaptureIngestPipeline.ingest(buffer, packageName, CbaParser, notificationKey, postedAtMillis, title, text)
 
         assertTrue(first is IngestResult.Captured)
         assertTrue(second is IngestResult.DuplicateIgnored)
