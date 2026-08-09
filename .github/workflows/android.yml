@@ -1,0 +1,76 @@
+name: Android CI
+
+# This is the pipeline test for the native Android app: it proves that a
+# push actually compiles, that unit tests actually run, and that a debug
+# APK actually comes out the other end. Nothing under android/ has been
+# built locally — this dev container has no Android SDK and dl.google.com
+# is blocked here, so GitHub's ubuntu-latest runner (which ships the SDK)
+# is the only place this has ever been compiled.
+on:
+  push:
+    branches:
+      - main
+      - "claude/**"
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch: {}
+
+# Scoped to what the job actually needs: read the repo, write the
+# workflow's own artifact upload. Nothing else.
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: android
+
+jobs:
+  build:
+    name: Build & test (debug)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # AGP 8.5.x requires JDK 17 to run the Gradle build itself (this is a
+      # Gradle/AGP toolchain requirement, independent of minSdk/compileSdk).
+      # JDK 21 also works with recent AGP, but 17 is what AGP 8.5's own
+      # compatibility docs are written against, so it's the boring, safe
+      # choice here rather than something we can't verify locally.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # ubuntu-latest ships a preinstalled Android SDK, but not necessarily
+      # every platform/build-tools revision this project pins. This installs
+      # exactly compileSdk 34 + a matching build-tools version and accepts
+      # the SDK licenses non-interactively, so the build doesn't depend on
+      # whatever happens to already be on the image.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform & build-tools
+        run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      # Official Gradle caching action: caches the wrapper distribution,
+      # dependency downloads, and build cache between runs, keyed on the
+      # wrapper/lockfiles so a dependency bump invalidates it automatically.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Assemble debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tally-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14

@@ -47,3 +47,15 @@ logs/
 
 # QA verification artefacts (screenshots from emulated-device runs)
 qa-screenshots/
+
+# Android — local build output and machine-specific SDK path.
+# gradlew / gradlew.bat / gradle/wrapper/* ARE committed on purpose so CI
+# needs no bootstrap step.
+android/.gradle/
+android/**/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/**/.cxx/
+android/captures/
+
