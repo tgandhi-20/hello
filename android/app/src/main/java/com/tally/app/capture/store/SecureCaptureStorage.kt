@@ -98,7 +98,7 @@ class SecureCaptureStorage(context: Context) : CaptureBuffer {
     private fun readSignatures(): List<String> {
         val plaintext = decryptedOrNull(KEY_SEEN_SIGNATURES) ?: return emptyList()
         val array = runCatching { JSONArray(plaintext) }.getOrNull() ?: return emptyList()
-        return (0 until array.length()).mapNotNull { i -> array.optString(i, null) }
+        return (0 until array.length()).mapNotNull { i -> runCatching { array.getString(i) }.getOrNull() }
     }
 
     private fun writeSignatures(signatures: List<String>) {

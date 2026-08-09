@@ -19,9 +19,28 @@ fun interface LedgerHashLookup {
 /**
  * Where an accepted capture is actually written -- "the normal store path"
  * (ANDROID.md §3). Implemented by whichever agent owns `addTxn`/its native
- * equivalent. [CaptureReviewQueue] calls this exactly once per accept and only
- * clears its own buffer entry on success (`true`/no exception); a failure
- * leaves the item pending so nothing captured is ever silently lost.
+ * equivalent (`com.tally.app.data.VaultRepository`, if that module's current
+ * shape holds). [CaptureReviewQueue] calls this exactly once per accept and
+ * only clears its own buffer entry on success (`true`/no exception); a
+ * failure leaves the item pending so nothing captured is ever silently lost.
+ *
+ * ## An integration nuance worth the implementer's attention
+ *
+ * `VaultRepository.addTxn` (singular) recomputes its own dedupe hash with
+ * `occurrence` fixed at `0` -- it has no way to know this capture is the
+ * second of two otherwise-identical items also waiting in this same review
+ * batch, the way `CaptureDedupeHash.assignOccurrence` (scoped to this
+ * module's pending buffer) does. For the common case -- accepting one item at
+ * a time, or a batch with no two items sharing the exact same
+ * date/amount/merchant/account -- this is a non-issue. For the narrow case of
+ * bulk-accepting two *genuinely distinct* same-day identical-looking captures
+ * together (two identical coffees), wiring this against `addTxn` per item
+ * risks the ledger assigning both the same occurrence-0 hash. Wiring it
+ * against `VaultRepository.addTxns` (the batch method CSV import already
+ * uses, which assigns occurrence within whatever list it's given) for the
+ * whole `acceptAll()` batch at once avoids that -- worth doing when this is
+ * actually wired up, flagged here rather than guessed at unilaterally since
+ * `data/**` isn't this module's to change.
  */
 fun interface AcceptedCaptureWriter {
     /** Returns `true` on a successful write. Throwing is also treated as a failure. */
