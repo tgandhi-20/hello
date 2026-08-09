@@ -125,17 +125,17 @@ function buildBalanceNote(cycle: CycleInference, projectedCount: number, stale: 
   const parts: string[] = [];
 
   if (cycle.source === 'user-override') {
-    parts.push('Cycle dates you set.');
+    parts.push('You set these dates.');
   } else if (cycle.closingDayConfidence === 'high' || cycle.dueDayConfidence === 'high') {
-    parts.push('Cycle dates estimated from your imported history.');
+    parts.push('We think we know these dates, from what you imported.');
   } else {
-    parts.push('Cycle dates are a rough estimate — worth confirming if they look wrong.');
+    parts.push("We're not sure about these dates yet — worth double-checking.");
   }
 
   parts.push(
     projectedCount > 0
-      ? `Includes ${projectedCount} expected recurring charge${projectedCount === 1 ? '' : 's'} that haven't posted yet.`
-      : 'No expected recurring charges left before this statement closes — this total may still be missing anything one-off.'
+      ? `Includes ${projectedCount} expected regular payment${projectedCount === 1 ? '' : 's'} that haven't posted yet.`
+      : 'No expected regular payments left before this statement closes — this total may still be missing anything one-off.'
   );
 
   if (daysSinceLastData === null) {
@@ -181,7 +181,7 @@ export function computeCurrentCycleBalance(
       lastDataDate,
       daysSinceLastData,
       stale,
-      note: "Tally doesn't know this card's statement cycle yet — import a few months of history, or set the closing and due days yourself.",
+      note: "Tally doesn't know this card's bill dates yet — import a few months of history, or set them yourself.",
     };
   }
 

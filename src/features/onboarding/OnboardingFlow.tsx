@@ -1,5 +1,15 @@
 /**
- * First-run onboarding — DESIGN-V3.md §5 deliverable 1.
+ * First-run onboarding — DESIGN-V4.md §4.4: "Onboarding teaches the model, not
+ * the features — three steps: here's your income, here's what's committed,
+ * here's what's left. Then it seeds the plan."
+ *
+ * Steps, in order: welcome -> comesIn -> committed -> left (the three model
+ * steps, each building one more line of the equation DESIGN-V4.md §1 shows on
+ * Home) -> moveIn -> hecs (optional refinements, explicitly framed as such —
+ * neither gates anything; HECS still requires a genuine yes/no answer if you
+ * don't skip past it, since the plan is ~$700/month wrong if it's silently
+ * assumed false) -> plan (start with my plan / start empty, then seeds it) ->
+ * done.
  *
  * Rendered two ways by two different callers, both outside this feature's own
  * ownership (flagged in the report):
@@ -9,17 +19,17 @@
  *   - `'rerun'`: opened from Settings (src/features/settings/SettingsScreen.tsx)
  *     at any time, as the same full-screen flow with a visible close affordance.
  *
- * Steps: welcome -> income/payday/savings -> move-in date -> HECS yes/no ->
- * start-with-my-plan-or-empty -> done. Skippable at every step; skipping (or
- * finishing) always marks `Settings.onboardingCompletedAt`, so `LockGate` never
- * shows this twice uninvited.
+ * Skippable at every step; skipping (or finishing) always marks
+ * `Settings.onboardingCompletedAt`, so `LockGate` never shows this twice
+ * uninvited.
  */
 import React, { useState } from 'react';
 import {
   Sparkles,
   Wallet,
-  CalendarClock,
   PiggyBank,
+  Scale,
+  CalendarClock,
   Home,
   HelpCircle,
   ClipboardCheck,
@@ -32,6 +42,8 @@ import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
 import { Select } from '@/ui/Select';
 import { useToast } from '@/ui/Toast';
+import { safeDiv } from '@/charts';
+import { currentMonth, daysRemainingInMonth } from '@/features/insights/monthMath';
 import { useStore } from '@/store/useStore';
 import { applyPersonalPlan } from '@/personal/applyPersonalPlan';
 import { parseDollarsToCents, centsToPlainDollarsString } from '@/features/settings/money';
@@ -43,12 +55,17 @@ import {
   hecsImpactNote,
   buildOnboardingSettingsPatch,
   buildSkipSettingsPatch,
+  buildEquationPreview,
   isValidMoneyCents,
   isValidPaydayDay,
   type OnboardingAnswers,
 } from './onboardingSettings';
+import { OnboardingEquation } from './OnboardingEquation';
 
-type Step = 'welcome' | 'income' | 'moveIn' | 'hecs' | 'plan' | 'finishing' | 'done';
+type Step = 'welcome' | 'comesIn' | 'committed' | 'left' | 'moveIn' | 'hecs' | 'plan' | 'finishing' | 'done';
+
+/** The three steps that build the equation, DESIGN-V4.md §4.4 — used only for the "Step N of 3" caption. */
+const MODEL_STEPS: readonly Step[] = ['comesIn', 'committed', 'left'];
 
 const PAYDAY_OPTIONS = Array.from({ length: 31 }, (_, i) => ({
   value: String(i + 1),
@@ -184,6 +201,11 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
 
   const isFirstRun = variant === 'first-run';
 
+  const committedPreview = buildEquationPreview(monthlyIncomeCents, savingsTargetCents);
+  const month = currentMonth();
+  const daysRemaining = daysRemainingInMonth(month);
+  const perDayCents = Math.round(safeDiv(committedPreview.leftCents, daysRemaining, 0));
+
   return (
     <div className="fixed inset-0 z-[90] flex flex-col bg-ground" role="dialog" aria-modal="true" aria-label="Set up Tally">
       <div
@@ -226,20 +248,20 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
             <div>
               <h1 className="text-xl font-semibold text-ink-1">Let's set up Tally</h1>
               <p className="mt-2 max-w-sm text-sm text-ink-2">
-                A few quick questions point this app at your real numbers instead of generic
-                defaults. Takes about a minute — skip anytime, and you can run this again from
-                Settings.
+                Three short steps build your equation: what comes in, what's already committed, what's
+                left to spend. Skip anytime — you can run this again from Settings.
               </p>
             </div>
           </div>
         ) : null}
 
-        {step === 'income' ? (
+        {step === 'comesIn' ? (
           <div className="flex flex-col gap-5 pt-4">
-            <StepHeader icon={<Wallet size={22} aria-hidden="true" />} title="Income & savings" />
+            <StepHeader icon={<Wallet size={22} aria-hidden="true" />} title="What comes in" step={step} />
+            <p className="text-sm text-ink-2">What actually lands in your account each month, after tax.</p>
             <MoneyField
               label="Monthly take-home"
-              hint="After tax. Used to work out what's safe to spend today."
+              hint="After tax. The first line of your equation."
               valueCents={monthlyIncomeCents}
               onChange={setMonthlyIncomeCents}
             />
@@ -253,18 +275,43 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
                 className="flex-1"
               />
             </div>
+          </div>
+        ) : null}
+
+        {step === 'committed' ? (
+          <div className="flex flex-col gap-5 pt-4">
+            <StepHeader icon={<PiggyBank size={22} aria-hidden="true" />} title="What's already committed" step={step} />
+            <p className="text-sm text-ink-2">
+              Two things come off the top before you spend anything. Bills — rent, utilities,
+              subscriptions — get added automatically once Tally sees them; there's nothing to enter
+              now. Savings is the one you set yourself: the deposit, put aside first, not last.
+            </p>
             <MoneyField
               label="Savings target"
               hint="Set aside each month before anything else."
               valueCents={savingsTargetCents}
               onChange={setSavingsTargetCents}
             />
+            <OnboardingEquation preview={committedPreview} />
+          </div>
+        ) : null}
+
+        {step === 'left' ? (
+          <div className="flex flex-col gap-5 pt-4">
+            <StepHeader icon={<Scale size={22} aria-hidden="true" />} title="What's left" step={step} />
+            <p className="text-sm text-ink-2">
+              Here's your equation, complete. Left — spread over the days remaining this month — is the
+              number the rest of Tally is built around. Every screen you'll see from here is a view of
+              it.
+            </p>
+            <OnboardingEquation preview={committedPreview} daily={{ daysRemaining, perDayCents }} />
           </div>
         ) : null}
 
         {step === 'moveIn' ? (
           <div className="flex flex-col gap-4 pt-4">
             <StepHeader icon={<Home size={22} aria-hidden="true" />} title="Move-in date" />
+            <p className="text-xs text-ink-3">Optional — this fine-tunes the equation, it doesn't gate anything.</p>
             <p className="text-sm text-ink-2">
               Rent, utilities and the sublet income only start counting once you've actually
               moved in — until then they stay out of your budget entirely. If the date isn't
@@ -291,6 +338,7 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
         {step === 'hecs' ? (
           <div className="flex flex-col gap-4 pt-4">
             <StepHeader icon={<HelpCircle size={22} aria-hidden="true" />} title="HECS or HELP debt?" />
+            <p className="text-xs text-ink-3">Optional — skip it if you're not sure, rather than guess.</p>
             <p className="text-sm text-ink-2">
               This changes how much of your salary is actually take-home. Answer once — Tally
               never assumes.
@@ -381,18 +429,34 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
         style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
       >
         {step === 'welcome' ? (
-          <Button variant="primary" size="lg" fullWidth onClick={() => setStep('income')}>
+          <Button variant="primary" size="lg" fullWidth onClick={() => setStep('comesIn')}>
             Get started
           </Button>
         ) : null}
-        {step === 'income' ? (
+        {step === 'comesIn' ? (
           <Button
             variant="primary"
             size="lg"
             fullWidth
-            disabled={!isValidMoneyCents(monthlyIncomeCents) || !isValidPaydayDay(paydayDayOfMonth) || !isValidMoneyCents(savingsTargetCents)}
-            onClick={() => setStep('moveIn')}
+            disabled={!isValidMoneyCents(monthlyIncomeCents) || !isValidPaydayDay(paydayDayOfMonth)}
+            onClick={() => setStep('committed')}
           >
+            Continue
+          </Button>
+        ) : null}
+        {step === 'committed' ? (
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            disabled={!isValidMoneyCents(savingsTargetCents)}
+            onClick={() => setStep('left')}
+          >
+            Continue
+          </Button>
+        ) : null}
+        {step === 'left' ? (
+          <Button variant="primary" size="lg" fullWidth onClick={() => setStep('moveIn')}>
             Continue
           </Button>
         ) : null}
@@ -421,19 +485,23 @@ export function OnboardingFlow({ variant = 'first-run', onDone }: OnboardingFlow
   );
 }
 
-function StepHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+function StepHeader({ icon, title, step }: { icon: React.ReactNode; title: string; step?: Step }) {
+  const modelIndex = step ? MODEL_STEPS.indexOf(step) : -1;
   return (
-    <div className="flex items-center gap-3">
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-hairline bg-surface text-accent">
-        {icon}
-      </span>
-      <h1 className="text-lg font-semibold text-ink-1">{title}</h1>
+    <div className="flex flex-col gap-1">
+      {modelIndex >= 0 ? <p className="label">{`Step ${modelIndex + 1} of ${MODEL_STEPS.length} — your equation`}</p> : null}
+      <div className="flex items-center gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-hairline bg-surface text-accent">
+          {icon}
+        </span>
+        <h1 className="text-lg font-semibold text-ink-1">{title}</h1>
+      </div>
     </div>
   );
 }
 
 function prevStepOf(step: Step): Step {
-  const order: Step[] = ['welcome', 'income', 'moveIn', 'hecs', 'plan'];
+  const order: Step[] = ['welcome', 'comesIn', 'committed', 'left', 'moveIn', 'hecs', 'plan'];
   const idx = order.indexOf(step);
   return idx > 0 ? order[idx - 1] : 'welcome';
 }

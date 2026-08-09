@@ -12,6 +12,7 @@ import {
   hecsImpactNote,
   buildOnboardingSettingsPatch,
   buildSkipSettingsPatch,
+  buildEquationPreview,
   isValidMoneyCents,
   isValidPaydayDay,
   type OnboardingAnswers,
@@ -153,6 +154,30 @@ async function main(): Promise<void> {
     check('isValidPaydayDay rejects 0', !isValidPaydayDay(0));
     check('isValidPaydayDay rejects 32', !isValidPaydayDay(32));
     check('isValidPaydayDay rejects a non-integer', !isValidPaydayDay(15.5));
+  }
+
+  // ===================================================================
+  // 7. buildEquationPreview — DESIGN-V4.md §4.4: the "What's already
+  //    committed" / "What's left" steps' equation preview. Bills and spent
+  //    are always 0 (onboarding has no real data yet); the rest is plain
+  //    arithmetic matching computeMonthMoney()'s own field names/shape
+  //    (src/money/index.ts), so it reads as a view of the same idea.
+  // ===================================================================
+  {
+    const preview = buildEquationPreview(645_700, 350_000);
+    eq('Preview carries income through unchanged', preview.incomeCents, 645_700);
+    eq('Preview bills is always 0 (nothing logged yet)', preview.billsCents, 0);
+    eq('Preview savings matches the entered target', preview.savingsCents, 350_000);
+    eq('Preview toSpend = income - bills - savings', preview.toSpendCents, 645_700 - 350_000);
+    eq('Preview spent is always 0 (nothing logged yet)', preview.spentCents, 0);
+    eq('Preview left = toSpend - spent (== toSpend)', preview.leftCents, preview.toSpendCents);
+
+    const negativeSavings = buildEquationPreview(0, 350_000);
+    eq('A negative savings target input is floored at 0 for the savings line', negativeSavings.savingsCents, 350_000);
+    check('toSpend can go negative when savings exceeds income — no clamping, it is honest maths', buildEquationPreview(100, 350_000).toSpendCents < 0);
+
+    const flooredNegative = buildEquationPreview(645_700, -500);
+    eq('A negative savingsTargetCents argument is floored to 0, never subtracted as a credit', flooredNegative.savingsCents, 0);
   }
 
   // ===================================================================

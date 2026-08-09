@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, BarChart3 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { dayCells, txnsForMonth } from '@/store/selectors';
 import { Card, EmptyState, formatMoney } from '@/ui';
+import { activeRecurringTxnIds } from '@/money';
 import { ColumnChart, StackedBar } from '@/charts';
 import type { ChartDatum } from '@/charts';
 import { CalendarHeatmap } from './CalendarHeatmap';
@@ -18,16 +19,29 @@ export function InsightsScreen() {
   const hydrated = useStore((s) => s.hydrated);
   const txns = useStore((s) => s.txns);
   const categories = useStore((s) => s.categories);
+  const recurring = useStore((s) => s.recurring);
   const [month, setMonth] = useState(currentMonth());
 
-  const cells = useMemo(() => dayCells(txns, month), [txns, month]);
+  // Committed-recurring transactions are already counted as "Bills" on Home — excluded
+  // here too, everywhere this screen aggregates spend, so nothing on Trends can ever
+  // disagree with Home's numbers for the same data (DESIGN-V4.md §1). See
+  // activeRecurringTxnIds's doc comment.
+  const discretionaryTxns = useMemo(() => {
+    const committed = activeRecurringTxnIds(recurring);
+    return committed.size === 0 ? txns : txns.filter((t) => !committed.has(t.id));
+  }, [txns, recurring]);
+
+  const cells = useMemo(() => dayCells(discretionaryTxns, month), [discretionaryTxns, month]);
   const last = prevMonth(month);
 
-  const monthTotals = useMemo(() => trailingMonthTotals(txns, month, 6), [txns, month]);
-  const split = useMemo(() => needsWantsSplit(txns, categories, month), [txns, categories, month]);
-  const movers = useMemo(() => biggestMovers(txns, categories, month, last, 5), [txns, categories, month, last]);
-  const avgDaily = useMemo(() => averageDailySpendCents(txns, month), [txns, month]);
-  const weekday = useMemo(() => spendByDayOfWeek(txns, month), [txns, month]);
+  const monthTotals = useMemo(() => trailingMonthTotals(discretionaryTxns, month, 6), [discretionaryTxns, month]);
+  const split = useMemo(() => needsWantsSplit(discretionaryTxns, categories, month), [discretionaryTxns, categories, month]);
+  const movers = useMemo(
+    () => biggestMovers(discretionaryTxns, categories, month, last, 5),
+    [discretionaryTxns, categories, month, last]
+  );
+  const avgDaily = useMemo(() => averageDailySpendCents(discretionaryTxns, month), [discretionaryTxns, month]);
+  const weekday = useMemo(() => spendByDayOfWeek(discretionaryTxns, month), [discretionaryTxns, month]);
 
   if (!hydrated) return null;
 

@@ -33,7 +33,7 @@ export function RecurringScreen() {
     return (
       <EmptyState
         icon={Repeat}
-        headline="Nothing recurring detected yet"
+        headline="No regular payments found yet"
         body="Once the same merchant charges you a few times at a regular interval — rent, a subscription, a utility bill — it'll show up here automatically."
       />
     );
@@ -54,7 +54,9 @@ export function RecurringScreen() {
             <Repeat size={14} aria-hidden="true" /> Monthly load
           </span>
           <span className="money-hero text-xl text-ink-1">{formatMoney(monthlyLoad)}</span>
-          <span className="text-xs text-ink-3">{active.length} active series</span>
+          <span className="text-xs text-ink-3">
+            {active.length} regular payment{active.length === 1 ? '' : 's'}
+          </span>
         </Card>
       </div>
 
@@ -116,7 +118,7 @@ export function RecurringScreen() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="px-1 text-sm font-semibold text-ink-2">All detected series</h2>
+        <h2 className="px-1 text-sm font-semibold text-ink-2">All regular payments</h2>
         <ListGroup>
           {recurring.map((s) => (
             <ListRow

@@ -44,14 +44,14 @@ export function AmexGuardrail(): React.JSX.Element | null {
       <p className="text-sm text-ink-2">
         Amex charges {AMEX_INTEREST_RATE_PCT}% on a carried balance. Any interest paid there
         outweighs everything this plan earns in savings interest — paying it in full every
-        cycle is the whole rule.
+        month is the whole rule.
       </p>
 
       {paid ? (
         // No `--positive` token in v3 — paid-in-full needs no colour, the check shape
         // and full-strength ink already say "done" (DESIGN-V3.md §1).
         <div className="flex items-center gap-2 text-sm text-ink-1">
-          <CheckCircle2 size={16} aria-hidden="true" /> Paid in full for this cycle.
+          <CheckCircle2 size={16} aria-hidden="true" /> Paid in full this month.
         </div>
       ) : (
         <div className="rounded-card bg-surface-sunk px-3 py-3">

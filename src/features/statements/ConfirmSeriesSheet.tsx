@@ -76,7 +76,7 @@ export function ConfirmSeriesSheet({ open, onClose, series }: ConfirmSeriesSheet
     <Sheet
       open={open}
       onClose={onClose}
-      title="Confirm this series"
+      title="Confirm this payment"
       footer={
         <Button fullWidth onClick={save}>
           Save

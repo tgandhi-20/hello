@@ -120,7 +120,7 @@ export function WeeklyReviewFlow({ onClose }: WeeklyReviewFlowProps) {
   const canGoBack = stepIndex > 0 && step !== 'done';
 
   return (
-    <div className="fixed inset-0 z-[90] flex flex-col bg-ground" role="dialog" aria-modal="true" aria-label="Weekly review">
+    <div className="fixed inset-0 z-[90] flex flex-col bg-ground" role="dialog" aria-modal="true" aria-label="Weekly catch-up">
       <div
         className="flex items-center justify-between px-4 pt-4"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}
@@ -149,7 +149,7 @@ export function WeeklyReviewFlow({ onClose }: WeeklyReviewFlowProps) {
 
       {step !== 'done' ? (
         <div className="px-6 pt-2">
-          <ProgressBar value={(stepIndex + 1) / (REVIEW_STEP_ORDER.length - 1)} label="Weekly review progress" />
+          <ProgressBar value={(stepIndex + 1) / (REVIEW_STEP_ORDER.length - 1)} label="Weekly catch-up progress" />
           <p className="mt-2 text-xs text-ink-3">
             Step {stepIndex + 1} of {REVIEW_STEP_ORDER.length - 1} · {REVIEW_STEP_LABELS[step]}
           </p>
@@ -161,8 +161,8 @@ export function WeeklyReviewFlow({ onClose }: WeeklyReviewFlowProps) {
           <div className="flex flex-col gap-4">
             <StepHeader icon={<Upload size={22} aria-hidden="true" />} title="Import statements" />
             <p className="text-sm text-ink-2">
-              Export this cycle's CSVs from CBA, Amex and Bankwest, and bring them in here. If
-              you've already imported everything for this cycle, just continue.
+              Export this week's CSVs from CBA, Amex and Bankwest, and bring them in here. If
+              you've already imported everything for this week, just continue.
             </p>
             <Link to="/import" onClick={onClose}>
               <Button variant="primary" fullWidth>
@@ -205,12 +205,12 @@ export function WeeklyReviewFlow({ onClose }: WeeklyReviewFlowProps) {
 
         {step === 'recurring' ? (
           <div className="flex flex-col gap-4">
-            <StepHeader icon={<Repeat size={22} aria-hidden="true" />} title="Confirm recurring" />
+            <StepHeader icon={<Repeat size={22} aria-hidden="true" />} title="Confirm regular payments" />
             {unconfirmed.length > 0 ? (
               <>
                 <p className="text-sm text-ink-2">
-                  Newly detected series — confirm the ones that are real bills, dismiss anything
-                  that isn't.
+                  Newly found regular payments — confirm the ones that are real bills, dismiss
+                  anything that isn't.
                 </p>
                 <ListGroup>
                   {unconfirmed.map((s) => {
@@ -256,7 +256,7 @@ export function WeeklyReviewFlow({ onClose }: WeeklyReviewFlowProps) {
               interest paid there outweighs everything this plan earns in savings interest.
             </p>
             {amexPaid ? (
-              <EmptyStepState icon={<Check size={22} aria-hidden="true" />} text="Marked paid in full for this cycle." />
+              <EmptyStepState icon={<Check size={22} aria-hidden="true" />} text="Marked paid in full this month." />
             ) : (
               <Button fullWidth onClick={() => toggleItem('pay-amex')}>
                 Mark paid in full
@@ -274,7 +274,7 @@ export function WeeklyReviewFlow({ onClose }: WeeklyReviewFlowProps) {
               <h1 className="text-xl font-semibold text-ink-1">Review done</h1>
               <ul className="mt-3 flex flex-col gap-1 text-sm text-ink-2">
                 <li>{sessionCategorised} transaction{sessionCategorised === 1 ? '' : 's'} categorised</li>
-                <li>{sessionConfirmed} recurring series confirmed, {sessionDismissed} dismissed</li>
+                <li>{sessionConfirmed} regular payments confirmed, {sessionDismissed} dismissed</li>
                 <li>Amex {amexPaid ? 'marked paid in full' : 'not yet marked paid'}</li>
               </ul>
             </div>

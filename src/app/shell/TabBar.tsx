@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { CalendarCheck2, Receipt, Plus, Target, MoreHorizontal } from 'lucide-react';
+import { Home, Plus, Menu as MenuIcon } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { vibrate } from '@/ui/haptics';
 
@@ -11,21 +11,20 @@ interface TabDef {
   end?: boolean;
 }
 
-// DESIGN-V3.md §4's 5 slots: Today · Spending · ⊕ (quick-add) · Plan · More.
-// `end: true` on Today keeps it from matching every other route (every path starts
-// with '/'); Spending/Plan deliberately have no `end` so they stay highlighted while
-// any of their nested sub-tabs (`/spending/trends`, `/plan/routine`, …) is open.
+// DESIGN-V4.md §2's 3 slots: Home · ⊕ (quick-add) · Menu. Down from v3's 5 (Today,
+// Spending, ⊕, Plan, More) — Spending and Plan are gone as destinations; everything
+// they used to hold is one tap away from Menu instead (see App.tsx).
+// `end: true` on Home keeps it from matching every other route (every path starts
+// with '/').
 const TABS: TabDef[] = [
-  { to: '/', label: 'Today', icon: CalendarCheck2, end: true },
-  { to: '/spending', label: 'Spending', icon: Receipt },
-  { to: '/plan', label: 'Plan', icon: Target },
-  { to: '/more', label: 'More', icon: MoreHorizontal },
+  { to: '/', label: 'Home', icon: Home, end: true },
+  { to: '/menu', label: 'Menu', icon: MenuIcon },
 ];
 
 /**
- * Bottom tab bar: Today · Spending · centre FAB (quick-add) · Plan · More.
- * Fixed to the viewport bottom, respects env(safe-area-inset-bottom) so gesture-nav
- * devices never clip a tab under the home indicator.
+ * Bottom tab bar: Home · centre FAB (quick-add) · Menu. Fixed to the viewport
+ * bottom, respects env(safe-area-inset-bottom) so gesture-nav devices never clip a
+ * tab under the home indicator.
  */
 export function TabBar() {
   return (
@@ -35,9 +34,7 @@ export function TabBar() {
       aria-label="Primary"
     >
       <div className="relative mx-auto flex h-16 max-w-lg items-stretch justify-between px-2">
-        {TABS.slice(0, 2).map((tab) => (
-          <TabLink key={tab.to} tab={tab} />
-        ))}
+        <TabLink tab={TABS[0]} />
 
         {/* Centre FAB — quick-add, always routes to /log */}
         <div className="flex w-16 shrink-0 items-center justify-center">
@@ -51,9 +48,7 @@ export function TabBar() {
           </NavLink>
         </div>
 
-        {TABS.slice(2).map((tab) => (
-          <TabLink key={tab.to} tab={tab} />
-        ))}
+        <TabLink tab={TABS[1]} />
       </div>
     </nav>
   );

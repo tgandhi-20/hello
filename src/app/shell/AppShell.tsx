@@ -7,22 +7,26 @@ import { useRequestPersistentStorage } from '@/ui/storage';
 import { TopBar } from './TopBar';
 import { TabBar } from './TabBar';
 
+// Plain words throughout (DESIGN-V4.md §3) — these are what a screen-reader user
+// hears announced and what shows in the top bar, so they get the same rename pass
+// as every other user-facing string.
 const TITLES: Record<string, string> = {
-  '/': 'Today',
-  '/log': 'Log',
-  '/more': 'More',
-  '/import': 'Import',
+  '/': 'Home',
+  '/log': 'Add a spend',
+  '/menu': 'Menu',
+  '/transactions': 'All transactions',
+  '/budgets': 'Budgets',
+  '/recurring': 'Regular payments',
+  '/statements': 'Card balances',
+  '/goal': 'Deposit plan',
+  '/import': 'Import statements',
+  '/review': 'Weekly catch-up',
+  '/backup': 'Backup & restore',
+  '/help': 'How Tally works',
   '/settings': 'Settings',
-  '/spending': 'Spending',
-  '/spending/transactions': 'Transactions',
-  '/spending/trends': 'Trends',
-  '/spending/habits': 'Habits',
-  '/plan': 'Plan',
-  '/plan/goal': 'Deposit goal',
-  '/plan/budgets': 'Budgets',
-  '/plan/recurring': 'Recurring',
-  '/plan/statements': 'Statements',
-  '/plan/routine': 'Routine',
+  '/trends': 'Trends',
+  '/habits': 'Habits',
+  '/routine': 'Routine',
 };
 
 /**

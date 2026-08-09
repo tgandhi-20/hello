@@ -20,7 +20,7 @@ export function SeriesList() {
       <Card>
         <EmptyState
           icon={Repeat}
-          headline="No recurring series yet"
+          headline="No regular payments yet"
           body="Once Tally detects a repeating charge (rent, a subscription, a bill), confirm it here and link it to the card it hits."
         />
       </Card>
@@ -30,7 +30,7 @@ export function SeriesList() {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="flex items-center gap-1.5 px-1 text-sm font-semibold text-ink-2">
-        <Repeat size={16} aria-hidden="true" /> Recurring series
+        <Repeat size={16} aria-hidden="true" /> Regular payments
       </h2>
       <ListGroup>
         {recurring.map((s) => (

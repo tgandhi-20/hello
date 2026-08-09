@@ -4,19 +4,19 @@ import { Sparkles } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { Button, EmptyState, Skeleton, useToast, TOAST_RESERVE_BOTTOM } from '@/ui';
 import { useRoutineChecklist } from '@/features/routine';
-import { computeSafeToSpend } from './safeToSpend';
-import { buildComingUp } from './comingUp';
-import { buildNeedsYou } from './needsYou';
-import { SafeToSpendSection } from './SafeToSpendSection';
-import { FoodTodaySection } from './FoodTodaySection';
-import { ComingUpSection } from './ComingUpSection';
-import { GoalRow } from './GoalRow';
-import { NeedsYouSection } from './NeedsYouSection';
+import { computeMonthMoney } from '@/money';
+import { buildBillsDueSoon } from './billsDueSoon';
+import { buildToSortOut } from './toSortOut';
+import { EquationSection } from './EquationSection';
+import { WhereItWentSection } from './WhereItWentSection';
+import { BillsDueSoonSection } from './BillsDueSoonSection';
+import { DepositPlanRow } from './DepositPlanRow';
+import { ToSortOutSection } from './ToSortOutSection';
 
-function TodaySkeleton() {
+function HomeSkeleton() {
   return (
-    <div className="flex flex-col gap-6 px-4 py-6" aria-busy="true" aria-label="Loading today">
-      <Skeleton className="h-32" />
+    <div className="flex flex-col gap-6 px-4 py-6" aria-busy="true" aria-label="Loading Home">
+      <Skeleton className="h-64" />
       <Skeleton className="h-40" />
       <Skeleton className="h-48" />
       <Skeleton className="h-14" />
@@ -47,8 +47,8 @@ function NewInstallEmptyState() {
       <EmptyState
         icon={Sparkles}
         headline="Welcome to Tally"
-        body="Nothing logged yet — this is where your Safe-to-spend number, this week's food and what's
-          coming up will appear once there's something to show."
+        body="Nothing logged yet — this is where what's left to spend, where it went and what's coming up will
+          appear once there's something to show."
         action={
           <div className="flex w-full flex-col gap-3">
             <Button fullWidth onClick={() => navigate('/log')}>
@@ -68,16 +68,19 @@ function NewInstallEmptyState() {
 }
 
 /**
- * Today — the summary screen (DESIGN-V3.md §4). Answers "am I OK?" in about
- * three seconds, in order: Safe to spend today, this week's food, what's
- * coming up in the next 14 days, the deposit goal, and — only when there's
- * genuinely something to say — what needs the user's attention. This
- * replaces the old ten-card Home (`src/features/dashboard`, now removed):
- * FoodWeekCard, DepositGoalCard, RoutineCard, SafeToSpendCard,
- * BudgetProgressCard, CategoryBreakdownCard, TrendCard,
- * RecentTransactionsCard, StatementsCard and UpcomingBillsCard all moved to
- * Spending/Plan or were absorbed into one of the five sections below — see
- * this feature's report for exactly where each one landed.
+ * Home — the summary screen (DESIGN-V4.md §1/§2). There is exactly ONE money
+ * calculation behind this whole screen — `computeMonthMoney` (`src/money`) —
+ * computed once here and handed down; no section below recomputes a figure
+ * that this one call already produced.
+ *
+ * In order (DESIGN-V4.md §1):
+ *   1. The equation — income, bills, savings, what's left, laid out as the
+ *      actual subtraction, not a hero number with its reasoning hidden.
+ *   2. Where it went — the category breakdown of `spent`, food's line
+ *      carrying its weekly target.
+ *   3. Bills due soon — the next 14 days, merged into one list.
+ *   4. Deposit plan — one row, not a card.
+ *   5. To sort out — renders ONLY when there's genuinely something to say.
  */
 export function TodayScreen() {
   const hydrated = useStore((s) => s.hydrated);
@@ -87,28 +90,28 @@ export function TodayScreen() {
   const settings = useStore((s) => s.settings);
   const { state: routineChecklist, today } = useRoutineChecklist();
 
-  const safeToSpend = useMemo(
-    () => computeSafeToSpend({ txns, recurring, settings }),
-    [txns, recurring, settings]
+  const money = useMemo(
+    () => computeMonthMoney({ txns, recurring, settings, categories }),
+    [txns, recurring, settings, categories]
   );
-  const comingUp = useMemo(
-    () => buildComingUp({ txns, recurring, settings, today }),
+  const billsDueSoon = useMemo(
+    () => buildBillsDueSoon({ txns, recurring, settings, today }),
     [txns, recurring, settings, today]
   );
-  const needsYou = useMemo(
-    () => buildNeedsYou({ txns, recurring, settings, routineState: routineChecklist.current, today }),
+  const toSortOut = useMemo(
+    () => buildToSortOut({ txns, recurring, settings, routineState: routineChecklist.current, today }),
     [txns, recurring, settings, routineChecklist, today]
   );
 
-  if (!hydrated) return <TodaySkeleton />;
+  if (!hydrated) return <HomeSkeleton />;
 
   // "Nothing set up yet" is not the same as "nothing logged yet".
   //
   // Gating purely on transaction count meant that the moment right after
   // onboarding — income confirmed, budgets and subscriptions seeded, and the
-  // user expecting to see their plan — Today still showed a generic welcome
+  // user expecting to see their plan — Home still showed a generic welcome
   // screen. That is precisely the moment the app has to feel like theirs, and
-  // every input Safe-to-Spend needs (income, committed recurring, savings
+  // every input the equation needs (income, committed recurring, savings
   // target) already exists at that point without a single transaction.
   //
   // So the empty state is now for a genuinely blank vault only.
@@ -116,16 +119,16 @@ export function TodayScreen() {
   if (txns.length === 0 && !hasSetup) return <NewInstallEmptyState />;
 
   return (
-    // Reserve the toast's footprint. Today ends with the goal row and the
-    // "Needs you" section, and a toast fires on almost every action that lands
+    // Reserve the toast's footprint. Home ends with the deposit plan row and the
+    // "To sort out" section, and a toast fires on almost every action that lands
     // the user back here — so without this the two things the screen exists to
     // surface are exactly what gets covered.
     <div className="flex flex-col gap-6 px-4 py-6" style={{ paddingBottom: TOAST_RESERVE_BOTTOM }}>
-      <SafeToSpendSection result={safeToSpend} />
-      <FoodTodaySection txns={txns} categories={categories} />
-      <ComingUpSection items={comingUp} />
-      <GoalRow />
-      <NeedsYouSection items={needsYou} />
+      <EquationSection money={money} />
+      <WhereItWentSection money={money} />
+      <BillsDueSoonSection items={billsDueSoon} />
+      <DepositPlanRow money={money} />
+      <ToSortOutSection items={toSortOut} />
     </div>
   );
 }

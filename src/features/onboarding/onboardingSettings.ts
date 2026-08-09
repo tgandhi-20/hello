@@ -79,3 +79,41 @@ export function isValidMoneyCents(cents: number): boolean {
 export function isValidPaydayDay(day: number): boolean {
   return Number.isInteger(day) && day >= 1 && day <= 31;
 }
+
+// ---------------------------------------------------------------------------
+// DESIGN-V4.md §1/§4 — onboarding now TEACHES the one-equation model rather
+// than just collecting settings. `EquationPreview` is the same six lines as
+// `computeMonthMoney()` (`src/money/index.ts`) — Income / Bills / Savings /
+// To spend / spent / Left — deliberately typed and named to match it, so a
+// reader can see this is a view of the same idea, not a competing formula.
+//
+// It is NOT a call to `computeMonthMoney()` and never will be: onboarding
+// runs before there is any real transaction/recurring data to feed it (a
+// fresh vault has none), and even re-run mid-life it only previews the TWO
+// things this flow actually asks the user to confirm — income and savings.
+// Bills and "already spent" are always shown as exactly 0, with copy that
+// says so plainly ("nothing logged yet"), never implied as "you owe
+// nothing" — see OnboardingFlow.tsx's `OnboardingEquation`.
+// ---------------------------------------------------------------------------
+
+export interface EquationPreview {
+  incomeCents: Cents;
+  /** Always 0 here — bills are detected from real data onboarding doesn't have yet. */
+  billsCents: Cents;
+  savingsCents: Cents;
+  /** incomeCents − billsCents − savingsCents. Can be negative if savings alone exceeds income. */
+  toSpendCents: Cents;
+  /** Always 0 here — see module note above. */
+  spentCents: Cents;
+  /** toSpendCents − spentCents (== toSpendCents while spentCents is always 0). */
+  leftCents: Cents;
+}
+
+export function buildEquationPreview(incomeCents: Cents, savingsTargetCents: Cents): EquationPreview {
+  const billsCents = 0;
+  const spentCents = 0;
+  const savingsCents = Math.max(0, savingsTargetCents);
+  const toSpendCents = incomeCents - billsCents - savingsCents;
+  const leftCents = toSpendCents - spentCents;
+  return { incomeCents, billsCents, savingsCents, toSpendCents, spentCents, leftCents };
+}

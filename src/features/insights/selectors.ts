@@ -94,7 +94,7 @@ export function biggestMovers(
       const cat = catMap.get(id);
       return {
         categoryId: id,
-        label: cat?.label ?? 'Uncategorised',
+        label: cat?.label ?? 'Needs a category',
         colorToken: cat?.colorToken ?? 'ink-3',
         thisCents,
         lastCents,
