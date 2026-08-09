@@ -80,7 +80,7 @@ export function makeBookmark(step: ReviewStepId, today: string): WeeklyReviewBoo
 export const REVIEW_STEP_LABELS: Record<ReviewStepId, string> = {
   import: 'Import statements',
   categorise: 'Categorise',
-  recurring: 'Confirm recurring',
+  recurring: 'Confirm regular payments',
   amex: 'Pay Amex',
   done: 'Done',
 };

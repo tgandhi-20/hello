@@ -46,7 +46,7 @@ export function DepositGoalCard() {
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-tint">
             <Target size={18} strokeWidth={1.75} className="text-accent" aria-hidden="true" />
           </div>
-          <span className="label">Deposit goal</span>
+          <span className="label">Deposit plan</span>
         </div>
         {/* No `--positive` token in v3 — on track needs no colour at all (absence of
             warning); only "behind plan" earns a pill worth noticing. */}

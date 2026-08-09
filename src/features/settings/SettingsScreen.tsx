@@ -279,7 +279,7 @@ export function SettingsScreen() {
                 hint={
                   settings.monthlyIncomeCents > 0
                     ? `Currently ${formatMoney(settings.monthlyIncomeCents)} / month`
-                    : 'Used to calculate Safe to Spend.'
+                    : "Used to work out what's left to spend."
                 }
               />
             </div>
@@ -301,7 +301,7 @@ export function SettingsScreen() {
                 label="Savings target"
                 valueCents={settings.savingsTargetCents}
                 onCommit={(cents) => void updateSettings({ savingsTargetCents: cents })}
-                hint="Set aside each month before Safe to Spend is calculated."
+                hint="Set aside each month before working out what's left to spend."
               />
             </div>
           </div>
@@ -367,8 +367,8 @@ export function SettingsScreen() {
           <ListRow
             onClick={() => setReviewOpen(true)}
             leading={<ClipboardCheck size={20} className="text-ink-2" aria-hidden="true" />}
-            title="Weekly review"
-            subtitle="Import, categorise, confirm recurring, pay Amex"
+            title="Weekly catch-up"
+            subtitle="Import, sort, confirm regular payments, pay Amex"
             chevron
           />
         </ListGroup>

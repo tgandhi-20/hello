@@ -7,11 +7,8 @@ import { LockGate } from '@/security/LockScreen';
 import { GlobalRuntimeGuard } from './GlobalRuntimeGuard';
 import { AppShell } from './shell/AppShell';
 import { TodayScreen } from './screens/TodayScreen';
-import { SpendingScreen } from './screens/SpendingScreen';
-import { PlanScreen } from './screens/PlanScreen';
 import { LogScreen } from './screens/LogScreen';
-import { TrendsScreen } from './screens/TrendsScreen';
-import { MoreScreen } from './screens/MoreScreen';
+import { MenuScreen } from './screens/MenuScreen';
 import { ImportScreen } from './screens/ImportScreen';
 import { BudgetsScreen } from './screens/BudgetsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -21,21 +18,37 @@ import { RecurringScreen } from './screens/RecurringScreen';
 import { HabitsScreen } from './screens/HabitsScreen';
 import { TransactionsScreen } from './screens/TransactionsScreen';
 import { StatementsScreen } from './screens/StatementsScreen';
+import { TrendsScreen } from './screens/TrendsScreen';
+import { ReviewScreen } from './screens/ReviewScreen';
+import { BackupRestoreScreen } from './screens/BackupRestoreScreen';
+import { HelpScreen } from './screens/HelpScreen';
 
 /**
  * HashRouter is deliberate (CONTRACTS.md §1): bulletproof on a GitHub Pages subpath and
  * gives the Android hardware back button sane behaviour for free — don't switch to
  * BrowserRouter.
  *
- * IA (DESIGN-V3.md §4): 5 tabs — Today (this file's `/`), Spending ("what happened"),
- * quick-add (`/log`, the centre FAB), Plan ("what's planned"), More. Spending and Plan
- * are container screens (`SpendingScreen`/`PlanScreen`) that host the existing feature
- * screens other agents own as nested routes/tabs — those screens are imported and
- * mounted unmodified, never rewritten. Every OLD top-level path
- * (`/transactions`, `/trends`, `/habits`, `/goal`, `/budgets`, `/recurring`,
- * `/statements`, `/routine`) still resolves — via a `Navigate` redirect into its new
- * home under `/spending/*` or `/plan/*` — so nothing that used to work 404s, and any
- * bookmark or deep link from before this restructure keeps working.
+ * IA (DESIGN-V4.md §2): exactly 3 tabs — Home (this file's `/`), quick-add (`/log`, the
+ * centre FAB, untouched), and Menu — a plain labelled list of every other screen. The
+ * v3 5-tab structure (Spending/Plan container screens with sub-tab strips) is GONE —
+ * every destination that used to live under `/spending/*` or `/plan/*` is now a
+ * top-level route, one tap from Menu, no nested tab mazes.
+ *
+ * Every route that ever worked keeps working:
+ *   - The pre-v3 flat paths (`/transactions`, `/goal`, `/budgets`, `/recurring`,
+ *     `/statements`, `/routine`, `/trends`, `/habits`) are simply the CANONICAL paths
+ *     again now that the containers are gone — nothing to redirect, they just render.
+ *   - The v3 nested paths (`/spending/*`, `/plan/*`, and `/spending`/`/plan` themselves)
+ *     redirect to the flat canonical path.
+ *   - `/more` (the old 5th tab) redirects to `/menu`.
+ *
+ * Trends and Habits are NOT relisted in Menu (DESIGN-V4.md §3: "Habits/streaks fold
+ * into Where it went"; Trends' category breakdown is the same fold — both are views of
+ * the one money pool Home now shows directly). Their routes stay mounted directly
+ * so a bookmark or an old redirect never 404s, same reasoning as Routine (whose
+ * checklist content isn't in the v4 Menu table either) — nothing is deleted, these are
+ * simply not re-advertised as their own destination now that Home covers the same
+ * ground. See this file's report for the full route table.
  *
  * LockGate wraps the entire routed tree, not individual screens. Nothing that reads
  * decrypted data may render outside it — that is what makes the encryption actually
@@ -66,39 +79,48 @@ export function App() {
             <Routes>
               <Route element={<AppShell />}>
                 <Route path="/" element={<TodayScreen />} />
-
-                {/* Spending — "what happened": transactions, trends/heatmap, habits. */}
-                <Route path="/spending" element={<SpendingScreen />}>
-                  <Route index element={<Navigate to="transactions" replace />} />
-                  <Route path="transactions" element={<TransactionsScreen />} />
-                  <Route path="trends" element={<TrendsScreen />} />
-                  <Route path="habits" element={<HabitsScreen />} />
-                </Route>
-
-                {/* Plan — "what's planned": goal, budgets, recurring, statements, routine. */}
-                <Route path="/plan" element={<PlanScreen />}>
-                  <Route index element={<Navigate to="goal" replace />} />
-                  <Route path="goal" element={<GoalScreen />} />
-                  <Route path="budgets" element={<BudgetsScreen />} />
-                  <Route path="recurring" element={<RecurringScreen />} />
-                  <Route path="statements" element={<StatementsScreen />} />
-                  <Route path="routine" element={<RoutineScreen />} />
-                </Route>
-
                 <Route path="/log" element={<LogScreen />} />
-                <Route path="/more" element={<MoreScreen />} />
+                <Route path="/menu" element={<MenuScreen />} />
+
+                {/* MONEY */}
+                <Route path="/transactions" element={<TransactionsScreen />} />
+                <Route path="/budgets" element={<BudgetsScreen />} />
+                <Route path="/recurring" element={<RecurringScreen />} />
+                <Route path="/statements" element={<StatementsScreen />} />
+
+                {/* SAVING */}
+                <Route path="/goal" element={<GoalScreen />} />
+
+                {/* DATA */}
                 <Route path="/import" element={<ImportScreen />} />
+                <Route path="/review" element={<ReviewScreen />} />
+                <Route path="/backup" element={<BackupRestoreScreen />} />
+
+                {/* APP */}
+                <Route path="/help" element={<HelpScreen />} />
                 <Route path="/settings" element={<SettingsScreen />} />
 
-                {/* Legacy paths — kept working via redirect (DESIGN-V3.md §4). */}
-                <Route path="/transactions" element={<Navigate to="/spending/transactions" replace />} />
-                <Route path="/trends" element={<Navigate to="/spending/trends" replace />} />
-                <Route path="/habits" element={<Navigate to="/spending/habits" replace />} />
-                <Route path="/goal" element={<Navigate to="/plan/goal" replace />} />
-                <Route path="/budgets" element={<Navigate to="/plan/budgets" replace />} />
-                <Route path="/recurring" element={<Navigate to="/plan/recurring" replace />} />
-                <Route path="/statements" element={<Navigate to="/plan/statements" replace />} />
-                <Route path="/routine" element={<Navigate to="/plan/routine" replace />} />
+                {/* Built, demoted, not in the Menu list — folded into Home's own
+                    content per DESIGN-V4.md §3 (see this file's doc comment). Kept
+                    mounted directly so nothing that ever linked here 404s. */}
+                <Route path="/trends" element={<TrendsScreen />} />
+                <Route path="/habits" element={<HabitsScreen />} />
+                <Route path="/routine" element={<RoutineScreen />} />
+
+                {/* Legacy v3 container paths — redirect to the now-flat canonical path. */}
+                <Route path="/spending" element={<Navigate to="/transactions" replace />} />
+                <Route path="/spending/transactions" element={<Navigate to="/transactions" replace />} />
+                <Route path="/spending/trends" element={<Navigate to="/trends" replace />} />
+                <Route path="/spending/habits" element={<Navigate to="/habits" replace />} />
+                <Route path="/plan" element={<Navigate to="/goal" replace />} />
+                <Route path="/plan/goal" element={<Navigate to="/goal" replace />} />
+                <Route path="/plan/budgets" element={<Navigate to="/budgets" replace />} />
+                <Route path="/plan/recurring" element={<Navigate to="/recurring" replace />} />
+                <Route path="/plan/statements" element={<Navigate to="/statements" replace />} />
+                <Route path="/plan/routine" element={<Navigate to="/routine" replace />} />
+
+                {/* Old 5th tab. */}
+                <Route path="/more" element={<Navigate to="/menu" replace />} />
 
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>

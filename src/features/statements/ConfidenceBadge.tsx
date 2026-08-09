@@ -1,11 +1,13 @@
 import React from 'react';
 import type { ConfidenceLevel } from './cycle';
 
+// DESIGN-V4.md §3: "Statement cycle / confidence -> Card balances — say 'we think',
+// 'not sure yet', never 'confidence: low'."
 const LABEL: Record<ConfidenceLevel, string> = {
-  high: 'Confident',
-  medium: 'Estimated',
-  low: 'Rough guess',
-  unknown: 'Unknown',
+  high: "We're confident",
+  medium: 'We think so',
+  low: 'Not sure yet',
+  unknown: "Don't know yet",
 };
 
 // No `--positive` token in v3 (DESIGN-V3.md §1) — a confident prediction reads as the

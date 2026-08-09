@@ -120,7 +120,7 @@ export function TransactionRow({ txn, category, onTap, onDelete, onRecategorize 
             ) : null}
           </div>
           <p className="truncate text-xs text-ink-3">
-            {category?.label ?? 'Uncategorised'}
+            {category?.label ?? 'Needs a category'}
             {txn.note ? ` · ${txn.note}` : ''}
           </p>
         </div>

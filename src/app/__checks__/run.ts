@@ -176,7 +176,7 @@ async function main(): Promise<void> {
     if (isDir(screensDir)) {
       for (const entry of readdirSync(screensDir)) {
         if (!/\.tsx?$/.test(entry)) continue;
-        if (entry === 'MoreScreen.tsx') continue; // navigation chrome, not a routed screen file re-export
+        if (entry === 'MenuScreen.tsx') continue; // navigation chrome, not a routed screen file re-export
         const componentName = entry.replace(/\.tsx?$/, '');
         const importedRe = new RegExp(`\\b${componentName}\\b`);
         check(
@@ -189,72 +189,109 @@ async function main(): Promise<void> {
   }
 
   // ===================================================================
-  // IA reachability (DESIGN-V3.md §4) — the specific 5-tab structure this
+  // IA reachability (DESIGN-V4.md §2) — the specific 3-tab structure this
   // round of work exists to land, checked explicitly rather than trusting
   // the generic scan above alone. That scan proves a Screen is referenced
   // SOMEWHERE under src/app/**; it says nothing about whether it's actually
-  // wired into the right tab, or whether an old bookmark still resolves.
-  // Deliberately dumb, same spirit as the rest of this file: substring
-  // matches on file text, no module execution.
+  // wired into the right tab, whether Menu actually links to it, or whether
+  // an old bookmark still resolves. Deliberately dumb, same spirit as the
+  // rest of this file: substring matches on file text, no module execution.
   // ===================================================================
   {
     const tabBarPath = join(APP_DIR, 'shell/TabBar.tsx');
     const appTsxPath2 = join(APP_DIR, 'App.tsx');
-    if (isFile(tabBarPath) && isFile(appTsxPath2)) {
+    const menuScreenPath = join(APP_DIR, 'screens/MenuScreen.tsx');
+    if (isFile(tabBarPath) && isFile(appTsxPath2) && isFile(menuScreenPath)) {
       const tabBarText = readFileSync(tabBarPath, 'utf8');
       const appTsxText = readFileSync(appTsxPath2, 'utf8');
+      const menuScreenText = readFileSync(menuScreenPath, 'utf8');
 
-      // 5 tab-bar destinations: Today, Spending, Plan, More are entries in the `TABS`
-      // array literal (`to: '/…'`); the centre FAB is a standalone `<NavLink to="/log">`
-      // rather than a TABS entry (it's visually a FAB, not a text+icon tab), so it's
-      // checked with the JSX-attribute form instead.
-      for (const dest of ["to: '/'", "to: '/spending'", "to: '/plan'", "to: '/more'"]) {
+      // Exactly 3 tab-bar slots: Home and Menu are entries in the `TABS` array
+      // literal (`to: '/…'`); the centre FAB is a standalone `<NavLink to="/log">`
+      // rather than a TABS entry (it's visually a FAB, not a text+icon tab), so
+      // it's checked with the JSX-attribute form instead. The OLD 5-slot destinations
+      // (Spending, Plan, More) must be GONE from the tab bar — collapsing to 3 tabs
+      // is the entire point of this round; their reappearing here would mean the
+      // maze grew back.
+      for (const dest of ["to: '/'", "to: '/menu'"]) {
         check(`TabBar.tsx routes to ${dest}`, tabBarText.includes(dest));
       }
       check('TabBar.tsx FAB routes to /log (quick-add)', tabBarText.includes('to="/log"'));
+      for (const gone of ["to: '/spending'", "to: '/plan'", "to: '/more'"]) {
+        check(`TabBar.tsx no longer routes to ${gone} (collapsed into Menu)`, !tabBarText.includes(gone));
+      }
 
-      // Today mounted at '/'.
+      // Home mounted at '/'.
       check("App.tsx mounts TodayScreen at '/'", /path="\/"\s*element=\{<TodayScreen/.test(appTsxText));
 
-      // Spending and Plan are container routes hosting the existing feature
-      // screens as nested children — not just linked to, actually routed.
-      check('App.tsx has a /spending container route', appTsxText.includes('path="/spending"'));
-      check('App.tsx has a /plan container route', appTsxText.includes('path="/plan"'));
-      for (const child of [
-        'path="transactions"',
-        'path="trends"',
-        'path="habits"',
-      ]) {
-        check(`App.tsx nests ${child} under /spending`, appTsxText.includes(child));
-      }
-      for (const child of [
-        'path="goal"',
-        'path="budgets"',
-        'path="recurring"',
-        'path="statements"',
-        'path="routine"',
-      ]) {
-        check(`App.tsx nests ${child} under /plan`, appTsxText.includes(child));
-      }
+      // Menu mounted at '/menu', and the Spending/Plan container screens are gone —
+      // no nested sub-tab strip left anywhere in the router.
+      check("App.tsx mounts MenuScreen at '/menu'", /path="\/menu"\s*element=\{<MenuScreen/.test(appTsxText));
+      check('App.tsx no longer has a /spending container route', !appTsxText.includes('<SpendingScreen'));
+      check('App.tsx no longer has a /plan container route', !appTsxText.includes('<PlanScreen'));
 
-      // Every OLD top-level path must still resolve (redirect is enough — see
-      // App.tsx's own doc comment). A user's saved bookmark or an in-app
-      // `navigate('/goal')` call this agent didn't find must not 404.
-      for (const legacy of [
+      // Every destination that used to live under a container's sub-tab strip is now
+      // its own flat top-level route — no nested path segments left for them.
+      for (const flat of [
         '/transactions',
-        '/trends',
-        '/habits',
-        '/goal',
         '/budgets',
         '/recurring',
         '/statements',
-        '/routine',
+        '/goal',
+        '/import',
+        '/review',
+        '/backup',
+        '/help',
+        '/settings',
+      ]) {
+        const mountedRe = new RegExp(`path="${flat}"[^>]*element=\\{<`);
+        check(`App.tsx mounts ${flat} as a flat top-level route`, mountedRe.test(appTsxText));
+      }
+
+      // Every OLD route path must still resolve — either it's one of the flat
+      // canonical paths above (checked already) or it redirects (redirect is enough
+      // — see App.tsx's own doc comment). A user's saved bookmark or an in-app
+      // `navigate(...)` call this agent didn't find must not 404.
+      for (const legacy of [
+        '/spending',
+        '/spending/transactions',
+        '/spending/trends',
+        '/spending/habits',
+        '/plan',
+        '/plan/goal',
+        '/plan/budgets',
+        '/plan/recurring',
+        '/plan/statements',
+        '/plan/routine',
+        '/more',
       ]) {
         const redirectRe = new RegExp(`path="${legacy}"[^>]*element=\\{<Navigate`);
         check(`Legacy path ${legacy} still resolves (redirected, not 404)`, redirectRe.test(appTsxText));
       }
+
+      // Menu (DESIGN-V4.md §2/§3) links to every one of its specified destinations,
+      // with the exact labels the spec gives — not just "some link exists somewhere".
+      const MENU_ROWS: { to: string; label: string }[] = [
+        { to: '/transactions', label: 'All transactions' },
+        { to: '/budgets', label: 'Budgets' },
+        { to: '/recurring', label: 'Regular payments' },
+        { to: '/statements', label: 'Card balances' },
+        { to: '/goal', label: 'Deposit plan' },
+        { to: '/import', label: 'Import statements' },
+        { to: '/review', label: 'Weekly catch-up' },
+        { to: '/backup', label: 'Backup & restore' },
+        { to: '/help', label: 'How Tally works' },
+        { to: '/settings', label: 'Settings' },
+      ];
+      for (const row of MENU_ROWS) {
+        check(`MenuScreen.tsx links to ${row.to}`, menuScreenText.includes(`to: '${row.to}'`));
+        check(`MenuScreen.tsx labels ${row.to} "${row.label}"`, menuScreenText.includes(`label: '${row.label}'`));
+      }
+      for (const heading of ['Money', 'Saving', 'Data', 'App']) {
+        check(`MenuScreen.tsx has the "${heading}" section heading`, menuScreenText.includes(`>${heading}<`));
+      }
     } else {
-      check('TabBar.tsx and App.tsx both exist to run the IA structure checks', false);
+      check('TabBar.tsx, App.tsx and MenuScreen.tsx all exist to run the IA structure checks', false);
     }
   }
 

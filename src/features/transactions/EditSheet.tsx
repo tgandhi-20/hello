@@ -77,7 +77,7 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
             className="flex min-h-[56px] items-center gap-3 rounded-card bg-surface-sunk px-4"
           >
             <CategoryIcon icon={category?.icon ?? 'Circle'} colorToken={category?.colorToken ?? 'cat-1'} size="sm" />
-            <span className="flex-1 text-left text-md text-ink-1">{category?.label ?? 'Uncategorised'}</span>
+            <span className="flex-1 text-left text-md text-ink-1">{category?.label ?? 'Needs a category'}</span>
             <span className="text-xs text-ink-3">Change</span>
           </button>
 
@@ -125,7 +125,7 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
             </div>
             <p className="text-xs text-ink-3">
               Use for transfers between your own accounts or reimbursed expenses. Excluded transactions still
-              appear in your history, but never count toward spend, budgets or Safe-to-Spend.
+              appear in your history, but never count toward spend, budgets or what's left to spend.
             </p>
           </div>
         </div>
@@ -144,7 +144,7 @@ export function EditSheet({ txn, categories, onClose, onSave, onDelete, onRecate
       <ConfirmDialog
         open={confirmDeleteOpen}
         title="Delete this transaction?"
-        body={`${category?.label ?? 'Uncategorised'} · ${formatMoney(Math.abs(txn.amountCents))} on ${txn.date}`}
+        body={`${category?.label ?? 'Needs a category'} · ${formatMoney(Math.abs(txn.amountCents))} on ${txn.date}`}
         /* Money in this dialog stays plain text — ConfirmDialog's `body` prop is a
            string, not JSX, so it can't carry the `.money` span; the amount is still
            tabular via the global body rule. */

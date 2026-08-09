@@ -29,7 +29,7 @@ export function DayTransactionsSheet({ day, txns, categories, onClose }: DayTran
                 <CategoryIcon icon={cat?.icon ?? 'Circle'} colorToken={cat?.colorToken ?? 'ink-3'} size="sm" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-ink-1">{t.merchant || t.description}</p>
-                  <p className="text-xs text-ink-3">{cat?.label ?? 'Uncategorised'}</p>
+                  <p className="text-xs text-ink-3">{cat?.label ?? 'Needs a category'}</p>
                 </div>
                 {/* No `--positive` token in v3 — income is carried by the `+` sign
                     (`showSign`), not a second green competing with the accent. */}

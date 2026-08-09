@@ -60,13 +60,13 @@ export function StatementsCard(): React.JSX.Element | null {
               <p className="text-xs text-ink-3">
                 {b.status === 'ok'
                   ? `${b.paymentDueDate ? `Due ${formatDate(b.paymentDueDate, 'long')}` : 'Due date unknown'}${b.stale ? ' · stale' : ''}`
-                  : 'Statement cycle not learned yet'}
+                  : "We don't know this card's dates yet"}
               </p>
             </div>
             {b.status === 'ok' ? (
               <span className="money shrink-0 text-md text-ink-1">{formatMoney(b.projectedTotalCents)}</span>
             ) : (
-              <span className="shrink-0 text-xs text-ink-3">Unknown</span>
+              <span className="shrink-0 text-xs text-ink-3">Not sure yet</span>
             )}
           </li>
         ))}
