@@ -1,5 +1,6 @@
 package com.tally.app.data
 
+import com.tally.app.categorize.Rule
 import com.tally.app.money.Category
 import com.tally.app.money.RecurringSeries
 import com.tally.app.money.Settings

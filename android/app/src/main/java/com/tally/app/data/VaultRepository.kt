@@ -1,5 +1,6 @@
 package com.tally.app.data
 
+import com.tally.app.categorize.Rule
 import android.content.Context
 import androidx.fragment.app.FragmentActivity
 import com.tally.app.csvimport.DedupeFields
