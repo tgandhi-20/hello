@@ -48,6 +48,7 @@ import com.tally.app.ui.components.GlyphBadge
 import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyListGroup
 import com.tally.app.ui.components.TallyListRow
+import com.tally.app.ui.components.a11yClickable
 import com.tally.app.ui.components.a11yRow
 import com.tally.app.ui.model.formatRelativeDay
 import com.tally.app.ui.model.formatTxnAmount
@@ -245,9 +246,7 @@ private fun ImportHeader(onBack: () -> Unit) {
         modifier = Modifier.padding(start = 8.dp, top = 20.dp, bottom = 4.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(48.dp)
-                .a11yRow(description = "Back", onClick = onBack),
+            modifier = Modifier.a11yClickable(description = "Back", onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
             TallyIcons.ChevronLeft(modifier = Modifier.size(22.dp))
@@ -525,12 +524,11 @@ private fun AccountPicker(selected: AccountId, onSelect: (AccountId) -> Unit) {
             val isSelected = account == selected
             Box(
                 modifier = Modifier
-                    .heightIn(min = 40.dp)
                     .background(
                         if (isSelected) TallyColors.AccentTint else TallyColors.SurfaceSunk,
                         RoundedCornerShape(TallyPillRadius),
                     )
-                    .a11yRow(
+                    .a11yClickable(
                         description = "${accountDisplayName(account)}${if (isSelected) ", selected" else ""}",
                         onClick = { onSelect(account) },
                     )
