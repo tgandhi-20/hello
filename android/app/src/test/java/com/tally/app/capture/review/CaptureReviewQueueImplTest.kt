@@ -213,6 +213,33 @@ class CaptureReviewQueueImplTest {
         assertTrue(buffer.pendingItems().isEmpty())
     }
 
+    /**
+     * The dead end this whole feature exists to fix: a wallet tap sitting
+     * next to an ordinary bank capture in the same `acceptAll` batch must not
+     * be swept in on a guess. It stays pending with `NeedsAccount`, and the
+     * bank item next to it is written normally -- proving the skip is
+     * per-item, not "give up on the whole batch".
+     */
+    @Test
+    fun `acceptAll writes items with a known account and skips a wallet tap next to them`() = runBlocking {
+        val buffer = FakeCaptureBuffer()
+        buffer.addPending(bankCapture(id = "cap-1", merchant = "Campos Coffee"))
+        buffer.addPending(walletCapture(id = "cap-wallet"))
+        val writer = RecordingWriter()
+        val queue = CaptureReviewQueueImpl(buffer, LedgerHashLookup { false }, writer) { true }
+
+        val outcomes = queue.acceptAll()
+
+        assertEquals(1, writer.written.size)
+        assertEquals("cap-1", writer.written.single().id)
+        val walletOutcome = outcomes.single { it is CaptureOutcome.NeedsAccount }
+        assertEquals("cap-wallet", (walletOutcome as CaptureOutcome.NeedsAccount).capture.id)
+        // Never guessed: the wallet item is still sitting in the buffer,
+        // account still null, waiting for an explicit pick.
+        assertEquals(1, buffer.pendingItems().size)
+        assertNull(buffer.pendingItems().single().account)
+    }
+
     @Test
     fun `refresh reflects notification access status and dropped count`() = runBlocking {
         val buffer = FakeCaptureBuffer()
