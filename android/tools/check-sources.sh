@@ -137,6 +137,37 @@ then
   fail=1
 fi
 
+# ---------------------------------------------------------------------------
+# 5. Backticked names containing JVM-illegal characters.
+#
+# Kotlin lets a declaration be named in backticks, which is why test names can
+# read as sentences. The JVM still forbids . ; [ ] / < > : \ in a method name,
+# so a test called `... (e.g. a shorter PIN)` fails to compile on the dot — and
+# the error, "Name contains illegal characters: .", names the character but not
+# the word it came from.
+if ! python3 - <<'PY'
+import os, re, sys
+ILLEGAL = set('.;[]/<>:\\')
+hits = []
+for root, _, files in os.walk('app/src'):
+    for fn in files:
+        if not fn.endswith('.kt'):
+            continue
+        p = os.path.join(root, fn)
+        for i, line in enumerate(open(p).read().split('\n'), 1):
+            m = re.search(r'fun\s+`([^`]+)`', line)
+            if m and any(c in ILLEGAL for c in m.group(1)):
+                offenders = ''.join(sorted({c for c in m.group(1) if c in ILLEGAL}))
+                hits.append(f"  {p}:{i}  contains {offenders!r} -> `{m.group(1)}`")
+if hits:
+    print("ERROR: backticked function name contains a JVM-illegal character:")
+    print("\n".join(hits))
+    sys.exit(1)
+PY
+then
+  fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo
   echo "Source checks failed."

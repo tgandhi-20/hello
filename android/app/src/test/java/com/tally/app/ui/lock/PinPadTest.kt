@@ -32,7 +32,7 @@ class PinPadTest {
     }
 
     @Test
-    fun `a custom max length is honoured (e.g. a shorter unlock PIN)`() {
+    fun `a custom max length is honoured, such as a shorter unlock PIN`() {
         assertEquals("1234", applyPinKey("123", "4", maxLength = 4))
         assertEquals("1234", applyPinKey("1234", "5", maxLength = 4))
     }
