@@ -37,6 +37,14 @@ import com.tally.app.ui.theme.TallyColors
 import com.tally.app.ui.theme.TallyIcons
 import com.tally.app.ui.transactions.TransactionsScreen
 import kotlinx.coroutines.launch
+import com.tally.app.ui.budgets.BudgetsScreen
+import com.tally.app.ui.goal.GoalScreen
+import com.tally.app.ui.recurring.RecurringScreen
+import com.tally.app.ui.csvimport.CsvImportScreen
+import com.tally.app.ui.statements.StatementsScreen
+import com.tally.app.ui.capture.CaptureReviewRoute
+import com.tally.app.ui.capture.NotificationAccessRoute
+import com.tally.app.ui.settings.SettingsScreen
 
 /**
  * Production entry point (called from `MainActivity`) — gates the whole app
@@ -74,7 +82,7 @@ fun TallyAppRoot(repository: VaultRepository, dataSource: VaultTallyDataSource) 
             repository = repository,
             onUnlocked = { scope.launch { dataSource.onUnlocked() } },
         )
-        else -> TallyApp(dataSource = dataSource)
+        else -> TallyApp(repository = repository, dataSource = dataSource)
     }
 }
 
@@ -98,11 +106,12 @@ fun TallyAppRoot(repository: VaultRepository, dataSource: VaultTallyDataSource) 
  * get it by accident anywhere else.
  */
 @Composable
-fun TallyApp(dataSource: TallyDataSource) {
+fun TallyApp(repository: VaultRepository, dataSource: VaultTallyDataSource) {
     val backStack = remember { mutableStateListOf<Route>(Route.Home) }
     val current = backStack.last()
     val rootTab = backStack.first()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     BackHandler(enabled = backStack.size > 1) {
         backStack.removeAt(backStack.lastIndex)
@@ -130,14 +139,83 @@ fun TallyApp(dataSource: TallyDataSource) {
             when (val route = current) {
                 is Route.Home -> HomeScreen(
                     dataSource = dataSource,
-                    onOpenDepositPlan = {
-                        push(Route.Placeholder("Deposit plan", "Progress toward the apartment deposit"))
-                    },
+                    onOpenDepositPlan = { push(Route.Goal) },
                     onOpenToSortOutItem = { item -> push(Route.Placeholder(item.title, item.subtitle)) },
                 )
                 is Route.QuickAdd -> QuickAddScreen(dataSource = dataSource, snackbarHostState = snackbarHostState)
                 is Route.Menu -> MenuScreen(onNavigate = ::push)
                 is Route.Transactions -> TransactionsScreen(dataSource = dataSource)
+
+                is Route.Budgets -> BudgetsScreen(dataSource = dataSource, onBack = ::popOne)
+
+                // Goal and Recurring take domain types rather than Ui shapes,
+                // because they need fields the Ui model does not carry — most
+                // importantly whether the deposit balance is the user's real
+                // one or the projection standing in for it. Both still read
+                // from the single computed result, so nothing here is a second
+                // source of truth.
+                is Route.Goal -> {
+                    val progress = dataSource.savingsProgress.value
+                    if (progress == null) {
+                        // Not hydrated yet. Render nothing rather than a zeroed
+                        // plan, which would read as "you have saved nothing".
+                        Box(modifier = Modifier.fillMaxSize())
+                    } else {
+                        GoalScreen(
+                            savingsProgress = progress,
+                            onSaveActualBalance = { cents ->
+                                scope.launch { dataSource.setGoalActualBalance(cents) }
+                            },
+                            onBack = ::popOne,
+                        )
+                    }
+                }
+
+                is Route.Recurring -> RecurringScreen(
+                    series = dataSource.recurringSeries.value,
+                    onConfirm = { series ->
+                        scope.launch { dataSource.updateRecurringSeries(series.copy(confirmed = true)) }
+                    },
+                    onToggleMuted = { series ->
+                        scope.launch { dataSource.updateRecurringSeries(series.copy(muted = !series.muted)) }
+                    },
+                    onBack = ::popOne,
+                )
+
+                is Route.CsvImport -> CsvImportScreen(
+                    repository = repository,
+                    onBack = {
+                        // An import writes straight through the repository, so
+                        // the cached figures are stale the moment it succeeds.
+                        // Re-hydrate on the way back rather than letting Home
+                        // show a total that predates the import.
+                        scope.launch { dataSource.onUnlocked() }
+                        popOne()
+                    },
+                )
+
+                is Route.Statements -> StatementsScreen(repository = repository, onBack = ::popOne)
+
+                is Route.CaptureReview -> CaptureReviewRoute(
+                    repository = repository,
+                    onBack = {
+                        // Same reasoning as import: accepting a capture writes
+                        // through the repository, not through this data source.
+                        scope.launch { dataSource.onUnlocked() }
+                        popOne()
+                    },
+                )
+
+                is Route.NotificationAccess -> NotificationAccessRoute(onBack = ::popOne)
+
+                is Route.Settings -> SettingsScreen(
+                    repository = repository,
+                    onBack = ::popOne,
+                    // Restore, erase and PIN change replace the vault wholesale,
+                    // so nothing cached can be trusted afterwards.
+                    onVaultChanged = { scope.launch { dataSource.onUnlocked() } },
+                )
+
                 is Route.Placeholder -> PlaceholderScreen(
                     title = route.title,
                     subtitle = route.subtitle,

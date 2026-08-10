@@ -16,6 +16,19 @@ sealed class Route {
     /** Reachable from Menu's "All transactions" row. */
     data object Transactions : Route()
 
+    // Screens reachable from Menu. Each is a real destination now; the
+    // Placeholder entries they replaced rendered a title and a subtitle and
+    // nothing else, which is indistinguishable from a working screen with no
+    // data in it — precisely the confusion this app has to avoid.
+    data object Budgets : Route()
+    data object Goal : Route()
+    data object Recurring : Route()
+    data object CsvImport : Route()
+    data object Statements : Route()
+    data object CaptureReview : Route()
+    data object NotificationAccess : Route()
+    data object Settings : Route()
+
     /**
      * Every other Menu row, and Home's "Deposit plan"/"To sort out" rows,
      * point here for now — a real destination, not a dead tap, while the
