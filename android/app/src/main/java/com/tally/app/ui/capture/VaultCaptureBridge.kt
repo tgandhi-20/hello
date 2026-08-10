@@ -14,7 +14,7 @@ import com.tally.app.data.VaultRepository
  *
  * Deliberately as thin as possible around this package's own
  * `CaptureLedgerMapping.kt` (`pendingCaptureToTxnCandidate`/
- * `toCategorizeRules`/`matchWrittenCaptures`), which hold all the real
+ * `matchWrittenCaptures`), which hold all the real
  * mapping/hashing logic and are pure Kotlin, fully covered by local JUnit
  * tests. This class itself cannot be exercised by a local unit test, the
  * same way `com.tally.app.capture.store.SecureCaptureStorage` cannot (see
@@ -42,7 +42,7 @@ class VaultCaptureBridge(private val repository: VaultRepository) : LedgerHashLo
         if (captures.isEmpty()) return emptyList()
 
         val hydrated = repository.hydrateAll()
-        val rules = toCategorizeRules(hydrated.rules)
+        val rules = hydrated.rules
         val pairs = captures.mapNotNull { capture ->
             pendingCaptureToTxnCandidate(capture, hydrated.categories, rules)?.let { capture to it }
         }

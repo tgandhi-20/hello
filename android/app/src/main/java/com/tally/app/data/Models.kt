@@ -1,5 +1,6 @@
 package com.tally.app.data
 
+import com.tally.app.categorize.Rule
 import com.tally.app.money.AccountId
 import com.tally.app.money.Category
 import com.tally.app.money.CategoryKind
@@ -184,13 +185,6 @@ fun budgetFromJson(o: JsonValue.Obj): Budget = Budget(
 // Rule
 // ---------------------------------------------------------------------------
 
-data class Rule(
-    val id: String,
-    /** Lowercased substring matched against the normalised merchant. */
-    val match: String,
-    val categoryId: String,
-    val createdAt: Long,
-)
 
 fun Rule.toJson(): JsonValue.Obj = jsonObject {
     put("id", id)

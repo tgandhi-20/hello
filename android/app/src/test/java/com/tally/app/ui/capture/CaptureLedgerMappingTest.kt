@@ -5,7 +5,7 @@ import com.tally.app.capture.model.PendingCapture
 import com.tally.app.csvimport.DedupeFields
 import com.tally.app.csvimport.dedupeGroupKey
 import com.tally.app.csvimport.hashTxn
-import com.tally.app.data.Rule as VaultRule
+import com.tally.app.categorize.Rule
 import com.tally.app.money.AccountId
 import com.tally.app.money.Category
 import com.tally.app.money.CategoryKind
@@ -81,19 +81,9 @@ class CaptureLedgerMappingTest {
 
     @Test
     fun `a user rule wins over the generic dictionary, same as CSV import`() {
-        val rules = listOf(VaultRule(id = "r1", match = "campos", categoryId = "cat-other", createdAt = 0L))
-        val txn = pendingCaptureToTxnCandidate(capture(), categories, rules = toCategorizeRules(rules))
+        val rules = listOf(Rule(id = "r1", match = "campos", categoryId = "cat-other", createdAt = 0L))
+        val txn = pendingCaptureToTxnCandidate(capture(), categories, rules = rules)
         assertEquals("cat-other", txn!!.categoryId)
-    }
-
-    @Test
-    fun `toCategorizeRules is a plain field copy`() {
-        val vaultRule = VaultRule(id = "r1", match = "woolies", categoryId = "cat-groceries", createdAt = 123L)
-        val mapped = toCategorizeRules(listOf(vaultRule)).single()
-        assertEquals("r1", mapped.id)
-        assertEquals("woolies", mapped.match)
-        assertEquals("cat-groceries", mapped.categoryId)
-        assertEquals(123L, mapped.createdAt)
     }
 
     /**

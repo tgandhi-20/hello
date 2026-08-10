@@ -6,7 +6,6 @@ import com.tally.app.categorize.categorizeDescription
 import com.tally.app.csvimport.DedupeFields
 import com.tally.app.csvimport.dedupeGroupKey
 import com.tally.app.csvimport.hashTxn
-import com.tally.app.data.Rule as VaultRule
 import com.tally.app.money.AccountId
 import com.tally.app.money.Category
 import com.tally.app.money.Txn
@@ -26,13 +25,6 @@ import java.util.UUID
  * real `Context`/Room/Keystore-backed class a local unit test cannot
  * meaningfully construct -- see that class's own doc comment).
  */
-
-/** `com.tally.app.data.Rule` (what `VaultRepository.hydrateAll` returns) ->
- *  `com.tally.app.categorize.Rule` (what `categorizeDescription` takes) --
- *  same four fields, two separate types because `data/` and `categorize/`
- *  are two different modules that happen to want the same shape. */
-internal fun toCategorizeRules(rules: List<VaultRule>): List<Rule> =
-    rules.map { Rule(id = it.id, match = it.match, categoryId = it.categoryId, createdAt = it.createdAt) }
 
 /**
  * One [PendingCapture] -> one candidate [Txn], or `null` when the capture has
