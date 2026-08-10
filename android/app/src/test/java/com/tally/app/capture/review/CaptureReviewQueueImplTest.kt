@@ -40,11 +40,18 @@ class CaptureReviewQueueImplTest {
         dedupeHash = null
     )
 
+    /**
+     * Records every batch it is handed, not just every item, so a test can
+     * assert that `acceptAll` writes ONCE rather than once per item — which
+     * is the whole point of the batch path (see [AcceptedCaptureWriter]).
+     */
     private class RecordingWriter(private val succeed: Boolean = true) : AcceptedCaptureWriter {
         val written = mutableListOf<PendingCapture>()
-        override suspend fun write(capture: PendingCapture): Boolean {
-            written.add(capture)
-            return succeed
+        val batches = mutableListOf<List<PendingCapture>>()
+        override suspend fun writeBatch(captures: List<PendingCapture>): List<PendingCapture> {
+            batches.add(captures)
+            written.addAll(captures)
+            return if (succeed) captures else emptyList()
         }
     }
 
@@ -139,6 +146,56 @@ class CaptureReviewQueueImplTest {
         val outcome = queue.accept("does-not-exist")
 
         assertTrue(outcome is CaptureOutcome.NotFound)
+    }
+
+    /**
+     * The regression this batch path exists for.
+     *
+     * Two identical $5.50 coffees at the same cafe on the same day on the
+     * same card are two real purchases, not one seen twice. The old
+     * `acceptAll` looped single writes, and a per-item ledger write assigns
+     * occurrence 0 every time because it cannot see the rest of the batch —
+     * so the two hashed identically and the second was discarded as a
+     * duplicate. Real money, gone, silently.
+     *
+     * Asserting on the batch (one call carrying both) rather than only on the
+     * item count is deliberate: a loop of single writes would also produce
+     * two `Written` outcomes here, so a count-only assertion passes on the
+     * broken implementation and proves nothing.
+     */
+    @Test
+    fun `acceptAll hands two identical same-day captures to the ledger as one batch`() = runBlocking {
+        val buffer = FakeCaptureBuffer()
+        buffer.addPending(bankCapture(id = "cap-1", amountCents = 550L, merchant = "Campos Coffee"))
+        buffer.addPending(bankCapture(id = "cap-2", amountCents = 550L, merchant = "Campos Coffee"))
+        val writer = RecordingWriter()
+        val queue = CaptureReviewQueueImpl(buffer, LedgerHashLookup { false }, writer) { true }
+
+        val outcomes = queue.acceptAll()
+
+        assertEquals(1, writer.batches.size)
+        assertEquals(2, writer.batches[0].size)
+        assertEquals(2, outcomes.count { it is CaptureOutcome.Written })
+        assertEquals(0, buffer.pendingItems().size)
+    }
+
+    /**
+     * A batch the ledger refuses must leave everything pending. Nothing
+     * captured is ever silently lost — the user can retry.
+     */
+    @Test
+    fun `a failed batch write leaves every item pending`() = runBlocking {
+        val buffer = FakeCaptureBuffer()
+        buffer.addPending(bankCapture(id = "cap-1", merchant = "Campos Coffee"))
+        buffer.addPending(bankCapture(id = "cap-2", amountCents = 1200L, merchant = "Woolworths"))
+        val queue = CaptureReviewQueueImpl(
+            buffer, LedgerHashLookup { false }, RecordingWriter(succeed = false)
+        ) { true }
+
+        val outcomes = queue.acceptAll()
+
+        assertEquals(2, outcomes.count { it is CaptureOutcome.Failed })
+        assertEquals(2, buffer.pendingItems().size)
     }
 
     @Test

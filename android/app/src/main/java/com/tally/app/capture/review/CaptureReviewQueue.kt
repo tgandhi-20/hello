@@ -24,27 +24,37 @@ fun interface LedgerHashLookup {
  * only clears its own buffer entry on success (`true`/no exception); a
  * failure leaves the item pending so nothing captured is ever silently lost.
  *
- * ## An integration nuance worth the implementer's attention
+ * ## Why the batch method is the primary one
  *
  * `VaultRepository.addTxn` (singular) recomputes its own dedupe hash with
- * `occurrence` fixed at `0` -- it has no way to know this capture is the
- * second of two otherwise-identical items also waiting in this same review
- * batch, the way `CaptureDedupeHash.assignOccurrence` (scoped to this
- * module's pending buffer) does. For the common case -- accepting one item at
- * a time, or a batch with no two items sharing the exact same
- * date/amount/merchant/account -- this is a non-issue. For the narrow case of
- * bulk-accepting two *genuinely distinct* same-day identical-looking captures
- * together (two identical coffees), wiring this against `addTxn` per item
- * risks the ledger assigning both the same occurrence-0 hash. Wiring it
- * against `VaultRepository.addTxns` (the batch method CSV import already
- * uses, which assigns occurrence within whatever list it's given) for the
- * whole `acceptAll()` batch at once avoids that -- worth doing when this is
- * actually wired up, flagged here rather than guessed at unilaterally since
- * `data/` isn't this module's to change.
+ * `occurrence` fixed at `0`. It has no way to know that this capture is the
+ * second of two otherwise-identical items in the same review batch, the way
+ * `CaptureDedupeHash.assignOccurrence` does. Accept two genuinely distinct
+ * same-day identical-looking captures one at a time -- two $5.50 coffees at
+ * the same cafe on the same card, which is an ordinary Tuesday -- and both
+ * get the same occurrence-0 hash, so the second is taken for a duplicate of
+ * the first and silently dropped. Real money, gone, with no hint to the user.
+ *
+ * That is why [writeBatch] is the method an implementer must supply and
+ * [write] is the derived convenience, rather than the other way round. The
+ * shape of the interface makes the correct wiring -- `addTxns`, the batch
+ * method CSV import already uses, which assigns occurrence within whatever
+ * list it is handed -- the path of least resistance, and makes the per-item
+ * loop that reintroduces the bug something you would have to go out of your
+ * way to write.
  */
-fun interface AcceptedCaptureWriter {
+interface AcceptedCaptureWriter {
+    /**
+     * Writes [captures] as ONE batch, so occurrence indices are assigned
+     * across the whole set. Returns the subset actually written; anything
+     * absent from the result is treated as failed and stays pending, so
+     * nothing captured is silently lost. Throwing is also a failure.
+     */
+    suspend fun writeBatch(captures: List<PendingCapture>): List<PendingCapture>
+
     /** Returns `true` on a successful write. Throwing is also treated as a failure. */
-    suspend fun write(capture: PendingCapture): Boolean
+    suspend fun write(capture: PendingCapture): Boolean =
+        writeBatch(listOf(capture)).isNotEmpty()
 }
 
 data class CaptureReviewState(
