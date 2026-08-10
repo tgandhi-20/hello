@@ -1,12 +1,48 @@
 # Tally — Android app
 
-This is a **skeleton**: one screen that shows the app name and version
-number. It exists to prove the build pipeline works, not to do anything
-useful yet. Real features get built on top of this once the pipeline is
-proven green.
+A native Kotlin/Compose port of the Tally web app, plus the one thing the
+web app can never do: read payment notifications as they arrive, so most
+spending lands without exporting a CSV.
 
-There is no Play Store listing and none is planned yet — this is built to
-be sideloaded onto one personal phone.
+There is no Play Store listing and none is planned — this is built to be
+sideloaded onto one personal phone.
+
+## Status — read this before installing
+
+**Not ready to use yet.** It compiles and the build produces an APK, but:
+
+- Several screens still need building (import, budgets, goal, statements).
+- Notification capture has never seen a real notification from a real bank
+  app. The parsers are tested against fixtures written from documented
+  message shapes, not against a device.
+- Nothing here has been run on a phone by the people who wrote it.
+
+Until this section says otherwise, **the web app at
+<https://tgandhi-20.github.io/hello/> is the one to actually use.**
+
+## What capture can and cannot see
+
+Worth being plain about, because the difference decides whether your ledger
+is complete.
+
+**Captured:** anything your bank or wallet actually posts as a notification
+while the phone is on and notifications for that app are enabled — which
+covers tap-to-pay and ordinary card purchases.
+
+**Not captured:**
+
+- A card typed into a website, or one saved on file somewhere.
+- Direct debits and scheduled payments that post silently.
+- Anything arriving while notifications for that bank app are off.
+- Anything the bank posts without a clear amount and merchant — those are
+  skipped and counted, never guessed into a transaction.
+
+**So CSV import stays the real record**, and the Saturday statement export
+stays in the routine. Capture removes most of the daily friction; it does
+not make the ledger complete on its own.
+
+Nothing captured is written to your ledger automatically. It waits in a
+review list until you accept it.
 
 ## Why this can't be built on this machine
 
@@ -38,6 +74,23 @@ broken, instead of a broken app quietly sitting in the repo.
 You can also trigger a build by hand at any time, without pushing new
 code, using the button described below.
 
+## Before you install: export a backup
+
+**Do this first, before installing anything.** The Android app has its own
+encrypted vault. It cannot read the web app's, because browser storage
+belongs to the browser — installing this does not carry your data across,
+and there is no way to reach back for it afterwards.
+
+1. Open the web app, unlock it, and go to **Menu → Back up**.
+2. Save the `.tally` file somewhere you can find it from the phone.
+3. Keep it until you have confirmed the Android app is showing your real
+   figures. It is the only copy of that data outside the browser.
+
+The backup format is deliberately identical on both sides — same field
+names, same date strings, same account names — so the file restores here
+unchanged. That compatibility is enforced by the code, not by hope, but it
+has not yet been exercised end to end on a device.
+
 ## Downloading and installing the APK on your phone
 
 1. On your phone, open a browser and go to the repo on GitHub, then tap
@@ -68,6 +121,45 @@ turned off by default for safety.
 This permission only applies to the one app you granted it to (e.g. just
 your Files app), not your whole phone, and you can turn it back off
 afterwards in the same settings screen if you'd like to.
+
+## After installing
+
+### 1. Restore your backup
+
+Open the app, set a PIN, then restore the `.tally` file you exported. Check
+the figures against the web app before you trust them. If a record cannot
+be decrypted the app tells you how many were skipped rather than quietly
+showing a smaller total — if you ever see that message, stop and keep the
+backup.
+
+### 2. Grant notification access
+
+This is the permission that makes capture work, and **it cannot be granted
+from inside the app** — Android deliberately reserves it for the system
+settings screen, because it lets an app read every notification you get.
+
+**Settings → Notifications → Special app access → Notification access →
+Tally.**
+
+The app can link you there, but you have to make the choice yourself.
+
+Turning it off later stops capture immediately and breaks nothing else —
+the ledger, the vault and CSV import all keep working exactly as before.
+
+## Where your data lives
+
+On the phone, encrypted, and nowhere else.
+
+The app has **no `INTERNET` permission at all**. Not "does not make network
+calls" — the permission is absent from the manifest, so Android itself
+prevents the app from opening a network connection. An app holding a
+decrypted ledger and reading your bank notifications has no business being
+able to reach the network, and this way that guarantee is enforced by the
+operating system rather than by anyone's promise. A CI check fails the build
+if that permission is ever added.
+
+There is no analytics, no telemetry, and no account. Amounts, merchants,
+PINs and keys are never written to logs, including in debug builds.
 
 ## What's pinned, and why
 
