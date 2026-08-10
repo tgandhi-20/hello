@@ -563,7 +563,12 @@ class VaultRepository private constructor(context: Context) {
         )
     }
 
-    private suspend fun verifyKeyReadsBack(key: SecretKey, categoryId: String?, txnId: String?): Boolean = try {
+    // Block body, not an expression body: the early `return false` guards below
+    // are the point of this function (a record that isn't there means the key
+    // cannot be shown to read back), and Kotlin forbids `return` inside an
+    // expression body.
+    private suspend fun verifyKeyReadsBack(key: SecretKey, categoryId: String?, txnId: String?): Boolean {
+        return try {
         val settingsRecord = dao.getAllSettings().firstOrNull() ?: return false
         VaultCrypto.decryptJSON(key, VaultCrypto.EncryptedBlob(settingsRecord.iv, settingsRecord.ct))
 
@@ -576,8 +581,9 @@ class VaultRepository private constructor(context: Context) {
             VaultCrypto.decryptJSON(key, VaultCrypto.EncryptedBlob(rec.iv, rec.ct))
         }
         true
-    } catch (e: Exception) {
-        false
+        } catch (e: Exception) {
+            false
+        }
     }
 
     // ---------------------------------------------------------------------
