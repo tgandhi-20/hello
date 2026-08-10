@@ -123,10 +123,35 @@ export function formatDate(d: DateStr, style: DateFormatStyle = 'medium'): strin
 }
 
 /**
+ * True only for dates that exist. A range check on the parts is not enough:
+ * `31/02/2026` passes "day 1-31, month 1-12" and yields the string
+ * `"2026-02-31"`, a date with no day on any calendar, which then flows into
+ * the ledger as a transaction date and sorts, groups and filters as though it
+ * were real.
+ *
+ * Found when the Kotlin port of this parser rejected the same input, because
+ * `LocalDate.of()` throws where a range check shrugs. The two implementations
+ * disagreeing is what surfaced it; this is the web side being brought up to
+ * the stricter behaviour rather than the port being loosened to match.
+ *
+ * Round-tripping through `Date.UTC` is the check: an impossible day rolls
+ * over (Feb 31 becomes Mar 3) and the fields no longer match what went in.
+ * UTC specifically, so a timezone offset can never shift the date by a day.
+ */
+export function isRealCalendarDate(year: number, month: number, day: number): boolean {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  return (
+    dt.getUTCFullYear() === year && dt.getUTCMonth() === month - 1 && dt.getUTCDate() === day
+  );
+}
+
+/**
  * Parse an Australian-formatted date string (`DD/MM/YYYY` or `DD/MM/YY`) — as found in
  * CBA/Bankwest/Amex CSV exports — into a `YYYY-MM-DD` DateStr. Two-digit years pivot at
  * 70: `00`-`69` → `2000`-`2069`, `70`-`99` → `1970`-`1999`.
- * Throws if the string isn't a recognisable `DD/MM/YYYY`-family date.
+ * Throws if the string isn't a recognisable `DD/MM/YYYY`-family date, or names a day
+ * that does not exist.
  */
 export function parseAuDate(s: string): DateStr {
   const trimmed = s.trim();
@@ -142,7 +167,7 @@ export function parseAuDate(s: string): DateStr {
     year = year <= 69 ? 2000 + year : 1900 + year;
   }
 
-  if (month < 1 || month > 12 || day < 1 || day > 31) {
+  if (!isRealCalendarDate(year, month, day)) {
     throw new Error(`parseAuDate: date out of range "${s}"`);
   }
 

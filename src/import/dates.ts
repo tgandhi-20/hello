@@ -4,7 +4,7 @@
  * and Amex's occasional `DD Mon YYYY`.
  */
 import type { DateStr } from '@/types';
-import { parseAuDate } from '@/ui/format';
+import { isRealCalendarDate, parseAuDate } from '@/ui/format';
 
 const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MONTH_NAMES: Record<string, number> = {
@@ -29,7 +29,10 @@ export function tryParseDate(raw: string): DateStr | null {
     const [, y, m, d] = iso;
     const month = Number(m);
     const day = Number(d);
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+    // Calendar-validity, not a range check — `2026-02-31` passes 1-31/1-12 and
+    // is not a real day. See `isRealCalendarDate` in `@/ui/format`; this branch
+    // never reaches `parseAuDate`, so it needs the check of its own.
+    if (isRealCalendarDate(Number(y), month, day)) {
       return `${y}-${m}-${d}`;
     }
     return null;
@@ -43,7 +46,7 @@ export function tryParseDate(raw: string): DateStr | null {
       const day = Number(dRaw);
       let year = Number(yRaw);
       if (yRaw.length === 2) year = year <= 69 ? 2000 + year : 1900 + year;
-      if (day >= 1 && day <= 31) {
+      if (isRealCalendarDate(year, mon, day)) {
         return `${year}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       }
     }
