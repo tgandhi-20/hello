@@ -68,6 +68,7 @@ fun HomeScreen(
     val bills = dataSource.billsDueSoon.value
     val deposit = dataSource.depositPlan.value
     val toSortOut = dataSource.toSortOut.value
+    val skipped = dataSource.skippedRecordCount.value
 
     Column(
         modifier = modifier
@@ -84,11 +85,61 @@ fun HomeScreen(
             modifier = Modifier.semantics(mergeDescendants = false) { heading() },
         )
 
+        // Above the equation, deliberately. If some records could not be
+        // decrypted then every figure below this line is understated, and a
+        // total that is quietly too low is the worst thing this app can show:
+        // it looks like good news. The notice has to be impossible to miss and
+        // has to come before the numbers it qualifies.
+        if (skipped > 0) SkippedRecordsNotice(skipped)
+
         EquationSection(money)
         WhereItWentSection(money)
         BillsDueSoonSection(bills)
         DepositPlanRow(deposit, onClick = onOpenDepositPlan)
         ToSortOutSection(toSortOut, onClick = onOpenToSortOutItem)
+    }
+}
+
+/**
+ * Shown when the vault could not decrypt some records.
+ *
+ * Every total on this screen is computed from the records that WERE readable,
+ * so when this appears the figures below it are too low. That is a dangerous
+ * kind of wrong — spending looks smaller and "left to spend" looks larger, so
+ * the error flatters rather than alarms. The wording therefore says what the
+ * consequence is, not just that something failed, and says what to do about
+ * it.
+ *
+ * Caution rather than critical: the data is not lost, and the vault is not
+ * broken. Restoring a backup is a real fix, and panicking the user into
+ * wiping and starting over would be the worse outcome.
+ */
+@Composable
+private fun SkippedRecordsNotice(count: Int) {
+    val label = if (count == 1) "1 record" else "$count records"
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = TallyColors.CautionTint),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = "$label could not be read",
+                style = TallyType.BodyLarge,
+                color = TallyColors.Caution,
+            )
+            Text(
+                text = "The totals below leave them out, so they are lower than " +
+                    "your real figures. Restoring your most recent backup usually " +
+                    "brings them back.",
+                style = TallyType.Body,
+                color = TallyColors.Ink2,
+            )
+        }
     }
 }
 

@@ -91,9 +91,13 @@ fun QuickAddScreen(
         val category = selected ?: return
         val cents = keypadBufferToCents(buffer)
         if (cents <= 0) return
-        val txn = dataSource.addTransaction(category.id, cents, note = null)
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        // The write is suspend now, so it runs inside the coroutine and the
+        // encrypt-plus-database work happens on IO rather than blocking the
+        // frame. The haptic fires first, before the write, so the tap still
+        // feels instant regardless of how long the vault takes.
         scope.launch {
+            val txn = dataSource.addTransaction(category.id, cents, note = null)
             val result = snackbarHostState.showSnackbar(
                 message = "Saved ${formatMoney(cents)} · ${category.label}",
                 actionLabel = "Undo",

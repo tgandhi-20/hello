@@ -5,6 +5,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.tally.app.data.VaultRepository
 import com.tally.app.money.AccountId
+import com.tally.app.money.BillDueSoonCertainty
+import com.tally.app.money.BillDueSoonItem
 import com.tally.app.money.Category
 import com.tally.app.money.CategoryKind as MoneyCategoryKind
 import com.tally.app.money.ComputeMonthMoneyParams
@@ -12,8 +14,11 @@ import com.tally.app.money.MonthMoney
 import com.tally.app.money.MonthMoneyCategoryRow
 import com.tally.app.money.RecurringSeries
 import com.tally.app.money.Settings
+import com.tally.app.money.ToSortOutItem
 import com.tally.app.money.Txn
 import com.tally.app.money.TxnSource
+import com.tally.app.money.buildBillsDueSoon
+import com.tally.app.money.buildToSortOut
 import com.tally.app.money.computeMonthMoney
 import com.tally.app.ui.model.CategoryKind as UiCategoryKind
 import com.tally.app.ui.model.UiBillDueSoon
@@ -24,7 +29,7 @@ import com.tally.app.ui.model.UiMonthMoney
 import com.tally.app.ui.model.UiToSortOutItem
 import com.tally.app.ui.model.UiTxn
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -119,6 +124,29 @@ internal fun toUiTxn(t: Txn): UiTxn = UiTxn(
     note = t.note,
 )
 
+/** [UiBillDueSoon] drops [BillDueSoonItem.kind] (the UI doesn't branch on it)
+ *  and collapses [BillDueSoonItem.certainty] to the boolean the row actually
+ *  renders — `PREDICTED` -> "we think, not confirmed yet". */
+internal fun toUiBillDueSoon(item: BillDueSoonItem): UiBillDueSoon = UiBillDueSoon(
+    id = item.id,
+    date = item.date,
+    label = item.label,
+    amountCents = item.amountCents,
+    predicted = item.certainty == BillDueSoonCertainty.PREDICTED,
+)
+
+/** [UiToSortOutItem] drops [ToSortOutItem.kind] and [ToSortOutItem.to] — this
+ *  UI layer has no navigation-route field on its shape; `HomeScreen`'s
+ *  `onOpenToSortOutItem(item)` callback gets the whole [UiToSortOutItem] and
+ *  is expected to route off its `id` (`"uncategorised"`, `"price-rise-*"`,
+ *  `"routine-*"`), matching [ToSortOutItem.id]'s own scheme. */
+internal fun toUiToSortOutItem(item: ToSortOutItem): UiToSortOutItem = UiToSortOutItem(
+    id = item.id,
+    title = item.title,
+    subtitle = item.subtitle,
+    amountCents = item.amountCents,
+)
+
 private val EMPTY_MONTH_MONEY = UiMonthMoney(
     incomeUnset = true,
     incomeCents = 0,
@@ -141,24 +169,26 @@ private val EMPTY_MONTH_MONEY = UiMonthMoney(
  * STATE STRATEGY: [VaultRepository] is suspend CRUD, not `State`-shaped.
  * This class hydrates every store once via [onUnlocked] (called after a
  * successful PIN/biometric unlock or fresh setup) into private
- * `mutableStateOf` fields, and [computeMonthMoney] is called exactly ONCE
- * per hydrate/mutation from those cached inputs — `monthMoney`,
- * `depositPlan` and `categories` are all `derivedStateOf` VIEWS of that one
- * result, never separately recomputed. Every write (`addTransaction`,
- * `deleteTransaction`) updates the cached transaction list in place and
- * recomputes from it, rather than re-decrypting the whole vault on every
- * quick-add.
+ * `mutableStateOf` fields, and [recomputeMoney] derives `monthMoney`,
+ * `billsDueSoon` and `toSortOut` from those SAME cached inputs and the SAME
+ * `today` value in one pass every hydrate/mutation — never independently
+ * recomputed per screen, never able to disagree (docs/AGENT-BRIEF.md §3).
+ * Every write (`addTransaction`, `deleteTransaction`) updates the cached
+ * transaction list in place and calls [recomputeMoney] again, rather than
+ * re-decrypting the whole vault on every quick-add.
  *
- * SYNCHRONOUS WRITES: [TallyDataSource.addTransaction]/`deleteTransaction`
- * are plain (non-suspend) calls — `addTransaction`'s return value is the
- * REAL persisted [UiTxn] with the id [VaultRepository] assigned it, which
- * quick-add's Undo snackbar deletes by id, so it cannot be a fire-and-forget
- * call. `runBlocking(Dispatchers.IO)` bridges that gap deliberately: the
- * underlying work is one AES-GCM encrypt plus one Room insert/delete —
- * milliseconds, not a network call — dispatched onto the IO thread pool
- * while the caller (a single Compose click handler, not a hot loop) blocks
- * only for that. This was chosen over reshaping the already-fixed
- * `TallyDataSource` interface to be `suspend`.
+ * OFF-MAIN-THREAD WRITES: [TallyDataSource.addTransaction]/`deleteTransaction`
+ * are `suspend`. Each wraps its single [VaultRepository] call in
+ * `withContext(Dispatchers.IO)` — the actual work (one AES-GCM encrypt plus
+ * one Room insert/delete) runs on the IO dispatcher, and the `suspend` call
+ * SUSPENDS the caller's coroutine rather than blocking its thread while
+ * waiting. This replaces an earlier `runBlocking(Dispatchers.IO)` version,
+ * which blocked the calling thread (in practice the Compose UI thread, since
+ * quick-add called it from a plain click handler) for the same work — fine
+ * at today's data sizes, but the wrong shape and an ANR risk on a slow write.
+ * `addTransaction` still returns the REAL persisted [UiTxn] (with the id
+ * [VaultRepository] assigned it), which quick-add's Undo snackbar deletes by
+ * id — same contract as before, now reached via `await` instead of a block.
  */
 class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataSource {
 
@@ -172,12 +202,14 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
     private val _recurring = mutableStateOf<List<RecurringSeries>>(emptyList())
     private val _settings = mutableStateOf(Settings())
     private val _computed = mutableStateOf<MonthMoney?>(null)
+    private val _billsDueSoon = mutableStateOf<List<UiBillDueSoon>>(emptyList())
+    private val _toSortOut = mutableStateOf<List<UiToSortOutItem>>(emptyList())
 
     private val _skippedRecordCount = mutableStateOf(0)
 
     /** Records the last [VaultRepository.hydrateAll] could not decrypt — surfaced
      *  honestly, never silently dropped (docs/ANDROID-NATIVE.md §3.6). */
-    val skippedRecordCount: State<Int> = _skippedRecordCount
+    override val skippedRecordCount: State<Int> = _skippedRecordCount
 
     /** The vault's current auto-lock window, for the hosting Activity's
      *  lifecycle wiring — defaults to `Settings()`'s built-in 120s until the
@@ -196,12 +228,8 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
         toUiDepositPlan(_computed.value)
     }
 
-    // Neither Kotlin port exists yet under com.tally.app.money as of this
-    // writing (see TallyDataSource.kt's doc comment: `buildBillsDueSoon()`
-    // and `buildToSortOut()`). An empty list renders nothing, which is
-    // correct and honest per DESIGN-V4.md §1/§3 — never an invented item.
-    override val billsDueSoon: State<List<UiBillDueSoon>> = mutableStateOf<List<UiBillDueSoon>>(emptyList())
-    override val toSortOut: State<List<UiToSortOutItem>> = mutableStateOf<List<UiToSortOutItem>>(emptyList())
+    override val billsDueSoon: State<List<UiBillDueSoon>> = _billsDueSoon
+    override val toSortOut: State<List<UiToSortOutItem>> = _toSortOut
 
     override val transactions: State<List<UiTxn>> = derivedStateOf {
         _txns.value.map(::toUiTxn).sortedByDescending { it.date }
@@ -231,9 +259,24 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
         _recurring.value = emptyList()
         _settings.value = Settings()
         _computed.value = null
+        _billsDueSoon.value = emptyList()
+        _toSortOut.value = emptyList()
         _skippedRecordCount.value = 0
     }
 
+    /**
+     * The single recompute pass every hydrate/mutation runs through.
+     * `monthMoney`, `billsDueSoon` and `toSortOut` are ALL derived here, from
+     * the same `_txns`/`_recurring`/`_settings` snapshot and the same
+     * `today` — the "one hydrate, nothing can disagree" guarantee
+     * docs/AGENT-BRIEF.md §3 requires.
+     *
+     * `resolvedRoutineItems` is always `emptyList()`: the `routine` feature
+     * (monthly checklist resolution) has no Android port yet — see
+     * `ToSortOut.kt`'s own doc comment. `buildToSortOut` still applies its
+     * "vaultHasData" gate and returns the `uncategorised`/`price-rise` items
+     * it can already compute without it.
+     */
     private fun recomputeMoney() {
         val today = LocalDate.now()
         _computed.value = computeMonthMoney(
@@ -246,11 +289,23 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
                 today = today,
             ),
         )
+        _billsDueSoon.value = buildBillsDueSoon(
+            txns = _txns.value,
+            recurring = _recurring.value,
+            settings = _settings.value,
+            today = today,
+        ).map(::toUiBillDueSoon)
+        _toSortOut.value = buildToSortOut(
+            txns = _txns.value,
+            recurring = _recurring.value,
+            resolvedRoutineItems = emptyList(),
+            today = today,
+        ).map(::toUiToSortOutItem)
     }
 
-    override fun addTransaction(categoryId: String, amountCents: Long, note: String?): UiTxn {
+    override suspend fun addTransaction(categoryId: String, amountCents: Long, note: String?): UiTxn {
         val label = _rawCategories.value.find { it.id == categoryId }?.label ?: categoryId
-        val txn = runBlocking(Dispatchers.IO) {
+        val txn = withContext(Dispatchers.IO) {
             repository.addTxn(
                 date = LocalDate.now(),
                 amountCents = amountCents,
@@ -270,8 +325,8 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
         return toUiTxn(txn)
     }
 
-    override fun deleteTransaction(id: String) {
-        runBlocking(Dispatchers.IO) { repository.deleteTxn(id) }
+    override suspend fun deleteTransaction(id: String) {
+        withContext(Dispatchers.IO) { repository.deleteTxn(id) }
         _txns.value = _txns.value.filterNot { it.id == id }
         recomputeMoney()
     }

@@ -1,12 +1,17 @@
 package com.tally.app.ui.data
 
 import com.tally.app.money.AccountId
+import com.tally.app.money.BillDueSoonCertainty
+import com.tally.app.money.BillDueSoonItem
+import com.tally.app.money.BillDueSoonKind
 import com.tally.app.money.Category
 import com.tally.app.money.CategoryKind
 import com.tally.app.money.MonthMoney
 import com.tally.app.money.MonthMoneyCategoryRow
 import com.tally.app.money.MonthMoneyFoodThisWeek
 import com.tally.app.money.MonthMoneySavingsProgress
+import com.tally.app.money.ToSortOutItem
+import com.tally.app.money.ToSortOutKind
 import com.tally.app.money.Txn
 import com.tally.app.money.TxnSource
 import com.tally.app.ui.model.CategoryKind as UiCategoryKind
@@ -136,6 +141,65 @@ class VaultTallyDataSourceMappingTest {
         assertEquals("Employer", ui.merchant)
         assertEquals("income", ui.categoryId)
         assertEquals("note", ui.note)
+    }
+
+    @Test
+    fun `toUiBillDueSoon carries date, label and signed amount through, and collapses certainty to a boolean`() {
+        val scheduled = BillDueSoonItem(
+            id = "salary-2026-08-15",
+            date = LocalDate.of(2026, 8, 15),
+            kind = BillDueSoonKind.INCOME,
+            label = "Salary",
+            amountCents = -645700L,
+            certainty = BillDueSoonCertainty.SCHEDULED,
+        )
+        val predicted = BillDueSoonItem(
+            id = "rec-1::2026-08-20",
+            date = LocalDate.of(2026, 8, 20),
+            kind = BillDueSoonKind.RECURRING,
+            label = "Netflix",
+            amountCents = 1699L,
+            certainty = BillDueSoonCertainty.PREDICTED,
+        )
+        val uiScheduled = toUiBillDueSoon(scheduled)
+        assertEquals("salary-2026-08-15", uiScheduled.id)
+        assertEquals(LocalDate.of(2026, 8, 15), uiScheduled.date)
+        assertEquals("Salary", uiScheduled.label)
+        assertEquals(-645700L, uiScheduled.amountCents)
+        assertEquals(false, uiScheduled.predicted)
+
+        val uiPredicted = toUiBillDueSoon(predicted)
+        assertEquals(1699L, uiPredicted.amountCents)
+        assertEquals(true, uiPredicted.predicted)
+    }
+
+    @Test
+    fun `toUiToSortOutItem drops kind and the route, keeping id, title, subtitle and amount`() {
+        val item = ToSortOutItem(
+            id = "price-rise-rec-1",
+            kind = ToSortOutKind.PRICE_RISE,
+            title = "Netflix went up",
+            subtitle = "Detected price rise on a regular payment",
+            amountCents = 200L,
+            to = "/recurring",
+        )
+        val ui = toUiToSortOutItem(item)
+        assertEquals("price-rise-rec-1", ui.id)
+        assertEquals("Netflix went up", ui.title)
+        assertEquals("Detected price rise on a regular payment", ui.subtitle)
+        assertEquals(200L, ui.amountCents)
+    }
+
+    @Test
+    fun `toUiToSortOutItem preserves a null amount for kinds with no figure to show`() {
+        val item = ToSortOutItem(
+            id = "uncategorised",
+            kind = ToSortOutKind.UNCATEGORISED,
+            title = "2 transactions need a category",
+            subtitle = "From an import - a quick pass keeps this trustworthy",
+            to = "/transactions",
+        )
+        assertNull(toUiToSortOutItem(item).amountCents)
     }
 
     private fun sampleMonthMoney(): MonthMoney {

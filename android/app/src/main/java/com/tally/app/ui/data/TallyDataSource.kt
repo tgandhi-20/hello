@@ -21,61 +21,44 @@ enum class VaultLockState { LOCKED, UNLOCKED }
  *
  * This file is owned by the UI agent and is intentionally narrow — it is
  * the contract the orchestrator reconciles against the real modules, not a
- * copy of their internals. Until that wiring happens, `DemoTallyDataSource`
- * (this package) implements it with in-memory fake data so every screen in
- * `com.tally.app.ui` compiles and runs standalone.
+ * copy of their internals. `DemoTallyDataSource` (this package) implements
+ * it with in-memory fake data so every screen in `com.tally.app.ui`
+ * compiles and runs standalone; `VaultTallyDataSource` (this package) is
+ * the real, vault-backed implementation.
  *
- * AS OF THIS WRITING both real modules already exist in the tree (read-only
- * for this agent, per the task brief — inspected but never imported here):
- *  - `com.tally.app.money.MonthMoney` (`money/MonthMoney.kt`) already has the
- *    exact shape this file mirrors — `incomeUnset/incomeCents/billsCents/
- *    savingsCents/toSpendCents/spentCents/leftCents/daysRemaining/
- *    leftTodayCents/byCategory`, plus `foodThisWeek`/`savingsProgress` this
- *    UI layer doesn't need yet. `computeMonthMoney` there also already takes
- *    `java.time.LocalDate`/`YearMonth` and `Cents = Long` — SAME choices made
- *    independently here, so no type translation is needed on those.
- *  - ONE mismatch to reconcile: `MonthMoneyCategoryRow.colorToken` is a
- *    `String` token (`"cat-3"`); this file's `UiCategorySpend.colorIndex` is
- *    an `Int` (0-based, into `TallyColors.CategoryRamp`). The adapter should
- *    parse the trailing digits of `colorToken` and subtract 1
- *    (`"cat-3" -> 2`), falling back to a stable hash of the token (or 0) for
- *    anything that isn't `cat-<n>` (e.g. `"ink-3"` for an unknown category,
- *    per that field's own doc comment on the web/Kotlin side).
- *  - `com.tally.app.data.VaultRepository` (`data/VaultRepository.kt`) is a
- *    suspend-function CRUD surface (`isUnlocked(): Boolean`, plus add/get/
- *    delete-style suspend calls per store), not a Compose `State`-shaped
- *    object — there is no existing adapter from it to something this
- *    interface's `State<T>` properties can read directly. The orchestrator
- *    will need a thin ViewModel/state-holder in `ui/data/` (a new file,
- *    still inside this agent's owned tree) that: collects `VaultRepository`
- *    reads into `mutableStateOf`/`mutableStateListOf` on launch and after
- *    every write, calls `computeMonthMoney`-equivalent whenever the
- *    underlying transactions/settings change, and implements
- *    `addTransaction`/`deleteTransaction` by calling into
- *    `VaultRepository`'s suspend functions from a `rememberCoroutineScope()`
- *    launch. That adapter is the only new code needed — no screen in this
- *    package should have to change.
- *
- * Expected real wiring, screen by screen:
- *  - `monthMoney`      <- one call to `com.tally.app.money`'s
- *                         `computeMonthMoney`-equivalent, never recomputed
+ * Real wiring, screen by screen (all satisfied by `VaultTallyDataSource`):
+ *  - `monthMoney`      <- ONE call to `com.tally.app.money.computeMonthMoney`
+ *                         per hydrate/mutation, never recomputed
  *                         independently per screen.
- *  - `billsDueSoon`    <- the Kotlin equivalent of `buildBillsDueSoon()`
- *                         (`src/features/today/billsDueSoon.ts`) — not yet
- *                         found under `com.tally.app.money` as of this
- *                         writing; may still need porting.
+ *  - `billsDueSoon`    <- `com.tally.app.money.buildBillsDueSoon`, mapped to
+ *                         `UiBillDueSoon`. Computed from the SAME cached
+ *                         `txns`/`recurring`/`settings` and the SAME `today`
+ *                         value as `monthMoney`, in the same recompute pass
+ *                         — see `VaultTallyDataSource.recomputeMoney`.
  *  - `depositPlan`     <- `monthMoney`'s own `savingsProgress` — same number
  *                         as the equation's Savings line, never a second one.
- *  - `toSortOut`       <- the Kotlin equivalent of `buildToSortOut()`
- *                         (`src/features/today/toSortOut.ts`); also not yet
- *                         found under `com.tally.app.money`. Empty list =
- *                         render nothing (DESIGN-V4.md §1/§3).
+ *  - `toSortOut`       <- `com.tally.app.money.buildToSortOut`, mapped to
+ *                         `UiToSortOutItem`, from the same recompute pass.
+ *                         `resolvedRoutineItems` is always passed as an empty
+ *                         list — the `routine` feature (checklist
+ *                         resolution) has no Android port yet, so this can
+ *                         only ever surface the `uncategorised` and
+ *                         `price-rise` kinds `buildToSortOut` also computes.
+ *                         Empty list = render nothing (DESIGN-V4.md §1/§3).
  *  - `categories`      <- the vault's category table (`VaultRepository`).
  *  - `transactions`    <- the vault's transaction list, newest-first.
  *  - `lockState`       <- `VaultRepository.isUnlocked()`.
- *  - `addTransaction`/`deleteTransaction` <- vault writes; quick-add's Undo
- *                         action calls `deleteTransaction` on the just-added
- *                         id, exactly like the web app's toast action.
+ *  - `skippedRecordCount` <- `VaultRepository.hydrateAll()`'s own count of
+ *                         records that failed to decrypt this hydrate
+ *                         (ANDROID-NATIVE.md §3.6) — surfaced honestly so a
+ *                         partial ledger is never presented as a complete
+ *                         one. 0 until the first hydrate.
+ *  - `addTransaction`/`deleteTransaction` <- vault writes, off the main
+ *                         thread (both `suspend`; see
+ *                         `VaultTallyDataSource`'s own doc comment for why).
+ *                         Quick-add's Undo action calls `deleteTransaction`
+ *                         on the just-added id, exactly like the web app's
+ *                         toast action.
  *
  * All money in and out of this interface is `Long` cents — the UI never
  * computes a financial figure, only formats one (see `ui/model/Money.kt`).
@@ -90,8 +73,17 @@ interface TallyDataSource {
     /** Newest-first, matching the store contract the web app documents. */
     val transactions: State<List<UiTxn>>
 
-    /** Records one quick-add entry and returns it (so the caller can offer Undo). */
-    fun addTransaction(categoryId: String, amountCents: Cents, note: String?): UiTxn
+    /** Records this hydrate's `VaultRepository.hydrateAll()`
+     *  `skippedRecordCount` — records that could not be decrypted and were
+     *  therefore left out of every figure above. 0 means nothing was
+     *  skipped; it does NOT mean the vault is empty. */
+    val skippedRecordCount: State<Int>
 
-    fun deleteTransaction(id: String)
+    /** Records one quick-add entry and returns it (so the caller can offer
+     *  Undo by id). `suspend` so the write can go through the vault's
+     *  encrypt-then-persist path without blocking the calling thread —
+     *  call from a `CoroutineScope` (`rememberCoroutineScope()` in Compose). */
+    suspend fun addTransaction(categoryId: String, amountCents: Cents, note: String?): UiTxn
+
+    suspend fun deleteTransaction(id: String)
 }

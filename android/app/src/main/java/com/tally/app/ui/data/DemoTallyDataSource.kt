@@ -136,6 +136,9 @@ class DemoTallyDataSource : TallyDataSource {
 
     override val lockState: State<VaultLockState> = mutableStateOf(VaultLockState.UNLOCKED)
 
+    // The demo vault never fails to decrypt anything — it isn't encrypted.
+    override val skippedRecordCount: State<Int> = mutableStateOf(0)
+
     override val categories: State<List<UiCategory>> = mutableStateOf(DEMO_CATEGORIES)
 
     override val transactions: State<List<UiTxn>> = derivedStateOf {
@@ -195,7 +198,9 @@ class DemoTallyDataSource : TallyDataSource {
     // there is nothing to say" rule for a genuinely clean demo vault.
     override val toSortOut: State<List<UiToSortOutItem>> = mutableStateOf(emptyList())
 
-    override fun addTransaction(categoryId: String, amountCents: Cents, note: String?): UiTxn {
+    // No real vault behind this class — `suspend` only to satisfy
+    // TallyDataSource's signature, nothing here actually suspends.
+    override suspend fun addTransaction(categoryId: String, amountCents: Cents, note: String?): UiTxn {
         val category = DEMO_CATEGORIES.find { it.id == categoryId }
         val txn = UiTxn(
             id = UUID.randomUUID().toString(),
@@ -209,7 +214,7 @@ class DemoTallyDataSource : TallyDataSource {
         return txn
     }
 
-    override fun deleteTransaction(id: String) {
+    override suspend fun deleteTransaction(id: String) {
         _transactions.removeAll { it.id == id }
     }
 }
