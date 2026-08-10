@@ -1,6 +1,7 @@
 package com.tally.app.ui.nav
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,30 +15,90 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.tally.app.data.VaultRepository
 import com.tally.app.ui.data.TallyDataSource
-import com.tally.app.ui.data.rememberDemoDataSource
+import com.tally.app.ui.data.VaultLockState
+import com.tally.app.ui.data.VaultTallyDataSource
 import com.tally.app.ui.home.HomeScreen
+import com.tally.app.ui.lock.LockScreen
 import com.tally.app.ui.menu.MenuScreen
 import com.tally.app.ui.menu.PlaceholderScreen
 import com.tally.app.ui.quickadd.QuickAddScreen
 import com.tally.app.ui.theme.TallyColors
 import com.tally.app.ui.theme.TallyIcons
 import com.tally.app.ui.transactions.TransactionsScreen
+import kotlinx.coroutines.launch
+
+/**
+ * Production entry point (called from `MainActivity`) — gates the whole app
+ * shell on the vault's lock state before anything real is ever shown.
+ *
+ * `dataSource` is owned by the caller (`MainActivity`), not constructed
+ * here, so the same instance survives across this composable's own
+ * recompositions and the Activity's `onStart`/`onStop` lifecycle callbacks
+ * can reach it directly to sync [VaultTallyDataSource.onLocked] after
+ * auto-lock fires (see `VaultRepository.autoLock`'s wiring in
+ * `MainActivity`).
+ *
+ * `checkedInitialState` exists so a freshly-recreated Activity (e.g. after
+ * rotation, where the vault key survived in [com.tally.app.security.VaultKeyHolder]
+ * but this particular [VaultTallyDataSource] did not) re-hydrates before
+ * ever showing either the lock screen or stale/empty data.
+ */
+@Composable
+fun TallyAppRoot(repository: VaultRepository, dataSource: VaultTallyDataSource) {
+    val scope = rememberCoroutineScope()
+    var checkedInitialState by remember { mutableStateOf(false) }
+
+    LaunchedEffect(repository, dataSource) {
+        if (repository.isUnlocked()) {
+            dataSource.onUnlocked()
+        }
+        checkedInitialState = true
+    }
+
+    when {
+        !checkedInitialState -> Box(
+            modifier = Modifier.fillMaxSize().background(TallyColors.Ground),
+        )
+        dataSource.lockState.value == VaultLockState.LOCKED -> LockScreen(
+            repository = repository,
+            onUnlocked = { scope.launch { dataSource.onUnlocked() } },
+        )
+        else -> TallyApp(dataSource = dataSource)
+    }
+}
 
 /**
  * The app shell: three-tab bottom navigation (Home · ⊕ · Menu) over a
  * hand-managed back stack (see `Route.kt` for why this isn't
  * `navigation-compose`). Every screen under `com.tally.app.ui` is wired
- * together here, against the single [TallyDataSource] seam — swap
- * `rememberDemoDataSource()` for a real implementation and nothing else in
- * this file, or in any screen, needs to change.
+ * together here, against the single [TallyDataSource] seam. Reached only
+ * once the vault is unlocked — see [TallyAppRoot] for the real, lock-gated
+ * production entry point.
+ *
+ * [dataSource] is deliberately REQUIRED rather than defaulting to the demo
+ * source. A default meant `TallyApp()` compiled fine and rendered a
+ * confident, well-laid-out screen full of invented money, which is exactly
+ * how this app spent its first build: `MainActivity` called the no-arg form
+ * and nobody could tell from the screen that nothing was real. This project
+ * has now shipped built-but-never-wired code three times, so the failure
+ * mode gets closed off at the type level instead of being documented.
+ * Previews and tests pass `rememberDemoDataSource()` explicitly — one extra
+ * argument in the few places that genuinely want fake data, and no way to
+ * get it by accident anywhere else.
  */
 @Composable
-fun TallyApp(dataSource: TallyDataSource = rememberDemoDataSource()) {
+fun TallyApp(dataSource: TallyDataSource) {
     val backStack = remember { mutableStateListOf<Route>(Route.Home) }
     val current = backStack.last()
     val rootTab = backStack.first()
