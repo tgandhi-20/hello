@@ -49,7 +49,6 @@ import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyListGroup
 import com.tally.app.ui.components.TallyListRow
 import com.tally.app.ui.components.a11yClickable
-import com.tally.app.ui.components.a11yRow
 import com.tally.app.ui.model.formatRelativeDay
 import com.tally.app.ui.model.formatTxnAmount
 import com.tally.app.ui.theme.TallyCardRadius

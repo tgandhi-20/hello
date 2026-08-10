@@ -31,7 +31,7 @@ import com.tally.app.data.VaultRepository
 import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyListGroup
 import com.tally.app.ui.components.TallyListRow
-import com.tally.app.ui.components.a11yRow
+import com.tally.app.ui.components.a11yClickable
 import com.tally.app.ui.theme.TallyCardRadius
 import com.tally.app.ui.theme.TallyColors
 import com.tally.app.ui.theme.TallyIcons
@@ -127,9 +127,7 @@ private fun StatementsHeader(onBack: () -> Unit) {
         modifier = Modifier.padding(start = 8.dp, top = 20.dp, bottom = 4.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(48.dp)
-                .a11yRow(description = "Back", onClick = onBack),
+            modifier = Modifier.a11yClickable(description = "Back", onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
             TallyIcons.ChevronLeft(modifier = Modifier.size(22.dp))
