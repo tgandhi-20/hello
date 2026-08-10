@@ -61,6 +61,15 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # Text-level checks that need no SDK and no Gradle. They run in under a
+      # second, before the ~3-minute build, so the classes of error they cover
+      # cost one second instead of one round trip. Added after nineteen nested
+      # block comments — package globs like `ui/**` written into KDoc — cost a
+      # full build to diagnose and reported themselves as "Unclosed comment"
+      # at the wrong line.
+      - name: Check sources
+        run: ./tools/check-sources.sh
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
 

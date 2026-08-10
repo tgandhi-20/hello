@@ -12,7 +12,7 @@ import java.time.LocalDate
  *
  * NOT PORTED: `applyPersonalPlan` (src/personal/applyPersonalPlan.ts) — it
  * writes budgets/recurring series into the store, which is data/store-layer
- * orchestration outside this package's scope (android's `.../data/**` is
+ * orchestration outside this package's scope (android's `.../data/` is
  * owned by a different agent). Only the plan's own constants and their pure
  * derived math are ported here.
  *

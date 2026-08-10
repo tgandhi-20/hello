@@ -18,7 +18,7 @@ import java.time.LocalDate
  * detection, balance-verified sign resolution, exact integer-cents money
  * parsing, categorisation priority, and the dedupe occurrence-index
  * regression (two identical same-day coffees). Same fixtures (the
- * docs/samples/*.example.csv files, copied verbatim into
+ * .example.csv files under docs/samples, copied verbatim into
  * src/test/resources/samples/), same expected values as the TypeScript
  * source.
  */

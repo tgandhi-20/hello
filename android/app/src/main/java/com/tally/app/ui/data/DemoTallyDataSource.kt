@@ -26,7 +26,7 @@ import java.util.UUID
  * Home and in the transactions list) before the money/vault agents' modules
  * exist to wire in for real. The orchestrator should replace
  * `rememberDemoDataSource()` at the call site in `TallyApp` with a real
- * implementation of [TallyDataSource] — nothing else in `ui/**` should need
+ * implementation of [TallyDataSource] — nothing else in `ui/` should need
  * to change, since every screen depends only on the interface.
  *
  * The equation figures below (income $6,457 / bills $1,293 / savings $3,500

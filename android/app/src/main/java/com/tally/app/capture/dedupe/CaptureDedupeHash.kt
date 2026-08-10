@@ -44,7 +44,7 @@ import com.tally.app.capture.util.CaptureDate
  *     text identical to the captured merchant* (a manual entry someone typed
  *     the same way, for instance) is correctly recognised as a duplicate.
  * Catching the CSV-vs-capture case for real would need fuzzy merchant
- * matching, which is a `data/**`-layer decision, not this module's to make
+ * matching, which is a `data/`-layer decision, not this module's to make
  * unilaterally -- flagged for the orchestrator in the delivery report.
  */
 object CaptureDedupeHash {

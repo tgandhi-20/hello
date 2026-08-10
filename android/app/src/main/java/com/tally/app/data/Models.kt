@@ -34,7 +34,7 @@ import com.tally.app.util.optStringOrNull
 data class Category(
     val id: String,
     val label: String,
-    /** icon name, e.g. 'Coffee' — rendering is the ui/** agent's concern. */
+    /** icon name, e.g. 'Coffee' — rendering is the ui/ agent's concern. */
     val icon: String,
     /** Token name from the 12-swatch category ramp, e.g. 'cat-1'. Never a raw hex. */
     val colorToken: String,

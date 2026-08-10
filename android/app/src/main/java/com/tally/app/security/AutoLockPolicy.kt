@@ -19,7 +19,7 @@ package com.tally.app.security
  * (androidx.lifecycle-process) — that artifact is not one of this module's
  * four permitted dependencies (Room, androidx.security-crypto,
  * androidx.biometric, coroutines). Instead it exposes plain
- * `onBackgrounded()`/`onForegrounded()` hooks. The ui/** agent (outside this
+ * `onBackgrounded()`/`onForegrounded()` hooks. The ui/ agent (outside this
  * module's ownership) wires these into its own Activity/Lifecycle callbacks
  * using the androidx.activity/androidx.lifecycle-runtime-ktx APIs already in
  * the project's baseline dependencies — e.g. `onPause`/`onStop` and

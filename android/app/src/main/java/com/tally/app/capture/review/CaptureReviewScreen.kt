@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 /**
  * A ready-made Compose surface for [CaptureReviewQueue] -- pass an instance
  * in, mount it anywhere. Deliberately self-contained: it renders with plain
- * Material3 components only, nothing from `ui/**` (which does not exist yet
+ * Material3 components only, nothing from `ui/` (which does not exist yet
  * in this native app and is another agent's to build), so it has nothing to
  * wait on to compile. Whoever owns the app's screens is free to use this
  * as-is, restyle it, or build their own against [CaptureReviewQueue] directly
@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
  *
  * Money is formatted here with a small local helper rather than a shared
  * formatter, for the same "don't block on a file I don't own" reason -- swap
- * it for `money/**`'s real formatter once that exists.
+ * it for `money/`'s real formatter once that exists.
  */
 @Composable
 fun CaptureReviewScreen(queue: CaptureReviewQueue, modifier: Modifier = Modifier) {

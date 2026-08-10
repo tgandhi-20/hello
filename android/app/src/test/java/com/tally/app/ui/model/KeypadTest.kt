@@ -7,7 +7,7 @@ import org.junit.Test
  * JVM-testable port of `src/features/log/Keypad.tsx`'s own behaviour —
  * `applyKeypadKey`/`keypadBufferToCents`/`centsToKeypadBuffer` are pure
  * Kotlin with no Android framework dependency, so these run on the host JVM
- * without an emulator, same as every other agent's `src/test/**` suite.
+ * without an emulator, same as every other agent's `src/test/` suite.
  */
 class KeypadTest {
 

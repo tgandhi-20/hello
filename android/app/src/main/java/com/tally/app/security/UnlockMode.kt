@@ -11,7 +11,7 @@ import com.tally.app.util.optString
  * A PIN and a passphrase are both just a string handed to the same
  * `VaultCrypto.deriveKey()` — this is not a second crypto scheme, only a
  * record of which kind of string the user chose and (for PIN mode) how many
- * digits, so the lock screen (owned by the ui/** agent) can draw the right
+ * digits, so the lock screen (owned by the ui/ agent) can draw the right
  * input widget BEFORE anything is decrypted. Not secret — stored in the
  * plain `meta` table alongside the salt and verifier, exactly as on the web.
  */

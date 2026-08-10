@@ -3,7 +3,7 @@ package com.tally.app.capture.model
 /**
  * String constants matching `AccountId` in `src/types.ts` exactly. Kept as plain
  * `String` (not a Kotlin `enum class`) deliberately: the real ledger/account type
- * belongs to whichever agent owns `data/**` (frozen to capture -- see
+ * belongs to whichever agent owns `data/` (frozen to capture -- see
  * AndroidManifest/ANDROID.md ownership table), and that package does not exist
  * yet in this native app. A `String` that already matches the TS union's raw
  * values needs zero translation whichever concrete type that agent lands on --

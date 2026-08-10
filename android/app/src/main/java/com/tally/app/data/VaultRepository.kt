@@ -29,9 +29,9 @@ import javax.crypto.spec.SecretKeySpec
  * Tally — the single entry point other agents' code should use for anything
  * that touches the vault (deliverables 2-5 tied together). Analogous to
  * useStore.ts, but deliberately narrower in scope: this module owns
- * security/** and data/** only, not ui/**, so it exposes plain
+ * security/ and data/ only, not ui/, so it exposes plain
  * suspend-function operations rather than a UI-observable store — the
- * ui/** agent wraps this in whatever ViewModel/state-holder shape it wants.
+ * ui/ agent wraps this in whatever ViewModel/state-holder shape it wants.
  *
  * SCOPE NOTE: this intentionally does not reproduce every piece of business
  * logic useStore.ts has (e.g. reassigning transactions when a category with

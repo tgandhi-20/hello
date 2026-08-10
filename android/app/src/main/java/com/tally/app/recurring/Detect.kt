@@ -170,7 +170,7 @@ private fun seriesKey(normalizedMerchant: String, cadence: RecurringCadence): St
 /** Lowercase, strip digits/punctuation/store-reference noise, collapse whitespace.
  *  Ported from src/features/transactions/merchant.ts's `normalizeMerchant` — shared by
  *  the "always categorise X as Y" rule flow and this detector in the original app;
- *  reproduced locally here since `features/transactions/**` is out of this package's
+ *  reproduced locally here since `features/transactions/` is out of this package's
  *  ownership scope. */
 fun normalizeMerchant(raw: String): String {
     var s = raw.lowercase()

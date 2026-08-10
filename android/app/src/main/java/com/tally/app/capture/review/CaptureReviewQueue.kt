@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
  * What the capture module needs from the real ledger to avoid a transaction
  * landing twice -- once captured from a notification, once later imported
  * from a CSV statement. Implemented by whichever agent owns the real store
- * (`data/**`); this module only calls it, never implements ledger lookups
+ * (`data/`); this module only calls it, never implements ledger lookups
  * itself. See `CaptureDedupeHash`'s doc comment for the honest limits of what
  * this can actually catch.
  */
@@ -40,7 +40,7 @@ fun interface LedgerHashLookup {
  * uses, which assigns occurrence within whatever list it's given) for the
  * whole `acceptAll()` batch at once avoids that -- worth doing when this is
  * actually wired up, flagged here rather than guessed at unilaterally since
- * `data/**` isn't this module's to change.
+ * `data/` isn't this module's to change.
  */
 fun interface AcceptedCaptureWriter {
     /** Returns `true` on a successful write. Throwing is also treated as a failure. */
@@ -68,7 +68,7 @@ sealed class CaptureOutcome {
 
 /**
  * The plain interface the UI layer mounts. Nothing in this module writes UI
- * outside `capture/**` -- a screen owned by another agent (or `ui/**` once it
+ * outside `capture/` -- a screen owned by another agent (or `ui/` once it
  * exists) can hold an instance of this and render `state` however it likes;
  * `CaptureReviewScreen` in this same package is a ready-made Compose
  * implementation of that rendering, offered as a starting point rather than
