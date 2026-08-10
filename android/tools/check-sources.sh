@@ -168,6 +168,34 @@ then
   fail=1
 fi
 
+# ---------------------------------------------------------------------------
+# 6. Test resources that git will not commit.
+#
+# A test fixture present on a developer's disk but excluded by .gitignore is
+# invisible to CI, and since CI is the only place these tests ever run, the
+# test does not merely fail — it fails for a reason that looks nothing like
+# its actual cause. Five import tests died on "test resource not found"
+# because `*.csv` is (correctly) gitignored to keep real bank statements out
+# of the repo, and the narrow `!docs/samples/*.example.csv` exception did not
+# cover the Android copies.
+#
+# Checking the specific rule would just re-encode today's mistake. This checks
+# the property that actually matters: everything under the test resources tree
+# must be committable.
+if [ -d app/src/test/resources ] && command -v git >/dev/null 2>&1; then
+  ignored=""
+  while IFS= read -r f; do
+    if git check-ignore -q "$f" 2>/dev/null; then
+      ignored="$ignored\n  $f"
+    fi
+  done < <(find app/src/test/resources -type f)
+  if [ -n "$ignored" ]; then
+    echo "ERROR: test resource is gitignored, so CI will never see it:"
+    printf "%b\n" "$ignored"
+    fail=1
+  fi
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo
   echo "Source checks failed."

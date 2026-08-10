@@ -43,7 +43,19 @@ logs/
 # Encrypted backups, exported ledgers and any real bank statements stay local.
 *.tally
 *.csv
-!docs/samples/*.example.csv
+# The `.example.csv` suffix marks a hand-written synthetic fixture — invented
+# merchants, invented amounts, no real statement ever. Those are the only CSVs
+# that may be committed, and they must be, because the import tests are worth
+# nothing without them.
+#
+# This escape hatch was previously written as `!docs/samples/*.example.csv`,
+# which covered the web app's copies and silently excluded the Android test
+# resources. The result was five import tests that passed locally and failed on
+# CI with "test resource not found" — the fixtures existed on one disk and in no
+# commit. Matching on the suffix anywhere keeps the strict rule (a real
+# statement is never named `.example.csv`) without depending on a directory
+# list that the next copy will fall outside of again.
+!**/*.example.csv
 
 # QA verification artefacts (screenshots from emulated-device runs)
 qa-screenshots/
