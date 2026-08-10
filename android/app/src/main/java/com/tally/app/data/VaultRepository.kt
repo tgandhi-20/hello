@@ -2,6 +2,16 @@ package com.tally.app.data
 
 import android.content.Context
 import androidx.fragment.app.FragmentActivity
+import com.tally.app.csvimport.DedupeFields
+import com.tally.app.csvimport.dedupeGroupKey
+import com.tally.app.csvimport.hashTxn
+import com.tally.app.money.AccountId
+import com.tally.app.money.Category
+import com.tally.app.money.Cents
+import com.tally.app.money.RecurringSeries
+import com.tally.app.money.Settings
+import com.tally.app.money.Txn
+import com.tally.app.money.TxnSource
 import com.tally.app.security.AutoLockPolicy
 import com.tally.app.security.BiometricVaultUnlock
 import com.tally.app.security.KeystoreVaultKeyWrapper
@@ -20,6 +30,7 @@ import com.tally.app.util.stringify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.Executor
 import javax.crypto.SecretKey
@@ -290,18 +301,18 @@ class VaultRepository private constructor(context: Context) {
         VaultKeyHolder.get() ?: throw IllegalStateException("Tally is locked.")
 
     suspend fun addTxn(
-        date: String,
-        amountCents: Long,
+        date: LocalDate,
+        amountCents: Cents,
         description: String,
         merchant: String,
         categoryId: String,
-        account: String,
-        source: String,
+        account: AccountId,
+        source: TxnSource,
         note: String? = null,
     ): Txn = VaultLock.withLock {
         val key = requireKey()
         val now = System.currentTimeMillis()
-        val hash = Dedupe.hashTxn(date, amountCents, description, account)
+        val hash = hashTxn(date, amountCents, description, account)
         val txn = Txn(
             id = UUID.randomUUID().toString(),
             date = date,
@@ -329,10 +340,10 @@ class VaultRepository private constructor(context: Context) {
         var skipped = 0
 
         for (t in candidates) {
-            val groupKey = Dedupe.groupKey(t.date, t.amountCents, t.description, t.account)
+            val groupKey = dedupeGroupKey(DedupeFields(t.date, t.amountCents, t.description, t.account))
             val occurrence = occurrenceCounts.getOrDefault(groupKey, 0)
             occurrenceCounts[groupKey] = occurrence + 1
-            val hash = Dedupe.hashTxn(t.date, t.amountCents, t.description, t.account, occurrence)
+            val hash = hashTxn(t.date, t.amountCents, t.description, t.account, occurrence)
             if (existingHashes.contains(hash)) {
                 skipped++
                 continue

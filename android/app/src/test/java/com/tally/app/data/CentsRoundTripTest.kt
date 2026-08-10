@@ -1,10 +1,17 @@
 package com.tally.app.data
 
+import com.tally.app.money.AccountId
+import com.tally.app.money.Cents
+import com.tally.app.money.Txn
+import com.tally.app.money.TxnSource
 import com.tally.app.security.VaultCrypto
 import com.tally.app.util.Json
 import com.tally.app.util.JsonValue
+import com.tally.app.util.getLong
+import com.tally.app.util.stringify
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.LocalDate
 
 /**
  * Deliverable 6: "integer-cents round-tripping with no precision loss."
@@ -23,15 +30,15 @@ class CentsRoundTripTest {
 
     private val key = VaultCrypto.deriveKey("135790", VaultCrypto.generateSalt())
 
-    private fun sampleTxn(amountCents: Long): Txn = Txn(
+    private fun sampleTxn(amountCents: Cents): Txn = Txn(
         id = "t1",
-        date = "2026-08-09",
+        date = LocalDate.of(2026, 8, 9),
         amountCents = amountCents,
         description = "test",
         merchant = "Test Merchant",
         categoryId = "cat-1",
-        account = "cba",
-        source = "manual",
+        account = AccountId.CBA,
+        source = TxnSource.MANUAL,
         hash = "h1",
         createdAt = 1L,
         updatedAt = 1L,

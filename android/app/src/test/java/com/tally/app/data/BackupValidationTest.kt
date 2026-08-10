@@ -1,5 +1,11 @@
 package com.tally.app.data
 
+import com.tally.app.money.AccountId
+import com.tally.app.money.Category
+import com.tally.app.money.CategoryKind
+import com.tally.app.money.Settings
+import com.tally.app.money.Txn
+import com.tally.app.money.TxnSource
 import com.tally.app.security.VaultCrypto
 import com.tally.app.util.JsonValue
 import com.tally.app.util.jsonObject
@@ -8,6 +14,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import java.time.LocalDate
 
 /**
  * Deliverable 6: "a malformed backup failing before any data is cleared."
@@ -43,12 +50,12 @@ class BackupValidationTest {
     private val validPayload = Backup.Payload(
         txns = listOf(
             Txn(
-                id = "t1", date = "2026-08-01", amountCents = 550L, description = "Coffee",
-                merchant = "Campos", categoryId = "cat-coffee", account = "cba", source = "manual",
+                id = "t1", date = LocalDate.of(2026, 8, 1), amountCents = 550L, description = "Coffee",
+                merchant = "Campos", categoryId = "cat-coffee", account = AccountId.CBA, source = TxnSource.MANUAL,
                 hash = "abc", createdAt = 1L, updatedAt = 1L,
             ),
         ),
-        categories = listOf(Category(id = "cat-coffee", label = "Coffee", icon = "Coffee", colorToken = "cat-1", kind = "want", builtin = true, order = 0)),
+        categories = listOf(Category(id = "cat-coffee", label = "Coffee", icon = "Coffee", colorToken = "cat-1", kind = CategoryKind.WANT, builtin = true, order = 0)),
         budgets = emptyList(),
         rules = emptyList(),
         recurring = emptyList(),

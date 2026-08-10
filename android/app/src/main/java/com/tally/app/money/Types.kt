@@ -41,7 +41,11 @@ enum class RecurringCadence(val id: String) {
     FORTNIGHTLY("fortnightly"),
     MONTHLY("monthly"),
     QUARTERLY("quarterly"),
-    YEARLY("yearly")
+    YEARLY("yearly");
+
+    companion object {
+        fun fromId(id: String): RecurringCadence? = entries.find { it.id == id }
+    }
 }
 
 data class Category(
@@ -118,5 +122,15 @@ data class Settings(
     val hasHecsDebt: Boolean? = null,
     /** The user's actual savings balance, as they last told us. `null` = never
      *  entered, in which case the goal card falls back to the projected figure. */
-    val goalCurrentBalanceCents: Cents? = null
+    val goalCurrentBalanceCents: Cents? = null,
+    /** Epoch ms the first-run onboarding flow was completed or explicitly
+     *  skipped. `null` = never run. */
+    val onboardingCompletedAt: Long? = null,
+    /** Bookmark for the weekly-review guided flow — `YYYY-MM`, paired with
+     *  [weeklyReviewStep]. Both null or both set together; see Settings.toJson
+     *  in data/Models.kt for how the pair collapses into one nested JSON object. */
+    val weeklyReviewMonth: String? = null,
+    /** One of "import" | "categorise" | "recurring" | "amex" | "done" — kept as
+     *  a plain string here, mirroring src/types.ts's ReviewStepId. */
+    val weeklyReviewStep: String? = null
 )
