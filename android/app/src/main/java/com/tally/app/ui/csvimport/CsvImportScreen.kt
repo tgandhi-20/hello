@@ -22,7 +22,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedButtonDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -185,7 +184,7 @@ private suspend fun loadAndAnalyze(context: Context, repository: VaultRepository
             )
         }
 
-        val text = String(bytes, Charsets.UTF_8).removePrefix("﻿")
+        val text = String(bytes, Charsets.UTF_8).removePrefix("\uFEFF")
         if (text.isBlank()) {
             return@withContext CsvImportUiState.Failure("This file is empty — there's nothing to import.")
         }
@@ -351,7 +350,7 @@ private fun CommittedBody(added: Int, skipped: Int, onImportAnother: () -> Unit,
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(
                 onClick = onImportAnother,
-                colors = OutlinedButtonDefaults.outlinedButtonColors(contentColor = TallyColors.Ink1),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TallyColors.Ink1),
                 shape = RoundedCornerShape(TallyCardRadius),
                 modifier = Modifier.heightIn(min = 48.dp),
             ) {
@@ -488,7 +487,7 @@ private fun ReviewBody(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
             OutlinedButton(
                 onClick = onCancel,
-                colors = OutlinedButtonDefaults.outlinedButtonColors(contentColor = TallyColors.Ink1),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TallyColors.Ink1),
                 shape = RoundedCornerShape(TallyCardRadius),
                 modifier = Modifier.weight(1f).heightIn(min = 56.dp),
             ) {
