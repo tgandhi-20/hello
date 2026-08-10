@@ -120,3 +120,22 @@ dependencies {
 // `correctErrorTypes` was a kapt-only workaround for stub-generation seeing
 // not-yet-generated types as errors. KSP has no such stage, so there is
 // nothing to correct and no equivalent setting.
+
+// Print test failures into the build log, with the full assertion message and
+// stack trace.
+//
+// By default Gradle reports only "There were failing tests. See the report at
+// file:///.../index.html" — an HTML file on a CI runner that is thrown away
+// when the job ends. With no Android SDK in the dev container, CI is the only
+// place these tests ever run, so a failure that names no expected value and no
+// line number costs an entire round trip to learn nothing. Five import tests
+// failed exactly that way before this was added.
+tasks.withType<Test>().configureEach {
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+    }
+}
