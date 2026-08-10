@@ -85,6 +85,58 @@ if hits=$(grep -rniE '\b[a-z_]*cents\b[^=]*:\s*(Double|Float)\b' --include='*.kt
   fail=1
 fi
 
+# ---------------------------------------------------------------------------
+# 4. Domain types used without being imported.
+#
+# The domain model lives in `com.tally.app.money`. A file in another package
+# that names `Txn` without importing it compiles only if that package happens
+# to declare its own — which is exactly the duplicate-model problem that was
+# just removed. After the two model sets were collapsed into one, `Backup.kt`
+# still referred to the deleted local types and CI reported ten errors: four
+# unresolved references and six "cannot infer type variable R" that were
+# purely downstream of them.
+#
+# Cheap to check, and it catches the whole class: for each domain type name,
+# any file that mentions it must either be in the declaring package or import
+# it explicitly.
+if ! python3 - <<'PY'
+import os, re, sys
+TYPES = ['Txn', 'Category', 'Settings', 'RecurringSeries',
+         'AccountId', 'TxnSource', 'CategoryKind', 'RecurringCadence']
+bad = []
+for root, _, files in os.walk('app/src'):
+    for fn in files:
+        if not fn.endswith('.kt'):
+            continue
+        p = os.path.join(root, fn)
+        t = open(p).read()
+        pkg_m = re.search(r'^package\s+([\w.]+)', t, re.M)
+        pkg = pkg_m.group(1) if pkg_m else ''
+        if pkg == 'com.tally.app.money':
+            continue
+        # Strip comments and strings so prose mentions don't count as usage.
+        body = re.sub(r'/\*.*?\*/', '', t, flags=re.S)
+        body = re.sub(r'//[^\n]*', '', body)
+        body = re.sub(r'"[^"\n]*"', '""', body)
+        for ty in TYPES:
+            # A real usage: as a type annotation, constructor call, or generic arg.
+            if not re.search(r'(?<![\w.])' + ty + r'(?![\w])', body):
+                continue
+            if re.search(r'^import\s+[\w.]+\.' + ty + r'\s*$', t, re.M):
+                continue
+            # Declared locally in this file (e.g. a Ui-layer type of the same name).
+            if re.search(r'\b(class|interface|object|typealias|enum class)\s+' + ty + r'\b', body):
+                continue
+            bad.append(f"  {p}: uses '{ty}' with no import and no local declaration")
+if bad:
+    print("ERROR: domain type used without importing it (com.tally.app.money):")
+    print("\n".join(sorted(set(bad))))
+    sys.exit(1)
+PY
+then
+  fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo
   echo "Source checks failed."
