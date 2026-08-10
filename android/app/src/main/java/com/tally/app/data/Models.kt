@@ -293,6 +293,9 @@ fun settingsFromJson(o: JsonValue.Obj): Settings {
     )
 }
 
+/** The settings table always holds exactly one row, under this fixed id — shared by VaultRepository and Rekey. */
+const val SETTINGS_ROW_ID = "settings"
+
 /** Default settings for a brand-new vault — mirrors useStore.ts's DEFAULT_SETTINGS shape (currency/locale/lock timeout). */
 val DEFAULT_SETTINGS = Settings(
     currency = "AUD",

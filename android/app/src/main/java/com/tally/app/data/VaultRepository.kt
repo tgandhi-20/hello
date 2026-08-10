@@ -27,6 +27,7 @@ import com.tally.app.util.JsonValue
 import com.tally.app.util.getString
 import com.tally.app.util.jsonObject
 import com.tally.app.util.stringify
+import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
@@ -56,7 +57,8 @@ import javax.crypto.spec.SecretKeySpec
  */
 class VaultRepository private constructor(context: Context) {
     private val appContext = context.applicationContext
-    private val dao = TallyDatabase.get(appContext).dao()
+    private val database = TallyDatabase.get(appContext)
+    private val dao = database.dao()
     private val lockoutStore = LockoutStore(appContext)
 
     /** Wire this into the hosting Activity's lifecycle — see AutoLockPolicy's doc comment. */
@@ -116,6 +118,144 @@ class VaultRepository private constructor(context: Context) {
 
         VaultKeyHolder.set(key)
         lockoutStore.write(LockoutPolicy.onSuccess())
+    }
+
+    // ---------------------------------------------------------------------
+    // Change secret — atomic rekey. This is the primitive `setupPin` is NOT
+    // (see setupPin/setup's doc comment above): `setup` only ever runs once,
+    // at first-time setup, when there is nothing on disk yet to orphan.
+    // Calling `setup`/`setupPin` again on an already-set-up vault writes a
+    // new salt/verifier while every existing record stays encrypted under
+    // the OLD key — permanent, silent data loss. `changeSecret` is the safe
+    // replacement `ui/settings/ChangePin.kt` now calls instead.
+    // ---------------------------------------------------------------------
+
+    sealed class ChangeSecretResult {
+        object Ok : ChangeSecretResult()
+        object WrongCurrentSecret : ChangeSecretResult()
+        object NotSetUp : ChangeSecretResult()
+        data class LockedOut(val remainingMs: Long) : ChangeSecretResult()
+        /** Nothing was written — see Rekey.kt's doc comment for why ANY unreadable record aborts the whole rekey rather than skipping it. */
+        data class UnreadableRecords(val count: Int) : ChangeSecretResult()
+    }
+
+    /**
+     * Change the PIN/passphrase, re-encrypting every store under a freshly
+     * generated salt, with no window where a crash leaves the vault
+     * unreadable.
+     *
+     * ORDER OF OPERATIONS
+     * --------------------
+     *  1. `currentSecret` is verified against the CURRENT salt/verifier —
+     *     wrong secret returns [ChangeSecretResult.WrongCurrentSecret] and
+     *     nothing is read or written beyond the lockout counter (same
+     *     backoff `unlock()` enforces, so this can't be used to brute-force
+     *     the PIN by an attacker who has already gained code execution).
+     *  2. Every store is read as ciphertext and handed to [Rekey.build],
+     *     which decrypts everything under the OLD key and — only if every
+     *     single record decrypted cleanly — re-encrypts everything under a
+     *     BRAND NEW salt-derived key, all still entirely in memory. Any
+     *     unreadable record aborts here with
+     *     [ChangeSecretResult.UnreadableRecords] and writes nothing at all —
+     *     rekeying a partial vault would convert an unreadable-record
+     *     problem into a lost-vault problem, exactly what §3.6's "the vault
+     *     must never lock the user out" forbids.
+     *  3. Every re-encrypted record AND the new salt/verifier/unlock config
+     *     are written inside ONE `database.withTransaction` block
+     *     (room-ktx). `withTransaction` opens a real SQLite transaction, and
+     *     every suspend DAO call made from inside its block joins that SAME
+     *     transaction — Room threads it through the coroutine context via a
+     *     `TransactionElement`, so a nested `@Insert`/`@Query` call detects
+     *     the ongoing transaction and participates in it rather than
+     *     opening (and committing) one of its own. The whole batch commits
+     *     or rolls back as a single unit: a crash or process death at ANY
+     *     point before `withTransaction` returns leaves every row exactly
+     *     as it was, still decryptable under the OLD secret. This is what
+     *     the old `ChangePin.kt` workaround (call `setupPin`, then loop
+     *     over per-store public writes) could never guarantee — that loop
+     *     was many independent statements with no shared transaction, so a
+     *     crash partway through left some rows under the new key and some
+     *     under the old one, with the new salt/verifier already committed.
+     *  4. ONLY after that transaction has returned successfully: the
+     *     in-memory active key is swapped to the new one, the lockout
+     *     counter is reset (a successful change proves the caller knew the
+     *     current secret), and biometric enrollment is disabled — the
+     *     Keystore-wrapped blob still holds the OLD key's raw bytes, which
+     *     can never satisfy the NEW verifier, so leaving it enrolled would
+     *     look enabled but silently fail every unlock attempt (same
+     *     reasoning `importBackup`'s doc comment gives for always disabling
+     *     biometric on restore).
+     */
+    suspend fun changeSecret(currentSecret: String, newSecret: String, newConfig: UnlockConfig): ChangeSecretResult =
+        VaultLock.withLock { changeSecretLocked(currentSecret, newSecret, newConfig) }
+
+    // Block body, not `= VaultLock.withLock { ... }`'s trailing expression:
+    // the early `return` branches below are the point of this function, and
+    // `VaultLock.withLock` is an ordinary (non-inline) suspend function, so
+    // a non-local `return@withLock` from directly inside its lambda is not
+    // legal Kotlin. This private helper is a genuine function body instead,
+    // called FROM inside that lambda, where a plain `return` is fine.
+    private suspend fun changeSecretLocked(currentSecret: String, newSecret: String, newConfig: UnlockConfig): ChangeSecretResult {
+        val now = System.currentTimeMillis()
+        val lockoutState = lockoutStore.read()
+        if (LockoutPolicy.isLocked(lockoutState, now)) {
+            return ChangeSecretResult.LockedOut(LockoutPolicy.remainingLockMillis(lockoutState, now))
+        }
+
+        val saltRec = dao.getMeta(MetaKeys.SALT) ?: return ChangeSecretResult.NotSetUp
+        val verifierRec = dao.getMeta(MetaKeys.VERIFIER) ?: return ChangeSecretResult.NotSetUp
+
+        val oldSalt = VaultCrypto.unb64(saltRec.valueJson)
+        val verifierBlob = jsonStringToBlob(verifierRec.valueJson)
+        val oldKey = VaultCrypto.deriveKey(currentSecret, oldSalt)
+        if (!VaultCrypto.checkVerifier(oldKey, verifierBlob)) {
+            lockoutStore.write(LockoutPolicy.onFailure(lockoutState, now))
+            return ChangeSecretResult.WrongCurrentSecret
+        }
+
+        // A fresh salt per secret is the point of salting — never reuse the old one.
+        val newSalt = VaultCrypto.generateSalt()
+        val newKey = VaultCrypto.deriveKey(newSecret, newSalt)
+
+        val built = Rekey.build(
+            oldKey = oldKey,
+            newKey = newKey,
+            txnRows = dao.getAllTxns(),
+            categoryRows = dao.getAllCategories(),
+            budgetRows = dao.getAllBudgets(),
+            ruleRows = dao.getAllRules(),
+            recurringRows = dao.getAllRecurring(),
+            settingsRows = dao.getAllSettings(),
+        )
+        val plan = when (built) {
+            is Rekey.Result.Failure -> return ChangeSecretResult.UnreadableRecords(built.unreadableCount)
+            is Rekey.Result.Success -> built.plan
+        }
+
+        val newVerifier = VaultCrypto.makeVerifier(newKey)
+        val newSaltB64 = VaultCrypto.b64(newSalt)
+
+        // The single atomic write — see this function's doc comment (step 3)
+        // for why `withTransaction` here is genuinely atomic.
+        database.withTransaction {
+            if (plan.txns.isNotEmpty()) dao.putTxns(plan.txns)
+            if (plan.categories.isNotEmpty()) dao.putCategories(plan.categories)
+            if (plan.budgets.isNotEmpty()) dao.putBudgets(plan.budgets)
+            if (plan.rules.isNotEmpty()) dao.putRules(plan.rules)
+            if (plan.recurring.isNotEmpty()) dao.putRecurringMany(plan.recurring)
+            dao.putSettings(plan.settings)
+            dao.putMeta(MetaRecord(MetaKeys.SALT, newSaltB64))
+            dao.putMeta(MetaRecord(MetaKeys.VERIFIER, blobToJsonString(newVerifier)))
+            dao.putMeta(MetaRecord(MetaKeys.UNLOCK_CONFIG, newConfig.toJson().stringify()))
+        }
+
+        // Only now — after the transaction has committed — does the
+        // in-memory key move and biometric get invalidated. See step 4 above.
+        VaultKeyHolder.set(newKey)
+        lockoutStore.write(LockoutPolicy.onSuccess())
+        disableBiometric()
+
+        return ChangeSecretResult.Ok
     }
 
     // ---------------------------------------------------------------------
@@ -646,8 +786,6 @@ class VaultRepository private constructor(context: Context) {
     }
 
     companion object {
-        private const val SETTINGS_ROW_ID = "settings"
-
         @Volatile
         private var instance: VaultRepository? = null
 
