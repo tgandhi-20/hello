@@ -54,6 +54,7 @@ import com.tally.app.ui.model.formatTxnAmount
 import com.tally.app.ui.theme.TallyCardRadius
 import com.tally.app.ui.theme.TallyColors
 import com.tally.app.ui.theme.TallyIcons
+import com.tally.app.ui.theme.TallyPillRadius
 import com.tally.app.ui.theme.TallyType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -527,7 +528,7 @@ private fun AccountPicker(selected: AccountId, onSelect: (AccountId) -> Unit) {
                     .heightIn(min = 40.dp)
                     .background(
                         if (isSelected) TallyColors.AccentTint else TallyColors.SurfaceSunk,
-                        RoundedCornerShape(999.dp),
+                        RoundedCornerShape(TallyPillRadius),
                     )
                     .a11yRow(
                         description = "${accountDisplayName(account)}${if (isSelected) ", selected" else ""}",

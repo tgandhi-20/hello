@@ -11,6 +11,7 @@ import com.tally.app.money.Category
 import com.tally.app.money.CategoryKind as MoneyCategoryKind
 import com.tally.app.money.ComputeMonthMoneyParams
 import com.tally.app.money.MonthMoney
+import com.tally.app.money.MonthMoneySavingsProgress
 import com.tally.app.money.MonthMoneyCategoryRow
 import com.tally.app.money.RecurringSeries
 import com.tally.app.money.Settings
@@ -233,6 +234,57 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
 
     override val transactions: State<List<UiTxn>> = derivedStateOf {
         _txns.value.map(::toUiTxn).sortedByDescending { it.date }
+    }
+
+    // ---------------------------------------------------------------------
+    // Domain-typed accessors for screens the Ui* model does not cover
+    //
+    // Goal and Recurring need fields the Ui* shapes do not carry:
+    // MonthMoneySavingsProgress' full set (projected vs actual balance, and
+    // crucially whether the "actual" is real or the projection standing in),
+    // and the RecurringSeries objects themselves so a series can be confirmed
+    // or muted.
+    //
+    // These read from the SAME `_computed`/`_recurring` state as everything
+    // else, so exposing them cannot introduce a second source of truth — a
+    // screen using these is still reading the one computeMonthMoney result.
+    // Widening the Ui* model to mirror every domain field would have been the
+    // alternative, and that is how you end up maintaining two parallel model
+    // sets, which this project already had to collapse once.
+    // ---------------------------------------------------------------------
+
+    /** The goal figures, straight off the single computed result. Null before the first hydrate. */
+    val savingsProgress: State<MonthMoneySavingsProgress?> = derivedStateOf {
+        _computed.value?.savingsProgress
+    }
+
+    /** The detected recurring series, for the screen that confirms/mutes them. */
+    val recurringSeries: State<List<RecurringSeries>> = _recurring
+
+    /**
+     * Confirm or mute a series. Writes the whole list back because that is the
+     * shape `VaultRepository.setRecurring` takes, then re-hydrates so the
+     * equation's Bills line reflects the change immediately — muting a series
+     * changes what `isBillSeries` counts, so Home must not keep showing the
+     * old total.
+     */
+    suspend fun updateRecurringSeries(updated: RecurringSeries) = withContext(Dispatchers.IO) {
+        val next = _recurring.value.map { if (it.id == updated.id) updated else it }
+        repository.setRecurring(next)
+        _recurring.value = next
+        recomputeMoney()
+    }
+
+    /**
+     * Record the user's real deposit balance, or clear it (null) to fall back
+     * to the projection. Kept as a nullable so "I have not told you" stays
+     * distinguishable from "it is zero" — the Goal screen says which of those
+     * it is showing, and it can only do that if the distinction survives here.
+     */
+    suspend fun setGoalActualBalance(cents: Long?) = withContext(Dispatchers.IO) {
+        val next = repository.updateSettings { it.copy(goalCurrentBalanceCents = cents) }
+        _settings.value = next
+        recomputeMoney()
     }
 
     /** Call after a successful unlock (PIN, biometric, or fresh setup) —
