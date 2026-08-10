@@ -101,8 +101,14 @@ fi
 # it explicitly.
 if ! python3 - <<'PY'
 import os, re, sys
-TYPES = ['Txn', 'Category', 'Settings', 'RecurringSeries',
-         'AccountId', 'TxnSource', 'CategoryKind', 'RecurringCadence']
+# type name -> the package that declares it. Rule lives in categorize/,
+# everything else in money/. Rule was a SECOND duplicate declaration until
+# CI found it, so it belongs in this check as much as the others do.
+TYPES = {'Txn': 'com.tally.app.money', 'Category': 'com.tally.app.money',
+         'Settings': 'com.tally.app.money', 'RecurringSeries': 'com.tally.app.money',
+         'AccountId': 'com.tally.app.money', 'TxnSource': 'com.tally.app.money',
+         'CategoryKind': 'com.tally.app.money', 'RecurringCadence': 'com.tally.app.money',
+         'Rule': 'com.tally.app.categorize'}
 bad = []
 for root, _, files in os.walk('app/src'):
     for fn in files:
@@ -112,13 +118,13 @@ for root, _, files in os.walk('app/src'):
         t = open(p).read()
         pkg_m = re.search(r'^package\s+([\w.]+)', t, re.M)
         pkg = pkg_m.group(1) if pkg_m else ''
-        if pkg == 'com.tally.app.money':
-            continue
         # Strip comments and strings so prose mentions don't count as usage.
         body = re.sub(r'/\*.*?\*/', '', t, flags=re.S)
         body = re.sub(r'//[^\n]*', '', body)
         body = re.sub(r'"[^"\n]*"', '""', body)
-        for ty in TYPES:
+        for ty, owner in TYPES.items():
+            if pkg == owner:
+                continue
             # A real usage: as a type annotation, constructor call, or generic arg.
             if not re.search(r'(?<![\w.])' + ty + r'(?![\w])', body):
                 continue
@@ -127,9 +133,9 @@ for root, _, files in os.walk('app/src'):
             # Declared locally in this file (e.g. a Ui-layer type of the same name).
             if re.search(r'\b(class|interface|object|typealias|enum class)\s+' + ty + r'\b', body):
                 continue
-            bad.append(f"  {p}: uses '{ty}' with no import and no local declaration")
+            bad.append(f"  {p}: uses '{ty}' without importing {owner}.{ty}")
 if bad:
-    print("ERROR: domain type used without importing it (com.tally.app.money):")
+    print("ERROR: domain type used without importing it:")
     print("\n".join(sorted(set(bad))))
     sys.exit(1)
 PY
