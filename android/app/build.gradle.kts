@@ -76,6 +76,13 @@ dependencies {
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
+    // Instrumented-test deps for the launch smoke test. These are androidTest
+    // only — they are never part of the shipped APK.
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.1")

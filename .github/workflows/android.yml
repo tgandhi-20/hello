@@ -83,3 +83,57 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+
+  # Does the app actually start?
+  #
+  # Every other test here runs on the host JVM and would pass on an app that
+  # crashes the instant it opens — none of them touch an Activity, the Compose
+  # runtime, Room actually opening a database, or the Android Keystore. This
+  # job boots a real emulator and launches the app, which is the only check in
+  # the project that exercises any of that.
+  #
+  # Separate job, not a step: it needs KVM and takes several minutes, and a
+  # flaky emulator must never block the APK that the build job already
+  # produced and uploaded.
+  smoke:
+    name: Launch on emulator
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # The emulator needs hardware acceleration; ubuntu-latest runners expose
+      # KVM but not to an unprivileged user by default.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+        working-directory: .
+
+      # API 30 with the ATD (automated test device) image: no Play Services,
+      # no animations, markedly faster to boot than a full emulator, and
+      # sufficient for "does it reach first frame".
+      - name: Run launch smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: aosp_atd
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 4096M
+          disable-animations: true
+          working-directory: android
+          script: ./gradlew connectedDebugAndroidTest --stacktrace
