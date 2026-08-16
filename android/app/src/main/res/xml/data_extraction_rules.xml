@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (API 31) replaced the older allowBackup/fullBackupContent pair
+  with these rules, and applies them to two separate things:
+
+    cloud-backup   - Auto Backup to the user's Google Drive.
+    device-transfer - direct phone-to-phone transfer when setting up a new
+                      device.
+
+  Both exclude everything. allowBackup="false" already covers cloud backup on
+  older releases, but on API 31+ the rules file is what is actually consulted,
+  so leaving it out would silently re-enable exactly what that attribute is
+  there to prevent.
+
+  device-transfer is excluded too, and that is a deliberate choice rather than
+  an oversight. It is a genuine convenience to lose - a new phone starts with
+  an empty vault - but the transfer copies the encrypted database without ever
+  asking for the PIN, and the app cannot verify what is on the other end of
+  it. The supported way to move to a new phone is the .tally export in
+  Settings, which requires the PIN to restore and which the user performs
+  knowingly.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="file" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="file" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

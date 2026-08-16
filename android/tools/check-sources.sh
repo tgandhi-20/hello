@@ -60,6 +60,23 @@ if bad:
     print("ERROR: the INTERNET permission is declared in AndroidManifest.xml.")
     print("See docs/ANDROID-NATIVE.md section 3. Its absence is load-bearing.")
     sys.exit(1)
+
+# Auto Backup would copy the encrypted vault to the user's Google Drive on the
+# OS's own schedule. The app never makes that upload, so having no INTERNET
+# permission does not prevent it — the platform does it on the app's behalf.
+# allowBackup="true" is the platform DEFAULT, so this is not a thing someone
+# has to actively do wrong; deleting the attribute is enough to reintroduce it.
+app = root.find('application')
+if app.get(NS + 'allowBackup') != 'false':
+    print("ERROR: android:allowBackup must be \"false\".")
+    print("Auto Backup copies the encrypted vault off the device to Google Drive.")
+    sys.exit(1)
+# API 31+ consults the rules file instead of the attribute, so the attribute
+# alone is not enough on a modern phone.
+if app.get(NS + 'dataExtractionRules') is None:
+    print("ERROR: android:dataExtractionRules is missing.")
+    print("On API 31+ that file, not allowBackup, decides cloud backup and device transfer.")
+    sys.exit(1)
 PY
 then
   fail=1

@@ -13,8 +13,36 @@
       that promise explicitly with the user first.
     -->
 
+    <!--
+      allowBackup="false", and this is the single most important attribute in
+      this file after the absence of INTERNET.
+
+      With it true (the platform default, and what this file said until now)
+      Android Auto Backup silently copies the app's private data directory -
+      which is the whole encrypted vault - to the user's Google Drive, on the
+      OS's own schedule, with no prompt. The app never makes the upload, so
+      having no INTERNET permission does not prevent it: the operating system
+      does it on the app's behalf. That would have quietly undone the promise
+      the rest of this design is built around, and it would have done it
+      without a single line of code being wrong.
+
+      The vault is AES-256-GCM under a PBKDF2-600k key, so this was never
+      plaintext leaving the phone. It is still the wrong default here: the
+      user asked for their financial history to stay on their device, a
+      copy in cloud storage is a copy an attacker can attempt offline at
+      leisure, and the honest answer to "where does my data live" has to
+      stay "on the phone, and nowhere else".
+
+      Backups are the user's to make deliberately - Settings has an explicit
+      .tally export they control and can put wherever they choose.
+
+      android:extractNativeLibs and the rest are left at defaults; only the
+      data-egress-relevant flags are set here.
+    -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
         android:label="@string/app_name"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
