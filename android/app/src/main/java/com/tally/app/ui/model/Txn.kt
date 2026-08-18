@@ -15,6 +15,38 @@ data class UiTxn(
     val merchant: String,
     val categoryId: String,
     val note: String? = null,
+    /**
+     * Raw transaction text as it appeared before merchant cleanup
+     * (`money.Txn.description`) — kept separate from [merchant] so search
+     * can still find wording `cleanMerchant` stripped out. `null` until
+     * populated; a search predicate must fall back to [merchant] alone,
+     * never crash on a missing value.
+     *
+     * GAP: neither `VaultTallyDataSource.toUiTxn` nor `DemoTallyDataSource`
+     * (both in `ui/data`, out of this package's ownership) set this field
+     * yet — every [UiTxn] in the running app has `description == null`
+     * today. See `ui/transactions`'s task report for the exact one-line fix
+     * each needs.
+     */
+    val description: String? = null,
+    /**
+     * The account this transaction belongs to, as a plain id
+     * (`money.AccountId.id`, e.g. `"amex"`) — mirrors [categoryId] rather
+     * than importing `money.AccountId` into this seam-facing package, same
+     * as every other Ui* shape in this file. `null` means "unknown", which
+     * a per-account filter must treat as "does not match any specific
+     * account" — never as a silent match for every account.
+     *
+     * GAP: same as [description] — `ui/data` does not populate this yet.
+     */
+    val account: String? = null,
+    /**
+     * Mirrors `money.Txn.excluded` — excluded from budgets/insights (e.g. a
+     * reimbursed expense, an internal transfer). Defaults to `false`, which
+     * is indistinguishable from "really not excluded" until `ui/data`
+     * populates the real value — same gap as [description].
+     */
+    val excluded: Boolean = false,
 )
 
 /** One day's worth of transactions plus its subtotal — what the transactions

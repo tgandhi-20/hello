@@ -46,26 +46,38 @@ import com.tally.app.ui.theme.TallyColors
 import com.tally.app.ui.theme.TallyType
 
 /**
- * Home — the summary screen (DESIGN-V4.md §1/§2). Every figure on this
- * screen comes from ONE upstream call ([TallyDataSource.monthMoney]) — no
- * section here recomputes a total of its own, matching the equivalent web
- * screen's own doc comment (`src/features/today/TodayScreen.tsx`).
+ * Home — accounts, not a dashboard (DESIGN-V5.md §1/§3). Every figure on
+ * this screen comes from ONE upstream recompute pass
+ * ([TallyDataSource.monthMoney] and [TallyDataSource.accounts] are both
+ * derived from the same hydrated ledger in the same pass — see
+ * `VaultTallyDataSource.recomputeMoney`) — no section here recomputes a
+ * total of its own.
  *
- * In order (DESIGN-V4.md §1):
- *   1. The equation — the actual subtraction, laid out.
- *   2. Where it went — this month's category breakdown, largest first.
+ * In order (DESIGN-V5.md §3):
+ *   1. The equation — the actual subtraction, laid out. This is why the app
+ *      exists rather than a bank app, and it stays at the top, above the
+ *      accounts.
+ *   2. The accounts list — one row per account, its derived figure (or
+ *      "nothing imported yet"), and the date it's good to. Tapping a row
+ *      opens that account's transactions via [onOpenAccount].
  *   3. Bills due soon — the next 14 days.
  *   4. Deposit plan — one row, not a card.
  *   5. To sort out — renders ONLY when there's genuinely something to say.
+ *
+ * "Where it went" (the category breakdown) moved to the Spend tab
+ * (DESIGN-V5.md §3's "Spend — categories by month") and is deliberately not
+ * rendered here any more.
  */
 @Composable
 fun HomeScreen(
     dataSource: TallyDataSource,
     modifier: Modifier = Modifier,
+    onOpenAccount: (AccountId) -> Unit = {},
     onOpenDepositPlan: () -> Unit = {},
     onOpenToSortOutItem: (UiToSortOutItem) -> Unit = {},
 ) {
     val money = dataSource.monthMoney.value
+    val accounts = dataSource.accounts.value
     val bills = dataSource.billsDueSoon.value
     val deposit = dataSource.depositPlan.value
     val toSortOut = dataSource.toSortOut.value
@@ -94,7 +106,7 @@ fun HomeScreen(
         if (skipped > 0) SkippedRecordsNotice(skipped)
 
         EquationSection(money)
-        WhereItWentSection(money)
+        AccountsSection(accounts = accounts, onOpenAccount = onOpenAccount)
         BillsDueSoonSection(bills)
         DepositPlanRow(deposit, onClick = onOpenDepositPlan)
         ToSortOutSection(toSortOut, onClick = onOpenToSortOutItem)
@@ -229,37 +241,6 @@ private fun EquationRow(
                 color = if (emphasis) TallyColors.Ink1 else TallyColors.Ink2,
                 fontSize = if (emphasis) 17.sp else TextUnit.Unspecified,
             )
-        }
-    }
-}
-
-@Composable
-private fun WhereItWentSection(money: UiMonthMoney) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TallySectionLabel("Where it went")
-        if (money.spentCents == 0L) {
-            TallyListGroup {
-                TallyEmptyState(
-                    headline = "Nothing logged yet this month",
-                    body = "Spending you log or import shows up here, biggest category first.",
-                )
-            }
-        } else {
-            TallyListGroup {
-                money.byCategory.forEachIndexed { index, row ->
-                    if (index > 0) TallyDivider()
-                    TallyListRow(
-                        title = row.label,
-                        leading = { CategoryBadge(colorIndex = row.colorIndex, label = row.label) },
-                        trailing = { MoneyText(cents = row.spentCents) },
-                    )
-                }
-                TallyDivider()
-                TallyListRow(
-                    title = "Total",
-                    trailing = { MoneyText(cents = money.spentCents, color = TallyColors.Ink1) },
-                )
-            }
         }
     }
 }
