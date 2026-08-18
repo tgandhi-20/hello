@@ -114,8 +114,17 @@ class VaultRepository private constructor(context: Context) {
         dao.putMeta(MetaRecord(MetaKeys.VERIFIER, blobToJsonString(verifier)))
         dao.putMeta(MetaRecord(MetaKeys.UNLOCK_CONFIG, config.toJson().stringify()))
 
+        // Seed the default category set — mirrors useStore.ts's
+        // `initializeFreshVault`. Without this a brand-new vault has zero
+        // categories forever (nothing else in this tree ever creates one):
+        // quick-add has nothing to show, and every CSV-imported row
+        // categorises to an empty categoryId instead of falling through to
+        // "Other" — see DefaultCategories.kt's doc comment.
+        val categories = buildDefaultCategories()
+        dao.putCategories(categories.map { encryptCategory(key, it) })
+
         // Seed default single settings row so getAllSettings() always has exactly one row post-setup.
-        dao.putSettings(encryptSettings(key, DEFAULT_SETTINGS))
+        dao.putSettings(encryptSettings(key, DEFAULT_SETTINGS.copy(pinnedCategoryIds = DEFAULT_PINNED_CATEGORY_IDS)))
 
         VaultKeyHolder.set(key)
         lockoutStore.write(LockoutPolicy.onSuccess())
