@@ -6,6 +6,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import com.tally.app.money.AccountBalance
+import com.tally.app.money.AccountId
 import com.tally.app.ui.model.Cents
 import com.tally.app.ui.model.CategoryKind
 import com.tally.app.ui.model.UiBillDueSoon
@@ -125,6 +127,22 @@ private fun seedBillsDueSoon(today: LocalDate): List<UiBillDueSoon> = listOf(
     ),
 )
 
+/**
+ * Demo-only account rows — [DemoTallyDataSource] has no `com.tally.app.money.Txn`
+ * list behind it to derive these from (its transactions are the lighter
+ * `UiTxn` shape, which carries no account), so this is a small hand-picked
+ * set instead of a real [com.tally.app.money.buildAccountBalances] pass. One
+ * entry deliberately has [AccountBalance.NoImports] so the demo still shows
+ * every row state a real vault can produce.
+ */
+private fun seedAccountBalances(today: LocalDate): List<AccountBalance> = listOf(
+    AccountBalance.Derived(AccountId.CBA, derivedBalanceCents = 214_355L, asAtDate = today.minusDays(1), txnCount = 41),
+    AccountBalance.Derived(AccountId.CBA_CARD, derivedBalanceCents = 120_455L, asAtDate = today.minusDays(2), txnCount = 18),
+    AccountBalance.Derived(AccountId.BANKWEST, derivedBalanceCents = -18_000L, asAtDate = today.minusDays(6), txnCount = 5),
+    AccountBalance.NoImports(AccountId.AMEX),
+    AccountBalance.Derived(AccountId.CASH, derivedBalanceCents = 4_500L, asAtDate = today, txnCount = 3),
+)
+
 class DemoTallyDataSource : TallyDataSource {
     private val today: LocalDate = LocalDate.now()
 
@@ -140,6 +158,8 @@ class DemoTallyDataSource : TallyDataSource {
     override val skippedRecordCount: State<Int> = mutableStateOf(0)
 
     override val categories: State<List<UiCategory>> = mutableStateOf(DEMO_CATEGORIES)
+
+    override val accounts: State<List<AccountBalance>> = mutableStateOf(seedAccountBalances(today))
 
     override val transactions: State<List<UiTxn>> = derivedStateOf {
         _transactions.sortedByDescending { it.date }
@@ -217,6 +237,11 @@ class DemoTallyDataSource : TallyDataSource {
     override suspend fun deleteTransaction(id: String) {
         _transactions.removeAll { it.id == id }
     }
+
+    // Demo data has no real per-month ledger to re-derive from — every month
+    // returns this same fixed `monthMoney` value. A real implementation
+    // (VaultTallyDataSource) re-runs computeMonthMoney for the requested month.
+    override suspend fun monthMoneyFor(month: YearMonth): UiMonthMoney = monthMoney.value
 }
 
 @Composable

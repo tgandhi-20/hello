@@ -1,6 +1,7 @@
 package com.tally.app.ui.data
 
 import androidx.compose.runtime.State
+import com.tally.app.money.AccountBalance
 import com.tally.app.ui.model.Cents
 import com.tally.app.ui.model.UiBillDueSoon
 import com.tally.app.ui.model.UiCategory
@@ -8,6 +9,7 @@ import com.tally.app.ui.model.UiDepositPlan
 import com.tally.app.ui.model.UiMonthMoney
 import com.tally.app.ui.model.UiToSortOutItem
 import com.tally.app.ui.model.UiTxn
+import java.time.YearMonth
 
 /** Mirrors `src/types.ts`'s `LockState`, narrowed to what the UI branches on:
  *  whether the vault is currently readable. */
@@ -45,6 +47,17 @@ enum class VaultLockState { LOCKED, UNLOCKED }
  *                         only ever surface the `uncategorised` and
  *                         `price-rise` kinds `buildToSortOut` also computes.
  *                         Empty list = render nothing (DESIGN-V4.md §1/§3).
+ *  - `accounts`        <- `com.tally.app.money.buildAccountBalances`, run
+ *                         against the SAME cached `txns` as `monthMoney`, in
+ *                         the same recompute pass (DESIGN-V5.md §2/§3). This
+ *                         is the one place this seam exposes a
+ *                         `com.tally.app.money` type directly rather than a
+ *                         `Ui*` mirror: `AccountBalance` is already an
+ *                         immutable, UI-safe value type, and `AccountId`
+ *                         already crosses this exact boundary as
+ *                         `HomeScreen`'s `onOpenAccount(AccountId)` nav
+ *                         callback, so a parallel `UiAccount` copy would add
+ *                         a mapping step without adding any real decoupling.
  *  - `categories`      <- the vault's category table (`VaultRepository`).
  *  - `transactions`    <- the vault's transaction list, newest-first.
  *  - `lockState`       <- `VaultRepository.isUnlocked()`.
@@ -59,6 +72,12 @@ enum class VaultLockState { LOCKED, UNLOCKED }
  *                         Quick-add's Undo action calls `deleteTransaction`
  *                         on the just-added id, exactly like the web app's
  *                         toast action.
+ *  - `monthMoneyFor`   <- the spend tracker's prev/next month navigation.
+ *                         `com.tally.app.money.computeMonthMoney` run for an
+ *                         arbitrary month through the SAME params-building
+ *                         path `monthMoney` uses for the current month —
+ *                         never a second derivation path that could disagree
+ *                         with it (docs/AGENT-BRIEF.md §3).
  *
  * All money in and out of this interface is `Long` cents — the UI never
  * computes a financial figure, only formats one (see `ui/model/Money.kt`).
@@ -66,6 +85,10 @@ enum class VaultLockState { LOCKED, UNLOCKED }
 interface TallyDataSource {
     val lockState: State<VaultLockState>
     val categories: State<List<UiCategory>>
+    /** One row per [com.tally.app.money.AccountId], always all five — see
+     *  this interface's doc comment above for why this is the one field here
+     *  that is a `com.tally.app.money` type rather than a `Ui*` mirror. */
+    val accounts: State<List<AccountBalance>>
     val monthMoney: State<UiMonthMoney>
     val billsDueSoon: State<List<UiBillDueSoon>>
     val depositPlan: State<UiDepositPlan>
@@ -86,4 +109,10 @@ interface TallyDataSource {
     suspend fun addTransaction(categoryId: String, amountCents: Cents, note: String?): UiTxn
 
     suspend fun deleteTransaction(id: String)
+
+    /** [UiMonthMoney] for an arbitrary [month] — the spend tracker's
+     *  prev/next month navigation. `suspend` because a real implementation
+     *  runs [com.tally.app.money.computeMonthMoney] over the whole cached
+     *  ledger, same convention as [addTransaction]/[deleteTransaction]. */
+    suspend fun monthMoneyFor(month: YearMonth): UiMonthMoney
 }

@@ -4,6 +4,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.tally.app.data.VaultRepository
+import com.tally.app.money.AccountBalance
 import com.tally.app.money.AccountId
 import com.tally.app.money.BillDueSoonCertainty
 import com.tally.app.money.BillDueSoonItem
@@ -18,6 +19,7 @@ import com.tally.app.money.Settings
 import com.tally.app.money.ToSortOutItem
 import com.tally.app.money.Txn
 import com.tally.app.money.TxnSource
+import com.tally.app.money.buildAccountBalances
 import com.tally.app.money.buildBillsDueSoon
 import com.tally.app.money.buildToSortOut
 import com.tally.app.money.computeMonthMoney
@@ -205,6 +207,7 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
     private val _computed = mutableStateOf<MonthMoney?>(null)
     private val _billsDueSoon = mutableStateOf<List<UiBillDueSoon>>(emptyList())
     private val _toSortOut = mutableStateOf<List<UiToSortOutItem>>(emptyList())
+    private val _accounts = mutableStateOf<List<AccountBalance>>(emptyList())
 
     private val _skippedRecordCount = mutableStateOf(0)
 
@@ -231,6 +234,7 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
 
     override val billsDueSoon: State<List<UiBillDueSoon>> = _billsDueSoon
     override val toSortOut: State<List<UiToSortOutItem>> = _toSortOut
+    override val accounts: State<List<AccountBalance>> = _accounts
 
     override val transactions: State<List<UiTxn>> = derivedStateOf {
         _txns.value.map(::toUiTxn).sortedByDescending { it.date }
@@ -313,8 +317,26 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
         _computed.value = null
         _billsDueSoon.value = emptyList()
         _toSortOut.value = emptyList()
+        _accounts.value = emptyList()
         _skippedRecordCount.value = 0
     }
+
+    /**
+     * The [ComputeMonthMoneyParams] for [month], built from whatever is
+     * currently cached in `_txns`/`_recurring`/`_settings`/`_rawCategories`.
+     * Factored out of [recomputeMoney] so [monthMoneyFor] can ask
+     * [computeMonthMoney] the SAME question for a different month without
+     * duplicating the params block — never a second derivation path
+     * (docs/AGENT-BRIEF.md §3).
+     */
+    private fun paramsFor(month: YearMonth, today: LocalDate): ComputeMonthMoneyParams = ComputeMonthMoneyParams(
+        txns = _txns.value,
+        recurring = _recurring.value,
+        settings = _settings.value,
+        categories = _rawCategories.value,
+        month = month,
+        today = today,
+    )
 
     /**
      * The single recompute pass every hydrate/mutation runs through.
@@ -328,19 +350,14 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
      * `ToSortOut.kt`'s own doc comment. `buildToSortOut` still applies its
      * "vaultHasData" gate and returns the `uncategorised`/`price-rise` items
      * it can already compute without it.
+     *
+     * `accounts` is built here too, off the exact same `_txns.value` this
+     * pass already reads for `computeMonthMoney` — one more view of the one
+     * hydrated ledger, never a second vault scan (docs/AGENT-BRIEF.md §3).
      */
     private fun recomputeMoney() {
         val today = LocalDate.now()
-        _computed.value = computeMonthMoney(
-            ComputeMonthMoneyParams(
-                txns = _txns.value,
-                recurring = _recurring.value,
-                settings = _settings.value,
-                categories = _rawCategories.value,
-                month = YearMonth.from(today),
-                today = today,
-            ),
-        )
+        _computed.value = computeMonthMoney(paramsFor(YearMonth.from(today), today))
         _billsDueSoon.value = buildBillsDueSoon(
             txns = _txns.value,
             recurring = _recurring.value,
@@ -353,6 +370,21 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
             resolvedRoutineItems = emptyList(),
             today = today,
         ).map(::toUiToSortOutItem)
+        _accounts.value = buildAccountBalances(_txns.value)
+    }
+
+    /**
+     * The spend tracker's prev/next month navigation — [computeMonthMoney]
+     * run for an arbitrary [month] instead of the current one, through the
+     * SAME [paramsFor] the current-month recompute pass uses, so this can
+     * never disagree with `monthMoney` for the current month
+     * (docs/AGENT-BRIEF.md §3: one money engine, never a second derivation
+     * path). `suspend`/`Dispatchers.IO` because this walks the whole cached
+     * ledger doing real arithmetic, same convention as this class's other
+     * suspend members.
+     */
+    override suspend fun monthMoneyFor(month: YearMonth): UiMonthMoney = withContext(Dispatchers.IO) {
+        toUiMonthMoney(computeMonthMoney(paramsFor(month, LocalDate.now())))
     }
 
     override suspend fun addTransaction(categoryId: String, amountCents: Long, note: String?): UiTxn {
