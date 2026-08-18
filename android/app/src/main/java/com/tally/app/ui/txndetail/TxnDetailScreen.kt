@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -166,11 +167,12 @@ fun TxnDetailScreen(
             }
 
             TallySectionLabel("Note")
-            if (txn.note.isNullOrBlank()) {
+            val note = txn.note
+            if (note.isNullOrBlank()) {
                 Text(text = "No note", style = MaterialTheme.typography.bodyMedium, color = TallyColors.Ink3, modifier = Modifier.padding(horizontal = 4.dp))
             } else {
                 OutlinedTextField(
-                    value = txn.note,
+                    value = note,
                     onValueChange = {},
                     enabled = false,
                     modifier = Modifier.fillMaxWidth(),
