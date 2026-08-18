@@ -234,6 +234,25 @@ class DemoTallyDataSource : TallyDataSource {
         return txn
     }
 
+    /** In-memory only — the demo source has no vault behind it. */
+
+    override suspend fun updateTransaction(id: String, patch: (UiTxn) -> UiTxn): UiTxn {
+
+        val existing = _transactions.firstOrNull { it.id == id }
+
+            ?: error("updateTransaction: no transaction with id $id")
+
+        val updated = patch(existing)
+
+        val i = _transactions.indexOfFirst { it.id == id }
+
+        _transactions[i] = updated
+
+        return updated
+
+    }
+
+
     override suspend fun deleteTransaction(id: String) {
         _transactions.removeAll { it.id == id }
     }

@@ -125,6 +125,15 @@ internal fun toUiTxn(t: Txn): UiTxn = UiTxn(
     merchant = t.merchant,
     categoryId = t.categoryId,
     note = t.note,
+    // These three were left unset when UiTxn only had to feed a list row.
+    // Search needs `description`, because merchant cleanup strips wording the
+    // user may well search for; the detail screen needs `account` and
+    // `excluded` to show what is actually true of the transaction. Leaving
+    // them at their defaults meant every transaction claimed to have no
+    // account and to be included, which is a quiet lie rather than a gap.
+    description = t.description,
+    account = t.account.id,
+    excluded = t.excluded,
 )
 
 /** [UiBillDueSoon] drops [BillDueSoonItem.kind] (the UI doesn't branch on it)
@@ -407,6 +416,37 @@ class VaultTallyDataSource(private val repository: VaultRepository) : TallyDataS
         _txns.value = _txns.value + txn
         recomputeMoney()
         return toUiTxn(txn)
+    }
+
+    /**
+     * Edit one transaction — the category correction, the note, the exclude
+     * toggle.
+     *
+     * Takes a patch over the Ui shape rather than a set of nullable fields, so
+     * a caller cannot accidentally clear `note` by omitting it. The patch is
+     * applied to the DOMAIN object, not the Ui one: `UiTxn` is a projection
+     * that drops fields (hash, source, createdAt, recurringId), so rebuilding
+     * a `Txn` from it would silently discard them.
+     */
+    override suspend fun updateTransaction(id: String, patch: (UiTxn) -> UiTxn): UiTxn {
+        val existing = _txns.value.find { it.id == id }
+            ?: error("updateTransaction: no transaction with id $id")
+        val patched = patch(toUiTxn(existing))
+        val saved = withContext(Dispatchers.IO) {
+            repository.updateTxn(existing) { domain ->
+                domain.copy(
+                    categoryId = patched.categoryId,
+                    note = patched.note,
+                    excluded = patched.excluded,
+                )
+            }
+        }
+        _txns.value = _txns.value.map { if (it.id == id) saved else it }
+        // Re-run the one engine: re-categorising moves money between category
+        // rows, and excluding removes it from spent entirely, so every figure
+        // on Home changes with this write.
+        recomputeMoney()
+        return toUiTxn(saved)
     }
 
     override suspend fun deleteTransaction(id: String) {

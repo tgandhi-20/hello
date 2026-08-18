@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.tally.app.money.AccountId
 import com.tally.app.ui.components.CategoryBadge
 import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyEmptyState
@@ -46,6 +47,7 @@ import com.tally.app.ui.model.formatMoney
 import com.tally.app.ui.model.formatRelativeDay
 import com.tally.app.ui.model.formatTxnAmount
 import com.tally.app.ui.model.groupTxnsByDay
+import com.tally.app.ui.statements.accountDisplayName
 import com.tally.app.ui.theme.TallyColors
 import com.tally.app.ui.theme.TallyControlRadius
 import com.tally.app.ui.theme.TallyIcons
@@ -64,6 +66,15 @@ import java.time.YearMonth
  * box currently matches — searching must never change what balance a
  * visible row reports, exactly like a real statement.
  *
+ * [accountId] is the real `com.tally.app.money.AccountId` — the same type
+ * `ui/accounts`'s `AccountsSection.onOpenAccount(AccountId)` already hands
+ * the nav layer, so the orchestrator can wire that callback straight into
+ * this parameter with no conversion step. The display name is resolved
+ * internally via `ui/statements`'s existing `accountDisplayName`, the same
+ * function `ui/accounts` itself now reuses for its row titles — not a third
+ * copy of that id-to-label map (docs/AGENT-BRIEF.md section 1's own warning
+ * about exactly that duplication).
+ *
  * KNOWN GAP (see this build's task report for the exact fix): [UiTxn.account]
  * is not yet populated by `ui/data` (`VaultTallyDataSource.toUiTxn` /
  * `DemoTallyDataSource`, both outside this package), so passing [accountId]
@@ -72,33 +83,27 @@ import java.time.YearMonth
  * never a fabricated `$0.00` or an invented row — rather than silently
  * falling back to every account's transactions unlabelled.
  *
- * @param accountId one account's id (`money.AccountId.id`, e.g. `"amex"`) to
- *   scope this list to, or `null` for every account — the original
- *   behaviour, with no running balance shown (summing unrelated accounts
- *   into one running figure would be meaningless).
- * @param accountLabel the account's display name (e.g. `"Amex"`), used in
- *   the header and empty-state copy. The caller supplies this rather than
- *   this screen deriving it from [accountId] itself — an id-to-display-name
- *   map for `AccountId` already exists twice over (`ui/csvimport`,
- *   `ui/statements`); this screen deliberately does not add a third copy
- *   (docs/AGENT-BRIEF.md section 1's own warning about exactly that).
+ * @param accountId one account to scope this list to, or `null` for every
+ *   account — the original behaviour, with no running balance shown
+ *   (summing unrelated accounts into one running figure would be
+ *   meaningless).
  * @param onOpenTxn called with a transaction's id when its row is tapped.
  *   The orchestrator wires this to `ui/txndetail`'s `TxnDetailScreen`.
  */
 @Composable
 fun TransactionsScreen(
     dataSource: TallyDataSource,
-    accountId: String? = null,
-    accountLabel: String? = null,
+    accountId: AccountId? = null,
     modifier: Modifier = Modifier,
     onOpenTxn: (String) -> Unit = {},
 ) {
     val allTxns = dataSource.transactions.value
     val categories = dataSource.categories.value
     val categoryById = remember(categories) { categories.associateBy { it.id } }
+    val accountLabel = accountId?.let(::accountDisplayName)
 
     val scopedTxns = remember(allTxns, accountId) {
-        if (accountId == null) allTxns else allTxns.filter { it.account == accountId }
+        if (accountId == null) allTxns else allTxns.filter { it.account == accountId.id }
     }
 
     var query by remember { mutableStateOf("") }

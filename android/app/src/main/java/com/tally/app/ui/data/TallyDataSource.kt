@@ -108,6 +108,15 @@ interface TallyDataSource {
      *  call from a `CoroutineScope` (`rememberCoroutineScope()` in Compose). */
     suspend fun addTransaction(categoryId: String, amountCents: Cents, note: String?): UiTxn
 
+    /**
+     * Edit one transaction: re-categorise it, change its note, or exclude it
+     * from budgets. Returns the stored result.
+     *
+     * A patch function rather than nullable fields, so omitting an argument
+     * cannot silently clear a note.
+     */
+    suspend fun updateTransaction(id: String, patch: (UiTxn) -> UiTxn): UiTxn
+
     suspend fun deleteTransaction(id: String)
 
     /** [UiMonthMoney] for an arbitrary [month] — the spend tracker's
