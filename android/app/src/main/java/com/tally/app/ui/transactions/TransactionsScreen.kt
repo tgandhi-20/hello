@@ -145,7 +145,7 @@ fun TransactionsScreen(
 
     Column(modifier = modifier.fillMaxSize().background(TallyColors.Ground)) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, top = 20.dp, bottom = 12.dp),
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             TallyBackHeader(onBack = onBack)

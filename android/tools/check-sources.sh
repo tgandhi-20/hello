@@ -219,6 +219,21 @@ if [ -d app/src/test/resources ] && command -v git >/dev/null 2>&1; then
   fi
 fi
 
+# ---------------------------------------------------------------------------
+# 7. Mixed Modifier.padding overloads.
+#
+# Compose has padding(start, top, end, bottom) and padding(horizontal,
+# vertical). They are different overloads and cannot be combined, so
+# `padding(horizontal = 16.dp, top = 20.dp)` fails with "Cannot find a
+# parameter with this name: top" — an error that names the parameter but not
+# the reason, and reads as though `top` does not exist at all.
+if hits=$(grep -rnE 'padding\([^)]*\b(horizontal|vertical)[[:space:]]*=[^)]*\b(top|bottom|start|end)[[:space:]]*=|padding\([^)]*\b(top|bottom|start|end)[[:space:]]*=[^)]*\b(horizontal|vertical)[[:space:]]*=' --include='*.kt' app/src 2>/dev/null); then
+  echo "ERROR: Modifier.padding mixes the (horizontal, vertical) overload with"
+  echo "edge parameters. Use all four edges, or chain two padding calls."
+  echo "$hits"
+  fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo
   echo "Source checks failed."
