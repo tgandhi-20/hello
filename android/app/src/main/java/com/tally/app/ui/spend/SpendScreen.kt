@@ -47,6 +47,13 @@ import com.tally.app.ui.theme.TallyIcons
 import com.tally.app.ui.theme.TallyPillRadius
 import com.tally.app.ui.theme.TallyType
 import java.time.YearMonth
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.tally.app.ui.components.a11yClickable
+import com.tally.app.ui.model.UiMonthMoney
 
 /**
  * Spend — the category breakdown for a month; Tally's equivalent of the
@@ -79,8 +86,22 @@ fun SpendScreen(
     onOpenCategory: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val money = dataSource.monthMoney.value
-    val monthLabel = remember { formatMonthLabel(YearMonth.now()) }
+    // The month being viewed. `monthMoney` is always the CURRENT month, so it
+    // seeds the state and is used directly whenever that is what is selected —
+    // that way the default view shares the exact object Home renders from and
+    // cannot drift from it by so much as a recomposition.
+    val thisMonth = remember { YearMonth.now() }
+    var selectedMonth by remember { mutableStateOf(thisMonth) }
+    val currentMonthMoney = dataSource.monthMoney.value
+    var pastMonthMoney by remember { mutableStateOf<UiMonthMoney?>(null) }
+
+    // Ask the one money engine for other months. Never derived here.
+    LaunchedEffect(selectedMonth, currentMonthMoney) {
+        pastMonthMoney = if (selectedMonth == thisMonth) null else dataSource.monthMoneyFor(selectedMonth)
+    }
+
+    val money = if (selectedMonth == thisMonth) currentMonthMoney else pastMonthMoney
+    val monthLabel = formatMonthLabel(selectedMonth)
 
     Column(
         modifier = modifier
@@ -97,56 +118,83 @@ fun SpendScreen(
             modifier = Modifier.semantics(mergeDescendants = false) { heading() },
         )
 
-        SpendMonthNav(label = monthLabel)
-
-        TotalSpentCard(spentCents = money.spentCents, monthLabel = monthLabel)
-
-        SpendCategoriesSection(
-            byCategory = money.byCategory,
-            totalCents = money.spentCents,
-            onOpenCategory = onOpenCategory,
+        SpendMonthNav(
+            label = monthLabel,
+            onPrev = { selectedMonth = selectedMonth.minusMonths(1) },
+            onNext = { selectedMonth = selectedMonth.plusMonths(1) },
+            // Never page into the future. A month that has not happened yet
+            // has no spending, and rendering its zeroes looks exactly like a
+            // real answer meaning "you spent nothing".
+            nextEnabled = selectedMonth < thisMonth,
         )
+
+        if (money == null) {
+            // A past month is still being computed. Render nothing rather than
+            // the previous month's figures under the new month's heading, which
+            // would be a wrong number rather than a missing one.
+            Box(modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp))
+        } else {
+            TotalSpentCard(spentCents = money.spentCents, monthLabel = monthLabel)
+
+            SpendCategoriesSection(
+                byCategory = money.byCategory,
+                totalCents = money.spentCents,
+                onOpenCategory = onOpenCategory,
+            )
+        }
     }
 }
 
 /**
- * Previous/next month controls. Both are disabled today — see this file's
- * top doc comment for why. What unblocks them: a `TallyDataSource` addition
- * along the lines of
+ * Previous/next month controls.
  *
- *     suspend fun monthMoneyFor(month: java.time.YearMonth): UiMonthMoney
+ * These were disabled when this screen was written, because `monthMoney` only
+ * ever holds the CURRENT month and the alternative — scanning transactions
+ * here to build a past month — would have been a second money engine. The
+ * web app had four of those and they disagreed with each other on screen.
+ * `TallyDataSource.monthMoneyFor` now exists and routes through the same
+ * `computeMonthMoney` call with a different month, so the controls are live.
  *
- * (or an equivalent month parameter threaded onto the existing `monthMoney`
- * state) so this screen can ask the ONE money engine for a different month's
- * figures instead of ever deriving one itself. Once that exists, this
- * composable's two `Box`es become clickable exactly like
- * `TransactionsScreen.kt`'s own prev/next month controls (`goPrevMonth`,
- * `goNextMonth`, and a `nextDisabled` guard that never lets `month` advance
- * past `YearMonth.now()`), and the caption below is deleted.
+ * Next is disabled at the current month. There is nothing wrong with the
+ * arithmetic for a future month — it simply returns zeroes, and zeroes look
+ * identical to a real answer meaning "you spent nothing".
  */
 @Composable
-private fun SpendMonthNav(label: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+private fun SpendMonthNav(
+    label: String,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    nextEnabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                .a11yClickable(description = "Previous month", onClick = onPrev),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                TallyIcons.ChevronLeft(tint = TallyColors.Ink3, modifier = Modifier.size(24.dp))
-            }
-            Text(text = label, style = MaterialTheme.typography.titleSmall, color = TallyColors.Ink1)
-            Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                TallyIcons.ChevronRight(tint = TallyColors.Ink3, modifier = Modifier.size(24.dp))
-            }
+            TallyIcons.ChevronLeft(tint = TallyColors.Ink1, modifier = Modifier.size(24.dp))
         }
-        Text(
-            text = "Only this month is available right now",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TallyColors.Ink3,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Text(text = label, style = MaterialTheme.typography.titleSmall, color = TallyColors.Ink1)
+        Box(
+            modifier = Modifier
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                .then(
+                    if (nextEnabled) Modifier.a11yClickable(description = "Next month", onClick = onNext)
+                    else Modifier
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            TallyIcons.ChevronRight(
+                tint = if (nextEnabled) TallyColors.Ink1 else TallyColors.Ink3,
+                modifier = Modifier.size(24.dp),
+            )
+        }
     }
 }
 
