@@ -37,4 +37,31 @@ class SettingsScreenLogicTest {
         val values = AUTO_LOCK_OPTIONS.map { it.second }
         assertTrue(values.size == values.toSet().size)
     }
+
+    @Test
+    fun `sanitizeAmountInput strips everything but digits and dots`() {
+        assertEquals("6457.00", sanitizeAmountInput("\$6,457.00"))
+        assertEquals("350000", sanitizeAmountInput("350000"))
+    }
+
+    @Test
+    fun `sanitizeAmountInput keeps only the first dot`() {
+        assertEquals("1.23", sanitizeAmountInput("1.2.3"))
+        assertEquals("1.", sanitizeAmountInput("1.."))
+    }
+
+    @Test
+    fun `sanitizeAmountInput caps decimal digits at 2`() {
+        assertEquals("1.23", sanitizeAmountInput("1.239"))
+    }
+
+    @Test
+    fun `sanitizeAmountInput caps whole-dollar digits at 6`() {
+        assertEquals("999999", sanitizeAmountInput("9999999"))
+    }
+
+    @Test
+    fun `sanitizeAmountInput on empty input is empty`() {
+        assertEquals("", sanitizeAmountInput(""))
+    }
 }

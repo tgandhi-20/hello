@@ -28,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -35,17 +36,16 @@ import androidx.compose.ui.unit.sp
 import com.tally.app.ui.components.CategoryBadge
 import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyEmptyState
+import com.tally.app.ui.components.TallyBackHeader
 import com.tally.app.ui.components.TallyListGroup
 import com.tally.app.ui.components.TallyListRow
 import com.tally.app.ui.components.TallySectionLabel
-import com.tally.app.ui.components.a11yRow
 import com.tally.app.ui.data.TallyDataSource
 import com.tally.app.money.AccountId
 import com.tally.app.ui.model.formatTxnAmount
 import com.tally.app.ui.statements.accountDisplayName
 import com.tally.app.ui.theme.TallyCardRadius
 import com.tally.app.ui.theme.TallyColors
-import com.tally.app.ui.theme.TallyIcons
 import com.tally.app.ui.theme.TallyType
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -109,10 +109,10 @@ fun TxnDetailScreen(
             .fillMaxSize()
             .background(TallyColors.Ground)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        BackHeader(onBack = onBack)
+        TallyBackHeader(onBack = onBack)
 
         if (txn == null) {
             // The transaction was deleted (e.g. from another entry point)
@@ -218,6 +218,7 @@ fun TxnDetailScreen(
                         Switch(
                             checked = txn.excluded,
                             onCheckedChange = { on -> save { it.copy(excluded = on) } },
+                            modifier = Modifier.semantics { contentDescription = "Exclude from budget" },
                         )
                     },
                 )
@@ -241,7 +242,12 @@ fun TxnDetailScreen(
         AlertDialog(
             onDismissRequest = { if (!deleting) confirmingDelete = false },
             title = { Text("Delete this transaction?") },
-            text = { Text("This can't be undone.") },
+            text = {
+                Text(
+                    "It's removed from your ledger for good -- every total that includes it, on " +
+                        "Home, Spend and Budgets, updates once it's gone.",
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -262,20 +268,6 @@ fun TxnDetailScreen(
                 TextButton(onClick = { if (!deleting) confirmingDelete = false }) { Text("Cancel") }
             },
         )
-    }
-}
-
-@Composable
-private fun BackHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .a11yRow(description = "Back", onClick = onBack),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        TallyIcons.ChevronLeft(modifier = Modifier.size(20.dp))
-        Text(text = "Back", style = MaterialTheme.typography.labelLarge, color = TallyColors.Ink2)
     }
 }
 

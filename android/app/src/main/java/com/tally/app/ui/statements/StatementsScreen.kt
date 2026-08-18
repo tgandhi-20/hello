@@ -4,11 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -28,13 +26,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tally.app.data.VaultRepository
+import com.tally.app.ui.components.TallyBackHeader
 import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyListGroup
 import com.tally.app.ui.components.TallyListRow
-import com.tally.app.ui.components.a11yClickable
+import com.tally.app.ui.components.TallySectionLabel
 import com.tally.app.ui.theme.TallyCardRadius
 import com.tally.app.ui.theme.TallyColors
-import com.tally.app.ui.theme.TallyIcons
 import com.tally.app.ui.theme.TallyType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -68,9 +66,18 @@ fun StatementsScreen(
             .fillMaxSize()
             .background(TallyColors.Ground)
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp),
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        StatementsHeader(onBack = onBack)
+        TallyBackHeader(onBack = onBack)
+
+        Text(
+            text = "Statements",
+            style = TallyType.Title,
+            color = TallyColors.Ink1,
+            modifier = Modifier.semantics(mergeDescendants = false) { heading() },
+        )
+
         when (val s = state) {
             is StatementsUiState.Loading -> LoadingBody()
             is StatementsUiState.Failure -> FailureBody(message = s.message)
@@ -120,28 +127,6 @@ private suspend fun loadStatementsState(repository: VaultRepository): Statements
 private val DAY_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.Builder().setLanguage("en").setRegion("AU").build())
 
 @Composable
-private fun StatementsHeader(onBack: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.padding(start = 8.dp, top = 20.dp, bottom = 4.dp),
-    ) {
-        Box(
-            modifier = Modifier.a11yClickable(description = "Back", onClick = onBack),
-            contentAlignment = Alignment.Center,
-        ) {
-            TallyIcons.ChevronLeft(modifier = Modifier.size(22.dp))
-        }
-        Text(
-            text = "Statements",
-            style = TallyType.Title,
-            color = TallyColors.Ink1,
-            modifier = Modifier.semantics(mergeDescendants = false) { heading() },
-        )
-    }
-}
-
-@Composable
 private fun LoadingBody() {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
@@ -154,7 +139,7 @@ private fun LoadingBody() {
 
 @Composable
 private fun FailureBody(message: String) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 32.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp)) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
@@ -168,16 +153,16 @@ private fun FailureBody(message: String) {
 @Composable
 private fun LoadedBody(state: StatementsUiState.Loaded) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // --- The routine, in plain words ---
-        SectionLabel("The routine")
+        TallySectionLabel("The routine")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(TallyColors.Surface, RoundedCornerShape(TallyCardRadius))
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
@@ -196,7 +181,7 @@ private fun LoadedBody(state: StatementsUiState.Loaded) {
         }
 
         // --- Per-account status ---
-        SectionLabel("Accounts")
+        TallySectionLabel("Accounts")
         TallyListGroup {
             state.statuses.forEachIndexed { index, status ->
                 AccountStatementRow(status)
@@ -232,14 +217,4 @@ private fun AccountStatementRow(status: AccountStatementStatus) {
         "Imported through ${DAY_MONTH.format(lastImported)} · $dayWord"
     }
     TallyListRow(title = accountDisplayName(status.account), subtitle = subtitle)
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = TallyColors.Ink2,
-        modifier = Modifier.padding(horizontal = 4.dp),
-    )
 }

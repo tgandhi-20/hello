@@ -28,9 +28,12 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tally.app.money.AccountId
 import com.tally.app.ui.components.CategoryBadge
+import com.tally.app.ui.components.TallyBackHeader
 import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyEmptyState
 import com.tally.app.ui.components.a11yClickable
@@ -75,13 +78,15 @@ import java.time.YearMonth
  * copy of that id-to-label map (docs/AGENT-BRIEF.md section 1's own warning
  * about exactly that duplication).
  *
- * KNOWN GAP (see this build's task report for the exact fix): [UiTxn.account]
- * is not yet populated by `ui/data` (`VaultTallyDataSource.toUiTxn` /
- * `DemoTallyDataSource`, both outside this package), so passing [accountId]
- * today always finds zero matching transactions. This composable renders
- * that honestly — docs/DESIGN-V5.md section 2's "nothing imported yet",
- * never a fabricated `$0.00` or an invented row — rather than silently
- * falling back to every account's transactions unlabelled.
+ * [UiTxn.account] is populated by `ui/data`'s `VaultTallyDataSource.toUiTxn`,
+ * so scoping to [accountId] finds that account's real transactions. If a
+ * scoped list is ever genuinely empty (a real account with nothing imported
+ * yet, or a `TallyDataSource` implementation that doesn't populate `account`
+ * at all — `DemoTallyDataSource`, this package's in-memory stand-in, is the
+ * one example), this composable renders that honestly —
+ * docs/DESIGN-V5.md section 2's "nothing imported yet", never a fabricated
+ * `$0.00` or an invented row — rather than silently falling back to every
+ * account's transactions unlabelled.
  *
  * @param accountId one account to scope this list to, or `null` for every
  *   account — the original behaviour, with no running balance shown
@@ -96,6 +101,7 @@ fun TransactionsScreen(
     accountId: AccountId? = null,
     modifier: Modifier = Modifier,
     onOpenTxn: (String) -> Unit = {},
+    onBack: () -> Unit = {},
 ) {
     val allTxns = dataSource.transactions.value
     val categories = dataSource.categories.value
@@ -138,14 +144,18 @@ fun TransactionsScreen(
     }
 
     Column(modifier = modifier.fillMaxSize().background(TallyColors.Ground)) {
-        Text(
-            text = accountLabel ?: "All transactions",
-            style = TallyType.Title,
-            color = TallyColors.Ink1,
-            modifier = Modifier
-                .padding(start = 20.dp, top = 20.dp, bottom = 12.dp)
-                .semantics(mergeDescendants = false) { heading() },
-        )
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, top = 20.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TallyBackHeader(onBack = onBack)
+            Text(
+                text = accountLabel ?: "All transactions",
+                style = TallyType.Title,
+                color = TallyColors.Ink1,
+                modifier = Modifier.semantics(mergeDescendants = false) { heading() },
+            )
+        }
 
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -254,7 +264,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, modifier
         contentAlignment = Alignment.CenterStart,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TallyIcons.Search(modifier = Modifier.size(18.dp))
+            TallyIcons.Search(modifier = Modifier.size(20.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
                 if (query.isEmpty()) {
                     Text(
@@ -283,11 +293,11 @@ private fun DayHeader(group: UiDayGroup) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(text = formatRelativeDay(group.date), style = MaterialTheme.typography.labelMedium, color = TallyColors.Ink3)
-        Text(text = formatTxnAmount(group.subtotalCents), style = MaterialTheme.typography.labelMedium, color = TallyColors.Ink3)
+        Text(text = formatTxnAmount(group.subtotalCents), style = TallyType.Money.copy(fontSize = 13.sp), color = TallyColors.Ink3)
     }
 }
 
@@ -305,33 +315,48 @@ private fun TransactionRow(txn: UiTxn, category: UiCategory?, balanceCents: Cent
                 .fillMaxWidth()
                 .heightIn(min = 64.dp)
                 .a11yRow(onClick = onClick)
-                .padding(horizontal = 20.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             CategoryBadge(colorIndex = category?.colorIndex ?: 0, label = category?.label ?: txn.merchant, size = 36.dp)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(text = txn.merchant, style = MaterialTheme.typography.bodyLarge, color = TallyColors.Ink1)
+                // A long merchant name or note must not push the amount off
+                // the row or wreck the row's vertical alignment with it —
+                // it yields (one line, ellipsis) so the money stays intact.
+                Text(
+                    text = txn.merchant,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TallyColors.Ink1,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 val subtitle = listOfNotNull(category?.label, txn.note).joinToString(" · ")
                 if (subtitle.isNotEmpty()) {
-                    Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = TallyColors.Ink2)
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TallyColors.Ink2,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = formatTxnAmount(txn.amountCents),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = TallyType.Money,
                     color = TallyColors.Ink1,
                 )
                 if (balanceCents != null) {
                     Text(
                         text = "Bal ${formatMoney(balanceCents)}",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = TallyType.Money.copy(fontSize = 13.sp),
                         color = TallyColors.Ink3,
                     )
                 }
             }
         }
-        TallyDivider(modifier = Modifier.padding(start = 20.dp))
+        TallyDivider(modifier = Modifier.padding(start = 16.dp))
     }
 }

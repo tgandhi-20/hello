@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -17,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tally.app.ui.theme.TallyCardRadius
 import com.tally.app.ui.theme.TallyColors
@@ -53,10 +56,23 @@ fun TallyDivider(modifier: Modifier = Modifier) {
 }
 
 /**
- * One row inside a [TallyListGroup]. Min-height 56dp (DESIGN-V3.md §3).
+ * One row inside a [TallyListGroup]. Min-height 56dp (DESIGN-V3.md §3) —
+ * `defaultMinSize`, not a fixed `height`, so the row still grows for 200%
+ * font scaling.
+ *
  * When [onClick] is set the whole row is one TalkBack-focusable unit — its
  * title/subtitle text already gives it an accessible name, so no separate
  * `contentDescription` is needed for a row that has visible text.
+ *
+ * [title] is capped to one line with an ellipsis: it is the field a long
+ * merchant name (`txn.merchant`, `series.merchant`) lands in, and with
+ * [trailing] commonly holding a money figure on the same row, an
+ * uncapped title wrapping to two lines would either crowd or vertically
+ * mis-align that figure. [subtitle] is left free to wrap — several call
+ * sites (Settings' backup/restore/erase rows) put full-sentence, safety
+ * -relevant copy there, and truncating that would hide instructions rather
+ * than merely a name. [trailing] is never touched here, so a money figure
+ * passed as trailing is never a candidate for ellipsis.
  */
 @Composable
 fun TallyListRow(
@@ -79,7 +95,13 @@ fun TallyListRow(
     ) {
         leading?.invoke()
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge, color = TallyColors.Ink1)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = TallyColors.Ink1,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (subtitle != null) {
                 Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = TallyColors.Ink2)
             }
@@ -113,4 +135,31 @@ fun TallySectionLabel(text: String, modifier: Modifier = Modifier) {
         color = TallyColors.Ink2,
         modifier = modifier.padding(horizontal = 4.dp, vertical = 4.dp),
     )
+}
+
+/**
+ * The back affordance every pushed screen shares: a chevron plus a text
+ * label, together >=48dp tall, sitting on its own line above the screen's
+ * title. Canonicalised here after a consistency audit found five screens
+ * hand-rolling byte-identical copies of this exact row (`BackHeader` in
+ * `ui/txndetail`, `ui/budgets`, `ui/goal`, `ui/recurring`, `ui/menu`'s
+ * `PlaceholderScreen`) while four more built a visually different header —
+ * chevron fused into the same row as the title, no text label — under names
+ * like `ImportHeader`/`StatementsHeader`/`SettingsHeader` (`ui/csvimport`,
+ * `ui/statements`, `ui/settings`, `ui/capture`). Every pushed screen now uses
+ * this one, so the back affordance and title treatment read as one screen
+ * type wherever they appear, not a screen-by-screen guess.
+ */
+@Composable
+fun TallyBackHeader(onBack: () -> Unit, modifier: Modifier = Modifier, label: String = "Back") {
+    Row(
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .a11yRow(description = label, onClick = onBack),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        TallyIcons.ChevronLeft(modifier = Modifier.size(20.dp))
+        Text(text = label, style = MaterialTheme.typography.labelLarge, color = TallyColors.Ink2)
+    }
 }

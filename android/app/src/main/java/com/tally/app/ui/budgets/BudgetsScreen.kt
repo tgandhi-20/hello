@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tally.app.personal.CATEGORY_IDS
 import com.tally.app.personal.NET_HOUSING_CENTS
@@ -29,16 +30,15 @@ import com.tally.app.personal.PERSONAL_CATEGORIES
 import com.tally.app.personal.categoryCapCents
 import com.tally.app.ui.components.CategoryBadge
 import com.tally.app.ui.components.MoneyText
+import com.tally.app.ui.components.TallyBackHeader
 import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyListGroup
 import com.tally.app.ui.components.TallySectionLabel
-import com.tally.app.ui.components.a11yRow
 import com.tally.app.ui.data.TallyDataSource
 import com.tally.app.ui.model.UiCategory
 import com.tally.app.ui.model.UiCategorySpend
 import com.tally.app.ui.model.formatMoney
 import com.tally.app.ui.theme.TallyColors
-import com.tally.app.ui.theme.TallyIcons
 import com.tally.app.ui.theme.TallyPillRadius
 import com.tally.app.ui.theme.TallyType
 
@@ -155,7 +155,7 @@ fun BudgetsScreen(
             .padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        BackHeader(onBack = onBack)
+        TallyBackHeader(onBack = onBack)
 
         Text(
             text = "Budgets",
@@ -203,20 +203,6 @@ fun BudgetsScreen(
 }
 
 @Composable
-private fun BackHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .a11yRow(description = "Back", onClick = onBack),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        TallyIcons.ChevronLeft(modifier = Modifier.size(20.dp))
-        Text(text = "Back", style = MaterialTheme.typography.labelLarge, color = TallyColors.Ink2)
-    }
-}
-
-@Composable
 private fun BudgetRow(entry: BudgetEntry) {
     val cap = entry.capCents
     val over = isOverBudget(entry)
@@ -233,9 +219,28 @@ private fun BudgetRow(entry: BudgetEntry) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // weight(1f): an unweighted long category label would grow past
+            // the row's width under SpaceBetween and push the spent figure
+            // off-screen instead of the label yielding to it.
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 CategoryBadge(colorIndex = entry.colorIndex, label = entry.label)
-                Text(text = entry.label, style = MaterialTheme.typography.bodyLarge, color = TallyColors.Ink1)
+                // weight here too, not just on the wrapping Row above: Row
+                // measures non-weighted children against its FULL available
+                // width regardless of siblings already placed, so without
+                // its own weight this Text would still be free to measure
+                // past the space the badge already claimed.
+                Text(
+                    text = entry.label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TallyColors.Ink1,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
             }
             MoneyText(cents = entry.spentCents, color = figureColor)
         }

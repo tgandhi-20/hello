@@ -2,20 +2,16 @@ package com.tally.app.ui.capture
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.tally.app.capture.permission.NotificationAccessOnboardingScreen
 import com.tally.app.capture.permission.NotificationAccessStatus
@@ -23,33 +19,29 @@ import com.tally.app.capture.review.CaptureReviewQueueImpl
 import com.tally.app.capture.review.CaptureReviewScreen
 import com.tally.app.capture.store.SecureCaptureStorage
 import com.tally.app.data.VaultRepository
-import com.tally.app.ui.components.a11yRow
+import com.tally.app.ui.components.TallyBackHeader
 import com.tally.app.ui.theme.TallyColors
-import com.tally.app.ui.theme.TallyIcons
 import com.tally.app.ui.theme.TallyType
 
 /**
- * Shared back header for both routes below -- an icon back button plus a
- * title, matching `ui/csvimport/CsvImportScreen.kt`'s `ImportHeader` shape so
- * a screen reached from Menu doesn't read as a different app mid-navigation.
+ * Shared header for both routes below -- the app-wide [TallyBackHeader] plus
+ * a title, matching every other pushed screen's back affordance and title
+ * treatment so a screen reached from Menu doesn't read as a different app
+ * mid-navigation.
  */
 @Composable
-private fun CaptureRouteHeader(title: String) {
-    Text(
-        text = title,
-        style = TallyType.Title,
-        color = TallyColors.Ink1,
-        modifier = Modifier.semantics(mergeDescendants = false) { heading() },
-    )
-}
-
-@Composable
-private fun BackButton(onBack: () -> Unit) {
-    Box(
-        modifier = Modifier.size(48.dp).a11yRow(description = "Back", onClick = onBack),
-        contentAlignment = Alignment.Center,
+private fun CaptureRouteHeader(title: String, onBack: () -> Unit) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        TallyIcons.ChevronLeft(modifier = Modifier.size(22.dp))
+        TallyBackHeader(onBack = onBack)
+        Text(
+            text = title,
+            style = TallyType.Title,
+            color = TallyColors.Ink1,
+            modifier = Modifier.semantics(mergeDescendants = false) { heading() },
+        )
     }
 }
 
@@ -63,12 +55,12 @@ private fun BackButton(onBack: () -> Unit) {
  * Nothing is added to the ledger until the user accepts an item, one at a
  * time or all at once -- `CaptureReviewScreen`'s own copy says so directly,
  * and nothing in this wrapper changes that. A wallet-tap item (no known
- * card) cannot be accepted from that screen without one, since its Accept
- * button stays disabled until an account is known -- see this file's own
- * top-level doc/report note on the one gap that leaves: there is currently
- * no picker in `CaptureReviewScreen` for choosing which card a wallet tap
- * used, since that screen lives under `capture/` and is out of this task's
- * ownership to change.
+ * card) cannot be accepted from that screen without one, but this is no
+ * longer a dead end: `CaptureReviewScreen` itself has a "Choose card" picker
+ * for exactly that row, listing every real account from `AccountIds` and
+ * writing the item once one is tapped (see that file's own "The account
+ * picker" doc comment) -- the row is never stuck with a permanently disabled
+ * Accept button and no way to answer it.
  */
 @Composable
 fun CaptureReviewRoute(repository: VaultRepository, onBack: () -> Unit, modifier: Modifier = Modifier) {
@@ -85,14 +77,7 @@ fun CaptureReviewRoute(repository: VaultRepository, onBack: () -> Unit, modifier
     }
 
     Column(modifier = modifier.fillMaxSize().background(TallyColors.Ground)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(start = 8.dp, top = 20.dp, bottom = 4.dp),
-        ) {
-            BackButton(onBack)
-            CaptureRouteHeader("Captured spending")
-        }
+        CaptureRouteHeader("Captured spending", onBack = onBack)
         CaptureReviewScreen(queue = queue, modifier = Modifier.fillMaxSize())
     }
 }
@@ -106,14 +91,7 @@ fun CaptureReviewRoute(repository: VaultRepository, onBack: () -> Unit, modifier
 @Composable
 fun NotificationAccessRoute(onBack: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxSize().background(TallyColors.Ground)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(start = 8.dp, top = 20.dp, bottom = 4.dp),
-        ) {
-            BackButton(onBack)
-            CaptureRouteHeader("Notification access")
-        }
+        CaptureRouteHeader("Notification access", onBack = onBack)
         NotificationAccessOnboardingScreen(modifier = Modifier.fillMaxSize())
     }
 }

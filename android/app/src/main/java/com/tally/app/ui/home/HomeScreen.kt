@@ -33,6 +33,7 @@ import com.tally.app.ui.components.TallyEmptyState
 import com.tally.app.ui.components.TallyListGroup
 import com.tally.app.ui.components.TallyListRow
 import com.tally.app.ui.components.TallySectionLabel
+import com.tally.app.ui.components.a11yClickable
 import com.tally.app.ui.data.TallyDataSource
 import com.tally.app.ui.model.Cents
 import com.tally.app.ui.model.UiBillDueSoon
@@ -67,6 +68,15 @@ import com.tally.app.ui.theme.TallyType
  * "Where it went" (the category breakdown) moved to the Spend tab
  * (DESIGN-V5.md §3's "Spend — categories by month") and is deliberately not
  * rendered here any more.
+ *
+ * [onAddIncome] fires when the equation's "Add your income" prompt is
+ * tapped, on a vault where `money.incomeUnset` is true. Before this existed
+ * that prompt rendered in the accent colour — reading exactly like a link —
+ * but had no `onClick` at all, so tapping it did nothing: a question with no
+ * way to answer it, the same shape of dead end the capture review screen
+ * had for "which card?" (docs/AGENT-BRIEF.md's own example of that mistake).
+ * The orchestrator should wire this to `ui/settings`'s `SettingsScreen`,
+ * which now has a "Monthly income" row under its own "Budget" section.
  */
 @Composable
 fun HomeScreen(
@@ -75,6 +85,7 @@ fun HomeScreen(
     onOpenAccount: (AccountId) -> Unit = {},
     onOpenDepositPlan: () -> Unit = {},
     onOpenToSortOutItem: (UiToSortOutItem) -> Unit = {},
+    onAddIncome: () -> Unit = {},
 ) {
     val money = dataSource.monthMoney.value
     val accounts = dataSource.accounts.value
@@ -105,7 +116,7 @@ fun HomeScreen(
         // has to come before the numbers it qualifies.
         if (skipped > 0) SkippedRecordsNotice(skipped)
 
-        EquationSection(money)
+        EquationSection(money, onAddIncome = onAddIncome)
         AccountsSection(accounts = accounts, onOpenAccount = onOpenAccount)
         BillsDueSoonSection(bills)
         DepositPlanRow(deposit, onClick = onOpenDepositPlan)
@@ -157,7 +168,7 @@ private fun SkippedRecordsNotice(count: Int) {
 }
 
 @Composable
-private fun EquationSection(money: UiMonthMoney) {
+private fun EquationSection(money: UiMonthMoney, onAddIncome: () -> Unit) {
     val over = money.leftCents < 0
     Card(
         shape = RoundedCornerShape(TallyCardRadius),
@@ -165,9 +176,15 @@ private fun EquationSection(money: UiMonthMoney) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                EquationRow(operator = null, label = "Income", cents = money.incomeCents, incomeUnset = money.incomeUnset)
+                EquationRow(
+                    operator = null,
+                    label = "Income",
+                    cents = money.incomeCents,
+                    incomeUnset = money.incomeUnset,
+                    onAddIncome = onAddIncome,
+                )
                 EquationRow(operator = "−", label = "Bills", cents = money.billsCents)
                 EquationRow(operator = "−", label = "Savings", cents = money.savingsCents)
             }
@@ -222,6 +239,7 @@ private fun EquationRow(
     cents: Cents,
     emphasis: Boolean = false,
     incomeUnset: Boolean = false,
+    onAddIncome: () -> Unit = {},
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -234,7 +252,15 @@ private fun EquationRow(
             color = if (emphasis) TallyColors.Ink1 else TallyColors.Ink2,
         )
         if (incomeUnset) {
-            Text(text = "Add your income", style = MaterialTheme.typography.labelLarge, color = TallyColors.Accent)
+            // Coloured like a link and must act like one — a prompt that
+            // merely looked tappable with nothing behind it was the exact
+            // dead end this screen used to have here.
+            Text(
+                text = "Add your income",
+                style = MaterialTheme.typography.labelLarge,
+                color = TallyColors.Accent,
+                modifier = Modifier.a11yClickable(description = "Add your income", onClick = onAddIncome),
+            )
         } else {
             MoneyText(
                 cents = cents,

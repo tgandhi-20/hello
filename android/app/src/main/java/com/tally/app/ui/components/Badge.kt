@@ -42,9 +42,15 @@ fun GlyphBadge(
 
 /**
  * A category's icon well: its ramp colour as a soft tint behind the
- * category's initial letter in the solid colour — the category ramp
- * "doing the expressive work" (DESIGN-V3.md §1) without a per-category
- * icon lookup table.
+ * category's initial letter — the category ramp "doing the expressive
+ * work" (DESIGN-V3.md §1) without a per-category icon lookup table.
+ *
+ * The letter itself is drawn in [TallyColors.Ink1], not the ramp colour, per
+ * DESIGN-V3.md §1: "pair with --ink-1 when used as a tint behind an icon."
+ * Measured: every ramp colour drawn as 15/17sp text tops out around 4.0:1
+ * against white (cat-9, the best case) and drops to ~3.1:1 once it's the
+ * *text* on its own 16%-alpha tint well — below the 4.5:1 normal-text floor
+ * for all twelve hues. Ink1 on the same tint wells measures >=14.6:1.
  */
 @Composable
 fun CategoryBadge(colorIndex: Int, label: String, modifier: Modifier = Modifier, size: Dp = 40.dp) {
@@ -57,7 +63,7 @@ fun CategoryBadge(colorIndex: Int, label: String, modifier: Modifier = Modifier,
     ) {
         Text(
             text = label.take(1).uppercase(),
-            color = color,
+            color = TallyColors.Ink1,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.bodyLarge,
         )

@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tally.app.money.RecurringCadence
 import com.tally.app.money.RecurringSeries
@@ -28,16 +29,15 @@ import com.tally.app.recurring.monthlyEquivalentCents
 import com.tally.app.recurring.priceIncreases
 import com.tally.app.ui.components.GlyphBadge
 import com.tally.app.ui.components.MoneyText
+import com.tally.app.ui.components.TallyBackHeader
 import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyEmptyState
 import com.tally.app.ui.components.TallyListGroup
 import com.tally.app.ui.components.TallyListRow
 import com.tally.app.ui.components.TallySectionLabel
-import com.tally.app.ui.components.a11yRow
 import com.tally.app.ui.model.formatMoney
 import com.tally.app.ui.model.formatRelativeDay
 import com.tally.app.ui.theme.TallyColors
-import com.tally.app.ui.theme.TallyIcons
 import com.tally.app.ui.theme.TallyType
 
 /**
@@ -83,7 +83,7 @@ fun RecurringScreen(
             .padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        BackHeader(onBack = onBack)
+        TallyBackHeader(onBack = onBack)
 
         Text(
             text = "Regular payments",
@@ -137,20 +137,6 @@ fun RecurringScreen(
 }
 
 @Composable
-private fun BackHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .a11yRow(description = "Back", onClick = onBack),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        TallyIcons.ChevronLeft(modifier = Modifier.size(20.dp))
-        Text(text = "Back", style = MaterialTheme.typography.labelLarge, color = TallyColors.Ink2)
-    }
-}
-
-@Composable
 private fun PriceIncreaseRow(series: RecurringSeries) {
     val rise = series.priceIncreaseCents ?: 0L
     val baseline = series.amountCents - rise
@@ -177,17 +163,33 @@ private fun SeriesRow(series: RecurringSeries, onConfirm: () -> Unit, onToggleMu
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // weight(1f) + the title's maxLines below: neither side of this
+            // Row is otherwise constrained, so an unweighted long merchant
+            // name would grow past the row's width and push (or clip) the
+            // monthly-equivalent figure on the right off-screen entirely.
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 GlyphBadge(
                     glyph = cadenceGlyph(series.cadence),
                     tint = if (muted) TallyColors.Ink3 else TallyColors.Ink2,
                 )
-                Column {
-                    Text(text = series.merchant, style = MaterialTheme.typography.bodyLarge, color = titleColor)
+                Column(modifier = Modifier.weight(1f, fill = false)) {
+                    Text(
+                        text = series.merchant,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = titleColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     Text(
                         text = "${cadenceLabel(series.cadence)} · next due ${formatRelativeDay(series.nextDue)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = supportColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

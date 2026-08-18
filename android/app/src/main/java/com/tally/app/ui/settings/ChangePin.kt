@@ -53,11 +53,14 @@ suspend fun changePin(repository: VaultRepository, currentPin: String, newPin: S
         is VaultRepository.ChangeSecretResult.NotSetUp ->
             ChangePinResult.Failed("Tally isn't set up on this device yet.")
         is VaultRepository.ChangeSecretResult.LockedOut -> ChangePinResult.LockedOut(result.remainingMs)
-        is VaultRepository.ChangeSecretResult.UnreadableRecords ->
+        is VaultRepository.ChangeSecretResult.UnreadableRecords -> {
+            val n = result.count
+            val record = if (n == 1) "record" else "records"
             ChangePinResult.Failed(
-                "${result.count} record(s) on this device could not be read, so nothing was changed. " +
+                "$n $record on this device could not be read, so nothing was changed. " +
                     "Your PIN is still the old one and every record is untouched. If this keeps " +
                     "happening, restore your most recent backup from Settings.",
             )
+        }
     }
 }

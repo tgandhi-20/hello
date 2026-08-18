@@ -4,7 +4,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -42,14 +42,18 @@ import com.tally.app.capture.permission.NotificationAccessStatus
 import com.tally.app.data.Backup
 import com.tally.app.data.VaultRepository
 import com.tally.app.money.Settings
+import com.tally.app.personal.PLAN_DEFAULTS
 import com.tally.app.security.MAX_PIN_LENGTH
+import com.tally.app.ui.components.TallyBackHeader
 import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyListGroup
 import com.tally.app.ui.components.TallyListRow
 import com.tally.app.ui.components.TallySectionLabel
 import com.tally.app.ui.components.a11yRow
+import com.tally.app.ui.model.centsToKeypadBuffer
+import com.tally.app.ui.model.formatMoney
+import com.tally.app.ui.model.keypadBufferToCents
 import com.tally.app.ui.theme.TallyColors
-import com.tally.app.ui.theme.TallyIcons
 import com.tally.app.ui.theme.TallyType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -100,23 +104,66 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(TallyColors.Ground)
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp),
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        SettingsHeader(onBack)
+        TallyBackHeader(onBack = onBack)
+
+        Text(
+            text = "Settings",
+            style = TallyType.Title,
+            color = TallyColors.Ink1,
+            modifier = Modifier.semantics(mergeDescendants = false) { heading() },
+        )
 
         if (statusMessage != null) {
             Text(
                 text = statusMessage!!,
                 style = MaterialTheme.typography.bodyMedium,
                 color = TallyColors.Ink2,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
             )
         }
 
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TallySectionLabel("Budget")
+                TallyListGroup {
+                    AmountSettingRow(
+                        title = "Monthly income",
+                        currentCents = settings.monthlyIncomeCents,
+                        setSubtitle = { "${formatMoney(it)} a month -- the Income line in the equation on Home." },
+                        unsetSubtitle = "Not set -- Home can't show what's left to spend without it.",
+                        dialogExplanation = "What you take home each month, after tax. This becomes the Income " +
+                            "line in the equation on Home.",
+                        suggestedCents = PLAN_DEFAULTS.monthlyIncomeCents,
+                        onSave = { cents ->
+                            scope.launch {
+                                repository.updateSettings { it.copy(monthlyIncomeCents = cents) }
+                                statusMessage = "Monthly income updated."
+                                onChanged()
+                            }
+                        },
+                    )
+                    TallyDivider()
+                    AmountSettingRow(
+                        title = "Savings target",
+                        currentCents = settings.savingsTargetCents,
+                        setSubtitle = { "${formatMoney(it)} a month -- set aside before anything else, the Savings line in the equation." },
+                        unsetSubtitle = "Not set -- nothing is being set aside for the deposit plan yet.",
+                        dialogExplanation = "What you want to set aside every month, before anything else. This " +
+                            "becomes the Savings line in the equation, and what the deposit plan tracks progress against.",
+                        suggestedCents = PLAN_DEFAULTS.savingsTargetCents,
+                        onSave = { cents ->
+                            scope.launch {
+                                repository.updateSettings { it.copy(savingsTargetCents = cents) }
+                                statusMessage = "Savings target updated."
+                                onChanged()
+                            }
+                        },
+                    )
+                }
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TallySectionLabel("Data")
                 TallyListGroup {
@@ -171,24 +218,111 @@ fun SettingsScreen(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Monthly income / savings target.
+//
+// Before this section existed, neither number could be set anywhere in the
+// app. Home's equation showed "Add your income" in the accent colour, which
+// read exactly like a link, with nothing behind the tap -- a prompt with no
+// way to answer it, the same shape of dead end the capture review screen had
+// for "which card?" (docs/AGENT-BRIEF.md's own example). The savings target
+// had no dead-end prompt pointing at it, but was equally unreachable: it
+// could only ever be its zero default, which silently understates every
+// "to spend"/"left" figure and the deposit plan's whole progress bar.
+// ---------------------------------------------------------------------------
+
+/**
+ * Sanitises free-typed text into a valid amount-buffer string (`"6457.00"`),
+ * the same shape [keypadBufferToCents]/[centsToKeypadBuffer] (`ui/model/Keypad.kt`)
+ * already read and write for quick-add and the deposit-plan balance editor.
+ * This field uses the OS keyboard rather than a custom keypad -- matching
+ * every other text field already on this screen (the PIN fields, the backup
+ * passphrase, the erase confirmation word) -- so unlike
+ * `Keypad.kt`'s `applyKeypadKey`, which only ever sees one keystroke at a
+ * time, this has to sanitise a whole pasted-or-typed string at once: strip
+ * anything that isn't a digit or a dot, keep only the first dot, and cap the
+ * integer/decimal digit counts the same way [keypadBufferToCents] does.
+ * `internal`, not `private`, so it is covered directly by
+ * `SettingsScreenLogicTest` without a Compose test harness.
+ */
+internal fun sanitizeAmountInput(raw: String): String {
+    val digitsAndDot = raw.filter { it.isDigit() || it == '.' }
+    val firstDot = digitsAndDot.indexOf('.')
+    val oneDot = if (firstDot == -1) {
+        digitsAndDot
+    } else {
+        digitsAndDot.substring(0, firstDot + 1) + digitsAndDot.substring(firstDot + 1).replace(".", "")
+    }
+    val parts = oneDot.split(".", limit = 2)
+    val intPart = (parts.getOrNull(0) ?: "").take(6)
+    val decPart = parts.getOrNull(1)?.take(2)
+    return if (decPart != null) "$intPart.$decPart" else intPart
+}
+
+/**
+ * One editable dollar amount, shown as a list row and edited through a
+ * dialog -- the shared shape behind both "Monthly income" and "Savings
+ * target". [currentCents] `<= 0` reads as "not set" ([unsetSubtitle]), the
+ * same convention `UiMonthMoney.incomeUnset` already uses on Home, rather
+ * than a literal `$0.00` standing in for "never told Tally". [suggestedCents]
+ * is shown only as an example in the dialog, never written without the user
+ * tapping Save -- nothing here auto-fills the vault on its own
+ * (docs/AGENT-BRIEF.md section 2: "Nothing auto-commits").
+ */
 @Composable
-private fun SettingsHeader(onBack: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.padding(start = 8.dp, top = 20.dp, bottom = 4.dp),
-    ) {
-        Box(
-            modifier = Modifier.size(48.dp).a11yRow(description = "Back", onClick = onBack),
-            contentAlignment = Alignment.Center,
-        ) {
-            TallyIcons.ChevronLeft(modifier = Modifier.size(22.dp))
-        }
-        Text(
-            text = "Settings",
-            style = TallyType.Title,
-            color = TallyColors.Ink1,
-            modifier = Modifier.semantics(mergeDescendants = false) { heading() },
+private fun AmountSettingRow(
+    title: String,
+    currentCents: Long,
+    setSubtitle: (Long) -> String,
+    unsetSubtitle: String,
+    dialogExplanation: String,
+    suggestedCents: Long,
+    onSave: (Long) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    var buffer by remember { mutableStateOf("") }
+
+    fun startEditing() {
+        buffer = if (currentCents > 0L) centsToKeypadBuffer(currentCents) else ""
+        open = true
+    }
+
+    TallyListRow(
+        title = title,
+        subtitle = if (currentCents > 0L) setSubtitle(currentCents) else unsetSubtitle,
+        chevron = true,
+        onClick = ::startEditing,
+    )
+
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(title) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(dialogExplanation, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = "Dollars, e.g. ${suggestedCents / 100}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TallyColors.Ink3,
+                    )
+                    OutlinedTextField(
+                        value = buffer,
+                        onValueChange = { buffer = sanitizeAmountInput(it) },
+                        singleLine = true,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = keypadBufferToCents(buffer) > 0L,
+                    onClick = {
+                        onSave(keypadBufferToCents(buffer))
+                        open = false
+                    },
+                ) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
         )
     }
 }
@@ -543,6 +677,7 @@ private fun BiometricRow(repository: VaultRepository, configured: Boolean, onCha
                             }
                         }
                     },
+                    modifier = Modifier.semantics { contentDescription = "Fingerprint unlock" },
                 )
             },
         )

@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.tally.app.money.MonthMoneySavingsProgress
 import com.tally.app.ui.components.MoneyHeroText
 import com.tally.app.ui.components.MoneyText
+import com.tally.app.ui.components.TallyBackHeader
 import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyListGroup
 import com.tally.app.ui.components.TallyListRow
@@ -48,7 +49,6 @@ import com.tally.app.ui.model.keypadBufferToCents
 import com.tally.app.ui.theme.TallyCardRadius
 import com.tally.app.ui.theme.TallyColors
 import com.tally.app.ui.theme.TallyControlRadius
-import com.tally.app.ui.theme.TallyIcons
 import com.tally.app.ui.theme.TallyPillRadius
 import com.tally.app.ui.theme.TallyType
 import java.time.LocalDate
@@ -120,7 +120,7 @@ fun GoalScreen(
             .padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        BackHeader(onBack = onBack)
+        TallyBackHeader(onBack = onBack)
 
         Text(
             text = "Deposit plan",
@@ -232,20 +232,6 @@ fun GoalScreen(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun BackHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .a11yRow(description = "Back", onClick = onBack),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        TallyIcons.ChevronLeft(modifier = Modifier.size(20.dp))
-        Text(text = "Back", style = MaterialTheme.typography.labelLarge, color = TallyColors.Ink2)
     }
 }
 

@@ -150,6 +150,7 @@ fun TallyApp(repository: VaultRepository, dataSource: VaultTallyDataSource) {
                 is Route.Transactions -> TransactionsScreen(
                     dataSource = dataSource,
                     onOpenTxn = { id -> push(Route.TxnDetail(id)) },
+                    onBack = ::popOne,
                 )
 
                 is Route.Spend -> SpendScreen(
@@ -165,6 +166,7 @@ fun TallyApp(repository: VaultRepository, dataSource: VaultTallyDataSource) {
                     dataSource = dataSource,
                     accountId = route.accountId,
                     onOpenTxn = { id -> push(Route.TxnDetail(id)) },
+                    onBack = ::popOne,
                 )
 
                 is Route.TxnDetail -> TxnDetailScreen(

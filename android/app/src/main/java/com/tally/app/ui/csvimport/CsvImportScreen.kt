@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -45,15 +46,16 @@ import com.tally.app.data.VaultRepository
 import com.tally.app.money.AccountId
 import com.tally.app.ui.components.CategoryBadge
 import com.tally.app.ui.components.GlyphBadge
+import com.tally.app.ui.components.TallyBackHeader
 import com.tally.app.ui.components.TallyDivider
 import com.tally.app.ui.components.TallyListGroup
 import com.tally.app.ui.components.TallyListRow
+import com.tally.app.ui.components.TallySectionLabel
 import com.tally.app.ui.components.a11yClickable
 import com.tally.app.ui.model.formatRelativeDay
 import com.tally.app.ui.model.formatTxnAmount
 import com.tally.app.ui.theme.TallyCardRadius
 import com.tally.app.ui.theme.TallyColors
-import com.tally.app.ui.theme.TallyIcons
 import com.tally.app.ui.theme.TallyPillRadius
 import com.tally.app.ui.theme.TallyType
 import kotlinx.coroutines.Dispatchers
@@ -94,9 +96,17 @@ fun CsvImportScreen(
             .fillMaxSize()
             .background(TallyColors.Ground)
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp),
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        ImportHeader(onBack = onBack)
+        TallyBackHeader(onBack = onBack)
+
+        Text(
+            text = "Import statement",
+            style = TallyType.Title,
+            color = TallyColors.Ink1,
+            modifier = Modifier.semantics(mergeDescendants = false) { heading() },
+        )
 
         when (val state = uiState) {
             is CsvImportUiState.PickFile -> PickFileBody(
@@ -238,31 +248,9 @@ private suspend fun loadAndAnalyze(context: Context, repository: VaultRepository
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun ImportHeader(onBack: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.padding(start = 8.dp, top = 20.dp, bottom = 4.dp),
-    ) {
-        Box(
-            modifier = Modifier.a11yClickable(description = "Back", onClick = onBack),
-            contentAlignment = Alignment.Center,
-        ) {
-            TallyIcons.ChevronLeft(modifier = Modifier.size(22.dp))
-        }
-        Text(
-            text = "Import statement",
-            style = TallyType.Title,
-            color = TallyColors.Ink1,
-            modifier = Modifier.semantics(mergeDescendants = false) { heading() },
-        )
-    }
-}
-
-@Composable
 private fun PickFileBody(onPick: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -310,7 +298,7 @@ private fun LoadingBody(message: String) {
 @Composable
 private fun FailureBody(message: String, onRetry: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -335,7 +323,7 @@ private fun FailureBody(message: String, onRetry: () -> Unit) {
 @Composable
 private fun CommittedBody(added: Int, skipped: Int, onImportAnother: () -> Unit, onDone: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -380,11 +368,11 @@ private fun ReviewBody(
     val categoryById = remember(state.categories) { state.categories.associateBy { it.id } }
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // --- What was detected ---
-        SectionLabel("What we found")
+        TallySectionLabel("What we found")
         TallyListGroup {
             TallyListRow(title = "Bank format", subtitle = bankFormatDisplayName(state.analysis.formatDetection.format))
             TallyDivider(modifier = Modifier.padding(start = 16.dp))
@@ -414,7 +402,7 @@ private fun ReviewBody(
         }
 
         // --- Sign convention ---
-        SectionLabel("Spend vs. income")
+        TallySectionLabel("Spend vs. income")
         TallyListGroup {
             Row(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp),
@@ -433,6 +421,7 @@ private fun ReviewBody(
                     checked = state.signInverted,
                     onCheckedChange = { onSignToggle() },
                     colors = SwitchDefaults.colors(checkedTrackColor = TallyColors.Accent),
+                    modifier = Modifier.semantics { contentDescription = "Positive = spend" },
                 )
             }
         }
@@ -441,7 +430,7 @@ private fun ReviewBody(
         }
 
         // --- Account ---
-        SectionLabel("Account")
+        TallySectionLabel("Account")
         AccountPicker(selected = state.account, onSelect = onAccountChange)
 
         // --- Warnings from the parser itself ---
@@ -459,7 +448,7 @@ private fun ReviewBody(
         }
 
         // --- Preview rows ---
-        SectionLabel("${state.preview.rows.size} new transaction${if (state.preview.rows.size == 1) "" else "s"}")
+        TallySectionLabel("${state.preview.rows.size} new transaction${if (state.preview.rows.size == 1) "" else "s"}")
         if (state.preview.rows.isEmpty()) {
             Text(
                 text = "Nothing new to import from this file — every row is already in your ledger.",
@@ -474,7 +463,7 @@ private fun ReviewBody(
                     TallyListRow(
                         title = txn.merchant,
                         subtitle = "${formatRelativeDay(txn.date)}${category?.label?.let { " · $it" } ?: ""}",
-                        trailing = { Text(text = formatTxnAmount(txn.amountCents), style = MaterialTheme.typography.bodyLarge, color = TallyColors.Ink1) },
+                        trailing = { Text(text = formatTxnAmount(txn.amountCents), style = TallyType.Money, color = TallyColors.Ink1) },
                         leading = { CategoryBadge(colorIndex = index, label = category?.label ?: txn.merchant, size = 36.dp) },
                     )
                     if (index != state.preview.rows.lastIndex) TallyDivider(modifier = Modifier.padding(start = 16.dp))
@@ -545,22 +534,12 @@ private fun AccountPicker(selected: AccountId, onSelect: (AccountId) -> Unit) {
 }
 
 @Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = TallyColors.Ink2,
-        modifier = Modifier.padding(horizontal = 4.dp),
-    )
-}
-
-@Composable
 private fun WarningBanner(text: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(TallyColors.CautionTint, RoundedCornerShape(TallyCardRadius))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         Text(text = text, style = MaterialTheme.typography.bodyMedium, color = TallyColors.Caution)
     }

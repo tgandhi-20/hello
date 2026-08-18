@@ -18,15 +18,11 @@ data class UiTxn(
     /**
      * Raw transaction text as it appeared before merchant cleanup
      * (`money.Txn.description`) — kept separate from [merchant] so search
-     * can still find wording `cleanMerchant` stripped out. `null` until
-     * populated; a search predicate must fall back to [merchant] alone,
-     * never crash on a missing value.
-     *
-     * GAP: neither `VaultTallyDataSource.toUiTxn` nor `DemoTallyDataSource`
-     * (both in `ui/data`, out of this package's ownership) set this field
-     * yet — every [UiTxn] in the running app has `description == null`
-     * today. See `ui/transactions`'s task report for the exact one-line fix
-     * each needs.
+     * can still find wording `cleanMerchant` stripped out. `null` only for a
+     * [UiTxn] that has no real vault-backed record behind it yet (a search
+     * predicate must fall back to [merchant] alone, never crash on a missing
+     * value); `VaultTallyDataSource.toUiTxn` (`ui/data`) populates the real
+     * value for every transaction the running app actually shows.
      */
     val description: String? = null,
     /**
@@ -36,15 +32,16 @@ data class UiTxn(
      * as every other Ui* shape in this file. `null` means "unknown", which
      * a per-account filter must treat as "does not match any specific
      * account" — never as a silent match for every account.
-     *
-     * GAP: same as [description] — `ui/data` does not populate this yet.
+     * `VaultTallyDataSource.toUiTxn` populates the real value for every
+     * transaction the running app actually shows.
      */
     val account: String? = null,
     /**
      * Mirrors `money.Txn.excluded` — excluded from budgets/insights (e.g. a
-     * reimbursed expense, an internal transfer). Defaults to `false`, which
-     * is indistinguishable from "really not excluded" until `ui/data`
-     * populates the real value — same gap as [description].
+     * reimbursed expense, an internal transfer). `VaultTallyDataSource.toUiTxn`
+     * populates the real value for every transaction the running app
+     * actually shows; the `false` default here only stands in before a real
+     * record has been mapped.
      */
     val excluded: Boolean = false,
 )
