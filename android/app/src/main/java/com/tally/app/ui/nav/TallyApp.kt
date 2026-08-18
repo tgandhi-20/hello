@@ -47,6 +47,7 @@ import com.tally.app.ui.capture.NotificationAccessRoute
 import com.tally.app.ui.settings.SettingsScreen
 import com.tally.app.ui.spend.SpendScreen
 import com.tally.app.ui.txndetail.TxnDetailScreen
+import com.tally.app.ui.menu.HowTallyWorksScreen
 
 /**
  * Production entry point (called from `MainActivity`) — gates the whole app
@@ -144,6 +145,9 @@ fun TallyApp(repository: VaultRepository, dataSource: VaultTallyDataSource) {
                     onOpenAccount = { accountId -> push(Route.Account(accountId)) },
                     onOpenDepositPlan = { push(Route.Goal) },
                     onOpenToSortOutItem = { item -> push(Route.Placeholder(item.title, item.subtitle)) },
+                    // The equation cannot compute anything until income is
+                    // set, and Settings is the only place that writes it.
+                    onAddIncome = { push(Route.Settings) },
                 )
                 is Route.QuickAdd -> QuickAddScreen(dataSource = dataSource, snackbarHostState = snackbarHostState)
                 is Route.Menu -> MenuScreen(onNavigate = ::push)
@@ -223,7 +227,13 @@ fun TallyApp(repository: VaultRepository, dataSource: VaultTallyDataSource) {
                     },
                 )
 
-                is Route.Statements -> StatementsScreen(repository = repository, onBack = ::popOne)
+                is Route.Statements -> StatementsScreen(
+                    repository = repository,
+                    onBack = ::popOne,
+                    onImport = { push(Route.CsvImport) },
+                )
+
+                is Route.HowTallyWorks -> HowTallyWorksScreen(onBack = ::popOne)
 
                 is Route.CaptureReview -> CaptureReviewRoute(
                     repository = repository,

@@ -243,7 +243,11 @@ private fun UnlockPinFlow(repository: VaultRepository, onUnlocked: () -> Unit, m
         pad = { PinPad(onKey = ::onKey, disabledBackspace = buffer.isEmpty() || locked) },
         primaryAction = {
             if (biometricAvailable && activity != null) {
-                TextButton(onClick = ::tryBiometric, enabled = !locked && !submitting) {
+                TextButton(
+                    onClick = ::tryBiometric,
+                    enabled = !locked && !submitting,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(text = "Use fingerprint instead", color = TallyColors.Accent)
                 }
             }

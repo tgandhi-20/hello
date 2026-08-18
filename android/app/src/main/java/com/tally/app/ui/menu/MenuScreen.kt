@@ -59,7 +59,7 @@ private val DATA_LINKS = listOf(
 )
 
 private val APP_LINKS = listOf(
-    MenuLink("?", "How Tally works", "The equation, plain English", Route.Placeholder("How Tally works", "The equation, plain English")),
+    MenuLink("?", "How Tally works", "The equation, plain English", Route.HowTallyWorks),
     MenuLink("S", "Settings", "Income, categories, security", Route.Settings),
 )
 

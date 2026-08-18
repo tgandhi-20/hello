@@ -40,6 +40,9 @@ sealed class Route {
     data object NotificationAccess : Route()
     data object Settings : Route()
 
+    /** The plain-English explainer (DESIGN-V4 section 4.3). */
+    data object HowTallyWorks : Route()
+
     /**
      * Every other Menu row, and Home's "Deposit plan"/"To sort out" rows,
      * point here for now — a real destination, not a dead tap, while the
