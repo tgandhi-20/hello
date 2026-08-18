@@ -1,5 +1,7 @@
 package com.tally.app.ui.nav
 
+import com.tally.app.money.AccountId
+
 /**
  * This app's whole navigation graph — deliberately a plain sealed class and
  * a hand-managed back stack (see `TallyApp.kt`) rather than the
@@ -20,6 +22,15 @@ sealed class Route {
     // Placeholder entries they replaced rendered a title and a subtitle and
     // nothing else, which is indistinguishable from a working screen with no
     // data in it — precisely the confusion this app has to avoid.
+    /** The Spend tab — categories for a month (DESIGN-V5 section 3). */
+    data object Spend : Route()
+
+    /** One account's transactions, reached by tapping an account on Home. */
+    data class Account(val accountId: AccountId) : Route()
+
+    /** One transaction's detail, reached from any transaction row. */
+    data class TxnDetail(val txnId: String) : Route()
+
     data object Budgets : Route()
     data object Goal : Route()
     data object Recurring : Route()

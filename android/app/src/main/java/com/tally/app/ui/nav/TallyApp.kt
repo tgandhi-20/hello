@@ -45,6 +45,8 @@ import com.tally.app.ui.statements.StatementsScreen
 import com.tally.app.ui.capture.CaptureReviewRoute
 import com.tally.app.ui.capture.NotificationAccessRoute
 import com.tally.app.ui.settings.SettingsScreen
+import com.tally.app.ui.spend.SpendScreen
+import com.tally.app.ui.txndetail.TxnDetailScreen
 
 /**
  * Production entry point (called from `MainActivity`) — gates the whole app
@@ -87,7 +89,7 @@ fun TallyAppRoot(repository: VaultRepository, dataSource: VaultTallyDataSource) 
 }
 
 /**
- * The app shell: three-tab bottom navigation (Home · ⊕ · Menu) over a
+ * The app shell: four-tab bottom navigation (Home · Spend · ⊕ · More) over a
  * hand-managed back stack (see `Route.kt` for why this isn't
  * `navigation-compose`). Every screen under `com.tally.app.ui` is wired
  * together here, against the single [TallyDataSource] seam. Reached only
@@ -139,12 +141,37 @@ fun TallyApp(repository: VaultRepository, dataSource: VaultTallyDataSource) {
             when (val route = current) {
                 is Route.Home -> HomeScreen(
                     dataSource = dataSource,
+                    onOpenAccount = { accountId -> push(Route.Account(accountId)) },
                     onOpenDepositPlan = { push(Route.Goal) },
                     onOpenToSortOutItem = { item -> push(Route.Placeholder(item.title, item.subtitle)) },
                 )
                 is Route.QuickAdd -> QuickAddScreen(dataSource = dataSource, snackbarHostState = snackbarHostState)
                 is Route.Menu -> MenuScreen(onNavigate = ::push)
-                is Route.Transactions -> TransactionsScreen(dataSource = dataSource)
+                is Route.Transactions -> TransactionsScreen(
+                    dataSource = dataSource,
+                    onOpenTxn = { id -> push(Route.TxnDetail(id)) },
+                )
+
+                is Route.Spend -> SpendScreen(
+                    dataSource = dataSource,
+                    // Tapping a category opens the full transaction list. It is
+                    // not filtered to that category yet — TransactionsScreen
+                    // filters by account, not category — so this lands on the
+                    // list rather than pretending to narrow it.
+                    onOpenCategory = { push(Route.Transactions) },
+                )
+
+                is Route.Account -> TransactionsScreen(
+                    dataSource = dataSource,
+                    accountId = route.accountId,
+                    onOpenTxn = { id -> push(Route.TxnDetail(id)) },
+                )
+
+                is Route.TxnDetail -> TxnDetailScreen(
+                    dataSource = dataSource,
+                    txnId = route.txnId,
+                    onBack = ::popOne,
+                )
 
                 is Route.Budgets -> BudgetsScreen(dataSource = dataSource, onBack = ::popOne)
 
@@ -265,6 +292,24 @@ private fun TallyBottomBar(rootTab: Route, onSelectTab: (Route) -> Unit) {
             colors = colors,
         )
 
+        val spendSelected = rootTab is Route.Spend
+        NavigationBarItem(
+            selected = spendSelected,
+            onClick = { onSelectTab(Route.Spend) },
+            icon = {
+                // No dedicated spend glyph exists in TallyIcons and adding one
+                // is a design job, not a wiring job. Search reads as "look
+                // through your spending", which is close enough to be honest
+                // and does not invent a half-drawn icon.
+                TallyIcons.Search(
+                    modifier = Modifier.size(24.dp),
+                    tint = if (spendSelected) TallyColors.Accent else TallyColors.Ink3,
+                )
+            },
+            label = { Text("Spend", style = MaterialTheme.typography.labelMedium) },
+            colors = colors,
+        )
+
         val menuSelected = rootTab is Route.Menu
         NavigationBarItem(
             selected = menuSelected,
@@ -275,7 +320,7 @@ private fun TallyBottomBar(rootTab: Route, onSelectTab: (Route) -> Unit) {
                     tint = if (menuSelected) TallyColors.Accent else TallyColors.Ink3,
                 )
             },
-            label = { Text("Menu", style = MaterialTheme.typography.labelMedium) },
+            label = { Text("More", style = MaterialTheme.typography.labelMedium) },
             colors = colors,
         )
     }
