@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -207,7 +208,7 @@ private fun LoadedBody(state: StatementsUiState.Loaded, onImport: () -> Unit) {
                 onClick = onImport,
                 colors = ButtonDefaults.buttonColors(containerColor = TallyColors.Accent, contentColor = TallyColors.InkOnAccent),
                 shape = RoundedCornerShape(TallyCardRadius),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             ) {
                 Text(text = "Import a statement", style = MaterialTheme.typography.titleSmall)
             }

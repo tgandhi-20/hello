@@ -32,8 +32,23 @@ private val TallyColorScheme = lightColorScheme(
     onError = TallyColors.InkOnAccent,
     errorContainer = TallyColors.CriticalTint,
     onErrorContainer = TallyColors.Critical,
-    outline = TallyColors.Hairline,
-    outlineVariant = TallyColors.Hairline,
+    // NOT TallyColors.Hairline here, deliberately. Hairline (#E2E6EB) is
+    // tuned to sit almost invisibly against Surface/Ground on purpose, for
+    // the hand-drawn TallyDivider between list rows — measured 1.25:1 on
+    // Surface and 1.16:1 on Ground, fine for a decorative row separator that
+    // isn't the only way to tell rows apart (their content is), but a real
+    // failure for the one place `outline` actually matters here: it is also
+    // Material3's default OutlinedTextField/OutlinedButton border colour,
+    // and every OutlinedTextField in this app (PIN entry, the restore
+    // secret, the erase-confirmation field, the transaction note) takes
+    // that default with no override — at 1.25:1 the field boundary would be
+    // essentially invisible, failing the 3:1 WCAG 1.4.11 floor for a UI
+    // component boundary a user must actually be able to see to use the
+    // field. Ink3 measures 5.31:1 on Surface / 4.90:1 on Ground — comfortably
+    // over 3:1 — and is already an existing, measured token (ui/theme/Color.kt),
+    // not a new colour.
+    outline = TallyColors.Ink3,
+    outlineVariant = TallyColors.Ink3,
     scrim = TallyColors.Scrim,
 )
 
