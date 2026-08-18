@@ -54,6 +54,7 @@ import java.util.Locale
 import androidx.compose.ui.focus.onFocusChanged
 import com.tally.app.ui.components.a11yClickable
 import com.tally.app.ui.model.UiCategory
+import com.tally.app.ui.model.UiTxn
 
 /**
  * Transaction detail — reached by tapping a row in

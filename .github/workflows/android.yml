@@ -136,4 +136,23 @@ jobs:
           ram-size: 4096M
           disable-animations: true
           working-directory: android
-          script: ./gradlew connectedDebugAndroidTest --stacktrace
+          script: |
+            ./gradlew connectedDebugAndroidTest --stacktrace
+            # Pull the captured PNGs off the emulator. `|| true` because a
+            # screenshot that did not get written must never fail the job —
+            # the point of this step is to produce artifacts to look at.
+            mkdir -p build/screenshots
+            adb pull /sdcard/Android/data/com.tally.app/files/screenshots build/screenshots || true
+            ls -la build/screenshots || true
+
+      # The reason this job exists. Nobody building this app can see it, and a
+      # layout can pass every semantics assertion while overlapping its own
+      # text or clipping a number.
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tally-screenshots
+          path: android/build/screenshots/**/*.png
+          if-no-files-found: warn
+          retention-days: 14
