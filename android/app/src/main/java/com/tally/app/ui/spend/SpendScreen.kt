@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tally.app.ui.components.CategoryBadge
 import com.tally.app.ui.components.MoneyHeroText
@@ -272,10 +273,28 @@ private fun SpendCategoryRow(entry: UiCategorySpend, totalCents: Cents, onClick:
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Both weights matter: the Row's, so this whole leading group is
+            // bounded to "whatever MoneyText doesn't need" rather than able
+            // to push it off-screen; the Column's, so the label itself is
+            // bounded to "whatever the badge doesn't need" rather than free
+            // to overlap MoneyText inside that already-bounded space.
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 CategoryBadge(colorIndex = entry.colorIndex, label = entry.label)
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(text = entry.label, style = MaterialTheme.typography.bodyLarge, color = TallyColors.Ink1)
+                Column(
+                    modifier = Modifier.weight(1f, fill = false),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = entry.label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TallyColors.Ink1,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     Text(text = "$percent% of spending", style = MaterialTheme.typography.bodyMedium, color = TallyColors.Ink2)
                 }
             }

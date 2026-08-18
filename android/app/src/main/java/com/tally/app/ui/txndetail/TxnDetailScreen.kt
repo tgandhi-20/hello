@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tally.app.ui.components.CategoryBadge
@@ -176,7 +177,13 @@ fun TxnDetailScreen(
             ) {
                 CategoryBadge(colorIndex = category?.colorIndex ?: 0, label = category?.label ?: txn.merchant, size = 44.dp)
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = category?.label ?: "Uncategorised", style = MaterialTheme.typography.titleSmall, color = TallyColors.Ink1)
+                    Text(
+                        text = category?.label ?: "Uncategorised",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = TallyColors.Ink1,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 Text(text = "Change", style = MaterialTheme.typography.labelLarge, color = TallyColors.Accent)
             }

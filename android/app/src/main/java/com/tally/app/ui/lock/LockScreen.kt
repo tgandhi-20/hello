@@ -199,7 +199,7 @@ private fun UnlockPinFlow(repository: VaultRepository, onUnlocked: () -> Unit, m
             }
             is VaultRepository.UnlockResult.NotSetUp -> {
                 buffer = ""
-                message = "This vault isn't set up on this device yet. Restart Tally to set a PIN."
+                message = "Tally isn't set up on this device yet. Restart the app to create a PIN."
             }
             is VaultRepository.UnlockResult.BiometricUnavailable -> {
                 // Never a dead end — the PIN pad underneath still works.

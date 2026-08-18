@@ -9,9 +9,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -273,9 +271,20 @@ private fun SubletRow(entry: BudgetEntry) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 CategoryBadge(colorIndex = entry.colorIndex, label = entry.label)
-                Text(text = entry.label, style = MaterialTheme.typography.bodyLarge, color = TallyColors.Ink1)
+                Text(
+                    text = entry.label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TallyColors.Ink1,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
             }
             MoneyText(cents = expectedIncomeCents, showSign = true, color = TallyColors.Ink2)
         }

@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -48,12 +50,21 @@ import java.util.Locale
  *
  * Read-only: this screen never writes to the vault, only reads via
  * [VaultRepository.hydrateAll].
+ *
+ * [onImport] fires from the "Import a statement" button [LoadedBody] shows
+ * whenever at least one account still reads "No CSV imported yet" — before
+ * this existed, that status had no action attached to it on this screen, so
+ * seeing it meant leaving Statements and finding Menu's separate "Import
+ * statements" row from memory. The orchestrator should wire this to
+ * `ui/csvimport`'s `CsvImportScreen` — the same destination Menu's own
+ * "Import statements" row already opens.
  */
 @Composable
 fun StatementsScreen(
     repository: VaultRepository,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onImport: () -> Unit = {},
 ) {
     var state by remember { mutableStateOf<StatementsUiState>(StatementsUiState.Loading) }
 
@@ -81,7 +92,7 @@ fun StatementsScreen(
         when (val s = state) {
             is StatementsUiState.Loading -> LoadingBody()
             is StatementsUiState.Failure -> FailureBody(message = s.message)
-            is StatementsUiState.Loaded -> LoadedBody(s)
+            is StatementsUiState.Loaded -> LoadedBody(s, onImport = onImport)
         }
     }
 }
@@ -151,7 +162,7 @@ private fun FailureBody(message: String) {
 }
 
 @Composable
-private fun LoadedBody(state: StatementsUiState.Loaded) {
+private fun LoadedBody(state: StatementsUiState.Loaded, onImport: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -186,6 +197,19 @@ private fun LoadedBody(state: StatementsUiState.Loaded) {
             state.statuses.forEachIndexed { index, status ->
                 AccountStatementRow(status)
                 if (index != state.statuses.lastIndex) TallyDivider(modifier = Modifier.padding(start = 16.dp))
+            }
+        }
+
+        // Only when there's genuinely something to import — an account
+        // that's already up to date doesn't need this prompt repeated at it.
+        if (state.statuses.any { it.lastImportedThrough == null }) {
+            Button(
+                onClick = onImport,
+                colors = ButtonDefaults.buttonColors(containerColor = TallyColors.Accent, contentColor = TallyColors.InkOnAccent),
+                shape = RoundedCornerShape(TallyCardRadius),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(text = "Import a statement", style = MaterialTheme.typography.titleSmall)
             }
         }
 

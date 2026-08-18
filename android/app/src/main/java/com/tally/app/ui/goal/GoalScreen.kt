@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -323,6 +323,11 @@ private fun BalanceKeypad(onKey: (String) -> Unit, disabledBackspace: Boolean) {
                     val enabled = key != "back" || !disabledBackspace
                     BalanceKeypadKey(
                         label = if (key == "back") "⌫" else key,
+                        a11yLabel = when (key) {
+                            "back" -> "Backspace"
+                            "." -> "Decimal point"
+                            else -> "Digit $key"
+                        },
                         enabled = enabled,
                         onClick = { onKey(key) },
                         modifier = Modifier.weight(1f),
@@ -334,13 +339,25 @@ private fun BalanceKeypad(onKey: (String) -> Unit, disabledBackspace: Boolean) {
 }
 
 @Composable
-private fun BalanceKeypadKey(label: String, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun BalanceKeypadKey(
+    label: String,
+    a11yLabel: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val contentColor = if (enabled) TallyColors.Ink1 else TallyColors.Ink3
     Column(
         modifier = modifier
             .heightIn(min = 48.dp)
             .background(TallyColors.SurfaceSunk, RoundedCornerShape(TallyControlRadius))
-            .then(if (enabled) Modifier.a11yRow(description = "Key $label", onClick = onClick) else Modifier)
+            .then(
+                if (enabled) {
+                    Modifier.a11yRow(description = a11yLabel, onClick = onClick)
+                } else {
+                    Modifier.semantics { contentDescription = a11yLabel }
+                },
+            )
             .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
